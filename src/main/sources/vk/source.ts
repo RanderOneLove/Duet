@@ -58,10 +58,19 @@ export class VkSource implements Source {
     // library, and it has to be walked a page at a time.
     const fresh = this.liked && Date.now() - this.liked.at < LIKED_TTL_MS
     if (fresh) return this.liked!.tracks
+    // Home and the Liked tab ask at the same moment on startup; without this
+    // they would each walk the whole library.
+    if (this.likedInFlight) return this.likedInFlight
 
-    const tracks = await this.pagedAudioGet({ owner_id: this.accountId || '' }, true)
-    this.liked = { at: Date.now(), tracks }
-    return tracks
+    this.likedInFlight = this.pagedAudioGet({ owner_id: this.accountId || '' }, true)
+      .then((tracks) => {
+        this.liked = { at: Date.now(), tracks }
+        return tracks
+      })
+      .finally(() => {
+        this.likedInFlight = null
+      })
+    return this.likedInFlight
   }
 
   async playlists(): Promise<Playlist[]> {
@@ -273,6 +282,8 @@ export class VkSource implements Source {
   private streamHints = new Map<string, string>()
   /** The whole library, so opening a screen does not re-walk 18 pages. */
   private liked: { at: number; tracks: Track[] } | null = null
+  /** A walk already under way; a second caller waits on it instead of starting its own. */
+  private likedInFlight: Promise<Track[]> | null = null
 
   private async adopt(): Promise<Account> {
     const cookies = await getAuthCookies()

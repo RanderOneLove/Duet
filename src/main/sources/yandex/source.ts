@@ -18,6 +18,8 @@ export class YandexSource implements Source {
   private api: YandexApi | null = null
   /** The whole library, so opening a screen does not re-read it. */
   private liked: { at: number; tracks: Track[] } | null = null
+  /** A read already under way; a second caller waits on it instead of starting its own. */
+  private likedInFlight: Promise<Track[]> | null = null
   private uid: string | null = null
   private account: Account | null = null
 
@@ -61,12 +63,21 @@ export class YandexSource implements Source {
   async likedTracks(): Promise<Track[]> {
     const { api, uid } = this.require()
     if (this.liked && Date.now() - this.liked.at < LIKED_TTL_MS) return this.liked.tracks
+    if (this.likedInFlight) return this.likedInFlight
 
-    const ids = await api.likedTrackIds(uid)
-    const raw = await api.tracks(ids)
-    const tracks = raw.map((track) => this.toDomain(track, true))
-    this.liked = { at: Date.now(), tracks }
-    return tracks
+    this.likedInFlight = (async () => {
+      const ids = await api.likedTrackIds(uid)
+      const raw = await api.tracks(ids)
+      return raw.map((track) => this.toDomain(track, true))
+    })()
+      .then((tracks) => {
+        this.liked = { at: Date.now(), tracks }
+        return tracks
+      })
+      .finally(() => {
+        this.likedInFlight = null
+      })
+    return this.likedInFlight
   }
 
   async playlists(): Promise<Playlist[]> {

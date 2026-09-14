@@ -123,7 +123,13 @@ function start(): void {
   onLibraryChanged(() => sendToShell(IPC.libChanged, undefined))
   onDownloadsChanged((state) => sendToShell(IPC.downloadsChanged, state))
 
-  void restoreSources().then(restoreSession)
+  void restoreSources().then(async () => {
+    await restoreSession()
+    // Read the library now rather than when a screen first asks for it: the
+    // walk takes seconds, and doing it during startup means Home and Liked
+    // open on a list that is already in hand.
+    await likedTracks().catch(() => undefined)
+  })
 
   sendToShell(IPC.hotkeyStatus, registerHotkeys(settings))
   let previous = settings
