@@ -1,0 +1,816 @@
+/*
+ * Screens from the wireframe: track rows (2b), cards (2a/2f), Connect (2i),
+ * the full player with its queue (2d) and the loading/empty/error block (2m).
+ */
+
+.screen {
+  padding: 18px 22px 28px;
+}
+
+.screen__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.screen__title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.screen__sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+.screen__art {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-md);
+}
+
+.screen__spacer {
+  flex: 1;
+}
+
+/* ---- sidebar playlists ------------------------------------------------- */
+
+.sidebar__label {
+  padding: 14px 10px 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.sidebar__playlists {
+  overflow-y: auto;
+  /* Never let a long playlist list push Settings off the bottom. */
+  max-height: 34vh;
+}
+
+.navitem--sm {
+  padding: 6px 10px;
+  font-weight: 400;
+  font-size: 13px;
+  gap: 8px;
+}
+
+.sidebar__badge {
+  margin-left: auto;
+}
+
+/* ---- track rows (2b) --------------------------------------------------- */
+
+.tracklist {
+  display: flex;
+  flex-direction: column;
+  padding: 0 2px;
+}
+
+.trackrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+  border-radius: var(--r-md);
+}
+
+.trackrow:hover {
+  background: var(--surface-hover);
+}
+
+.trackrow--active {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.trackrow--off {
+  opacity: 0.45;
+}
+
+.trackrow__index {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The number gives way to a transport glyph on hover, as in the wireframe. */
+.trackrow__glyph {
+  display: none;
+  color: var(--text);
+}
+
+.trackrow:hover .trackrow__num,
+.trackrow--active .trackrow__num {
+  display: none;
+}
+
+.trackrow:hover .trackrow__glyph,
+.trackrow--active .trackrow__glyph {
+  display: block;
+}
+
+.trackrow__art {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+}
+
+.trackrow__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.trackrow__title {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.trackrow__artist {
+  font-size: 12px;
+}
+
+.trackrow__like {
+  color: var(--text-muted);
+  font-size: 14px;
+  flex: none;
+  opacity: 0;
+}
+
+.trackrow:hover .trackrow__like,
+.trackrow__like--on {
+  opacity: 1;
+}
+
+.trackrow__like--on {
+  color: var(--accent);
+}
+
+.trackrow__time {
+  width: 42px;
+  text-align: right;
+  flex: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- liked screen (2b) ------------------------------------------------- */
+
+.liked-hero {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  margin-bottom: 24px;
+}
+
+.liked-hero__art {
+  width: 140px;
+  height: 140px;
+  border-radius: var(--r-xl);
+  background: linear-gradient(135deg, #4A6CF7, #26262e);
+  box-shadow: var(--shadow-float);
+  flex: none;
+}
+
+.liked-hero__info {
+  flex: 1;
+}
+
+.liked-hero__kicker {
+  font-size: 12px;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.liked-hero__title {
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin: 0 0 8px;
+}
+
+.liked-hero__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  align-items: center;
+}
+
+.liked-filters {
+  align-self: flex-start;
+  margin-bottom: 16px;
+}
+
+.tracklist-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  margin-bottom: 8px;
+}
+
+.tracklist-header__index {
+  width: 24px;
+}
+
+.tracklist-header__title {
+  flex: 1;
+}
+
+.tracklist-header__album {
+  width: 130px;
+}
+
+/* ---- cards (2a / 2f) --------------------------------------------------- */
+
+.home {
+  padding: 18px 22px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.home__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.home__title {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.cardrow {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  width: 150px;
+  flex: none;
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  padding: 10px;
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  transition: transform 0.12s, background 0.12s;
+}
+
+.grid .card {
+  width: auto;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  background: #2b2b2b;
+}
+
+.card__artwrap {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.card__art {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--r-md);
+  display: block;
+}
+
+.card__play {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-accent);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.12s, transform 0.12s;
+}
+
+.card:hover .card__play {
+  opacity: 1;
+  transform: none;
+}
+
+.card__titlerow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card__title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.card__sub {
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+
+/* ---- loading / empty / error (2m) -------------------------------------- */
+
+.stateblock {
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+/* Skeleton rows read as "content is coming" better than a spinner does. */
+.stateblock__skeleton {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeletonrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.skeletonrow__art {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  flex: none;
+}
+
+.skeletonrow__lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skeletonrow__lines > i {
+  display: block;
+  height: 9px;
+  border-radius: 4px;
+  background: var(--surface-2);
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.stateblock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+  gap: 16px;
+  min-height: 200px;
+}
+
+.stateblock__mark {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.stateblock__mark--error {
+  background: rgba(255, 122, 122, 0.18);
+}
+
+.stateblock__title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.stateblock__hint {
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+.stateblock__empty {
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  gap: 12px;
+  margin: 20px 40px;
+}
+
+.stateblock__empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.stateblock__empty-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+/* ---- connect (2i) ------------------------------------------------------ */
+
+.connect {
+  padding: 46px 30px;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.connect__kicker {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.connect__title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 8px 0 6px;
+}
+
+.connect__lead {
+  margin: 0 0 22px;
+  line-height: 1.5;
+}
+
+.connect__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.connectcard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  padding: 14px;
+  box-shadow: var(--shadow-card);
+}
+
+.connectcard__mark {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 13px ui-monospace, Menlo, monospace;
+  flex: none;
+}
+
+.connectcard__mark--vk {
+  background: var(--vk-bg);
+  color: var(--vk-fg);
+}
+
+.connectcard__mark--yandex {
+  background: var(--ya-bg);
+  color: var(--ya-fg);
+}
+
+.connectcard__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.connectcard__name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.connectcard__hint {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.connectcard__error {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #ffb454;
+}
+
+.connect__skip {
+  margin-top: 22px;
+  font-size: 13px;
+}
+
+.connect__skip:hover {
+  color: var(--text);
+}
+
+/* ---- full player + queue (2d) ------------------------------------------ */
+
+.fullplayer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: linear-gradient(180deg, #2a2740, #121212 55%);
+  display: flex;
+  flex-direction: column;
+}
+
+.fullplayer__header {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  flex: none;
+}
+
+.fullplayer__header-title {
+  flex: 1;
+  text-align: center;
+}
+
+.fullplayer__body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  padding: 0 8px 8px;
+  gap: 8px;
+}
+
+.fullplayer__now {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 10px 30px;
+}
+
+.fullplayer__art {
+  width: min(46vh, 248px);
+  height: min(46vh, 248px);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.fullplayer__meta {
+  text-align: center;
+  max-width: 460px;
+  width: 100%;
+}
+
+.fullplayer__title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.fullplayer__artist {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.fullplayer__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 86%;
+  font-size: 11px;
+}
+
+.fullplayer__progress .bar {
+  /* The row is a column flex box: `flex: 1` would zero the bar's height. */
+  flex: none;
+  width: 100%;
+  height: 5px;
+}
+
+.fullplayer__times {
+  display: flex;
+  justify-content: space-between;
+}
+
+.fullplayer__transport {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  color: var(--text-muted);
+}
+
+.fullplayer__play {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fff;
+  color: #121212;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+.fullplayer__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.fullplayer__actions .pill.liked {
+  color: var(--accent);
+  border-color: rgba(74, 108, 247, 0.6);
+}
+
+.fullplayer__error {
+  color: #ffb454;
+  font-size: 12.5px;
+}
+
+.queue {
+  width: 290px;
+  flex: none;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.queue__tabs {
+  margin-bottom: 4px;
+}
+
+.queue__head {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  padding: 0 8px;
+}
+
+.queue__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 4px 10px;
+}
+
+.queueitem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--r-md);
+  width: 100%;
+  text-align: left;
+  user-select: none;
+}
+
+.queueitem:hover {
+  background: var(--surface-hover);
+}
+
+.queueitem--on {
+  background: var(--accent-soft);
+}
+
+.queueitem__drag {
+  opacity: 0.5;
+  cursor: grab;
+}
+
+.queueitem__art {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+}
+
+.queueitem__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.queueitem__title {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.queueitem__artist {
+  font-size: 11.5px;
+}
+
+.queue__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.queue__footer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---- transport extras -------------------------------------------------- */
+
+.nowplaying__track {
+  text-align: left;
+}
+
+/* Sits at the far end of the strip, not against the title: the metadata takes
+   the slack (see `.nowplaying__meta`), which also lets long names truncate.
+   `flex` rather than inline, or the icon rides the text baseline. */
+.nowplaying__expand {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  opacity: 0.45;
+  flex: none;
+  transition: opacity 0.12s, color 0.12s;
+}
+
+.nowplaying__track:hover .nowplaying__expand {
+  opacity: 1;
+  color: var(--text);
+}
+
+.togglebtn {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.togglebtn:hover {
+  color: var(--text);
+}
+
+.togglebtn--on {
+  color: var(--accent);
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.25);
+  border-top-color: #121212;
+  animation: spin 0.7s linear infinite;
+  display: block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

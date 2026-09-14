@@ -1,0 +1,252 @@
+/*
+ * Blocks added in the second pass: the Home radio hero, the search layout from
+ * 2c, and the two-pane settings from 2h.
+ */
+
+/* ---- Search (2c) -------------------------------------------------------- */
+
+.search__tabs {
+  margin-bottom: 14px;
+}
+
+.search__split {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.search__tracks {
+  flex: 1;
+  min-width: 0;
+}
+
+.search__label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  padding: 0 10px 6px;
+}
+
+.search__section {
+  margin-top: 22px;
+}
+
+.topresult {
+  width: 280px;
+  flex: none;
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  padding: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  box-shadow: var(--shadow-card);
+}
+
+.topresult__kicker {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.topresult__art {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-md);
+}
+
+.topresult__art--round {
+  border-radius: 50%;
+}
+
+.topresult__title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.topresult__sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topresult__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.card__art--round {
+  border-radius: 50%;
+}
+
+/* ---- skeletons ---------------------------------------------------------- */
+
+.skeletonblock {
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+
+.card--skeleton {
+  cursor: default;
+}
+
+.home__section--skeleton {
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+/* ---- full player extras ------------------------------------------------- */
+
+.fullplayer__kicker {
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+}
+
+.fullplayer__source {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fullplayer__headspacer {
+  width: 30px;
+  flex: none;
+}
+
+.queue__note {
+  font-size: 11.5px;
+}
+
+.queueitem__remove {
+  color: var(--text-muted);
+  font-size: 12px;
+  opacity: 0;
+  flex: none;
+}
+
+.queueitem:hover .queueitem__remove {
+  opacity: 1;
+}
+
+.queueitem__remove:hover {
+  color: #ff7a7a;
+}
+
+/* ---- Settings (2h) ------------------------------------------------------ */
+
+.settings {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+
+.settings__nav {
+  width: 190px;
+  flex: none;
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-right: 1px solid var(--hairline);
+}
+
+.settings__pane {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 18px 24px 32px;
+}
+
+.settings__group {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+  margin: 18px 0 9px;
+}
+
+.settings__group:first-child {
+  margin-top: 0;
+}
+
+.settings__card {
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  padding: 0 14px;
+  max-width: 620px;
+}
+
+.settings__note {
+  margin: 12px 0 0;
+  max-width: 620px;
+  line-height: 1.5;
+}
+
+/* ---- connected service cards (2h) --------------------------------------- */
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  max-width: 620px;
+  margin-bottom: 10px;
+}
+
+.account--error {
+  box-shadow: 0 0 0 1px rgba(255, 0, 0, 0.3);
+}
+
+.account__badge {
+  font: 700 11px ui-monospace, Menlo, monospace;
+  border-radius: 5px;
+  padding: 4px 7px;
+  flex: none;
+}
+
+.account__badge--vk {
+  background: var(--vk-bg);
+  color: var(--vk-fg);
+}
+
+.account__badge--yandex {
+  background: var(--ya-bg);
+  color: var(--ya-fg);
+}
+
+.account__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.account__name {
+  font-weight: 600;
+}
+
+.account__status--error {
+  color: #ff7a7a;
+  font-size: 12.5px;
+}
+
+/* ---- about -------------------------------------------------------------- */
+
+.about {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0 4px;
+}
+
+.about__name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Rows sit inside a card now, so the last one drops its divider. */
+.srow--last {
+  border-bottom: 0;
+}

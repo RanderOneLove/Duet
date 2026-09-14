@@ -1,0 +1,291 @@
+/* Downloads (2g), the per-row download control, and the service marks. */
+
+/* The mark brings its own colour, so the tinted plate behind it goes away. */
+.account__badge,
+.connectcard__mark {
+  background: var(--fill-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- per-row download control -------------------------------------------- */
+
+/* Kept visible rather than revealed on hover: a control nobody can find is a
+   control nobody uses. It stays quiet until the row is hovered. */
+.trackrow__dl {
+  color: var(--text-muted);
+  flex: none;
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  transition: color 0.12s, opacity 0.12s;
+}
+
+.trackrow:hover .trackrow__dl,
+.trackrow__dl--on {
+  opacity: 1;
+}
+
+.trackrow__dl:hover {
+  color: var(--text);
+}
+
+.trackrow__dl--on {
+  color: #4caf50;
+}
+
+/* The Downloads screen always shows its transport glyph. */
+.trackrow__glyph--always {
+  display: block !important;
+}
+
+/* ---- storage summary ------------------------------------------------------ */
+
+.storage {
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.storage__bar {
+  display: flex;
+  gap: 3px;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.storage__part {
+  display: block;
+  height: 100%;
+}
+
+.storage__part--vk {
+  background: var(--accent);
+}
+
+.storage__part--yandex {
+  background: #7f8cf0;
+}
+
+.storage__legend {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+}
+
+.storage__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 5px;
+}
+
+.storage__dot--vk {
+  background: var(--accent);
+}
+
+.storage__dot--yandex {
+  background: #7f8cf0;
+}
+
+/* ---- download rows -------------------------------------------------------- */
+
+.downloads__filters {
+  margin-bottom: 12px;
+}
+
+.dl__progress {
+  width: 150px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.dl__progress .bar {
+  flex: 1;
+}
+
+.dl__percent {
+  font-size: 11.5px;
+  width: 58px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dl__failed {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  max-width: 260px;
+}
+
+.dl__error {
+  color: #ff7a7a;
+  font-size: 12px;
+}
+
+.dl__done {
+  color: #4caf50;
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.dl__size {
+  font-size: 12px;
+  width: 64px;
+  text-align: right;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The folder row keeps its two buttons together. */
+.settings__folder {
+  display: flex;
+  gap: 8px;
+}
+
+/* Usage against the limit sits at the end of the legend. */
+.storage__cap {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- long lists ----------------------------------------------------------
+   Only the visible rows are rendered, so rows must be a fixed height and the
+   space the hidden ones would take is held open by a spacer. */
+
+.list__gap {
+  flex: none;
+}
+
+.trackrow {
+  height: 54px;
+  box-sizing: border-box;
+}
+
+.queueitem {
+  height: 46px;
+  box-sizing: border-box;
+}
+
+/* ---- full-screen player -------------------------------------------------- */
+
+/* The artwork behind the whole screen, blurred past recognition, the way the
+   radio hero does it. The gradient above it keeps text legible whatever the
+   cover happens to be. */
+/* No `position` here: the screen is already `fixed`, and restating it as
+   `relative` knocked it out of the overlay and into the page flow. */
+.fullplayer {
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.fullplayer__glow {
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  filter: blur(80px) saturate(160%);
+  opacity: 0.72;
+  transition: background-image 0.4s;
+}
+
+.fullplayer__glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(18, 18, 18, 0.1), rgba(18, 18, 18, 0.72));
+}
+
+.fullplayer__volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 210px;
+}
+
+.fullplayer__volumebar {
+  flex: 1;
+}
+
+.fullplayer__volumevalue {
+  font-size: 11.5px;
+  width: 62px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A name that behaves like a link but is a button, because it navigates
+   inside the app rather than to a document. */
+.linklike {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.linklike:hover {
+  color: var(--text);
+  border-bottom-color: currentColor;
+}
+
+/* The player carries the window buttons, so its header needs room for them. */
+.fullplayer__header .wincontrols {
+  margin-left: auto;
+}
+
+/* ---- output device and sleep timer --------------------------------------- */
+
+.fullplayer__outputs {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.picker__label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.picker select,
+.picker__custom input {
+  background: var(--fill-soft);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  font: inherit;
+  max-width: 220px;
+}
+
+.picker__custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.picker__custom input {
+  width: 72px;
+}

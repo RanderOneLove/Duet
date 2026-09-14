@@ -1,0 +1,104 @@
+import type { ServiceId, Track, WaveChoice } from './domain'
+
+/** How the queue advances when a track ends. */
+export type RepeatMode = 'off' | 'all' | 'one'
+
+/**
+ * Everything the UI needs to draw the transport. Owned by the main process,
+ * mirrored into the shell, the mini player and the tray.
+ */
+/**
+ * What actually travels to a renderer. `queue` dominates the size of the state
+ * — a library played end to end is thousands of tracks — yet it changes rarely,
+ * while the position ticks four times a second. So it is sent only when it
+ * changed, and renderers keep the last one they were given.
+ */
+export type PlayerUpdate = Omit<PlayerState, 'queue'> & { queue?: Track[] }
+
+export interface PlayerState {
+  /** The queue in play order; shuffling reorders this, not a separate index map. */
+  queue: Track[]
+  /** Index into `queue`, or -1 when nothing is loaded. */
+  index: number
+  playing: boolean
+  /** True between "user pressed play" and the first audio frame. */
+  loading: boolean
+  positionMs: number
+  durationMs: number
+  volume: number
+  muted: boolean
+  shuffle: boolean
+  repeat: RepeatMode
+  /**
+   * Set while the queue is a service station rather than a fixed list — the
+   * engine tops it up as it runs down, so the radio never ends.
+   */
+  waveService: WaveChoice | null
+  /** Outputs the machine offers; the empty id means "system default". */
+  outputDevices: { id: string; label: string }[]
+  /** Which one is in use, '' while following the system default. */
+  outputDeviceId: string
+  /** When playback stops by itself, as a timestamp, or null when no timer. */
+  sleepEndsAt: number | null
+  /** Set when the current track failed to load, cleared on the next track. */
+  error: string | null
+  /** Wall clock at which positionMs was sampled, for smooth interpolation. */
+  sampledAt: number
+}
+
+export const EMPTY_PLAYER: PlayerState = {
+  queue: [],
+  index: -1,
+  playing: false,
+  loading: false,
+  positionMs: 0,
+  durationMs: 0,
+  volume: 0.8,
+  muted: false,
+  shuffle: false,
+  repeat: 'off',
+  waveService: null,
+  outputDevices: [],
+  outputDeviceId: '',
+  sleepEndsAt: null,
+  error: null,
+  sampledAt: 0
+}
+
+export function currentTrack(state: PlayerState): Track | null {
+  return state.index >= 0 && state.index < state.queue.length ? state.queue[state.index] : null
+}
+
+export function currentService(state: PlayerState): ServiceId | null {
+  return currentTrack(state)?.service ?? null
+}
+
+export type PlayerCommand =
+  | { type: 'playPause' }
+  | { type: 'play' }
+  | { type: 'pause' }
+  | { type: 'next' }
+  | { type: 'prev' }
+  | { type: 'seek'; positionMs: number }
+  | { type: 'setVolume'; volume: number }
+  | { type: 'toggleMute' }
+  | { type: 'toggleShuffle' }
+  | { type: 'cycleRepeat' }
+  | { type: 'setRepeat'; mode: RepeatMode }
+  /** Replace the queue with `tracks` and start at `startIndex`. */
+  | { type: 'playQueue'; tracks: Track[]; startIndex: number }
+  /** Start the service's endless station. */
+  | { type: 'playWave'; service: WaveChoice }
+  | { type: 'setOutputDevice'; deviceId: string }
+  /** null cancels a running timer. */
+  | { type: 'setSleepTimer'; minutes: number | null }
+  /** Jump to a position in the existing queue. */
+  | { type: 'playIndex'; index: number }
+  | { type: 'removeFromQueue'; index: number }
+  /** Drag-to-reorder: move one queued track to another slot. */
+  | { type: 'moveInQueue'; from: number; to: number }
+  /** Drop everything and stop; the transport falls back to its idle state. */
+  | { type: 'clearQueue' }
+  /** Like or unlike whatever is playing, on its own service. */
+  | { type: 'toggleLike' }
+  | { type: 'enqueueNext'; tracks: Track[] }

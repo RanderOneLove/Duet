@@ -1,0 +1,24 @@
+appId: com.rednikin.duet
+productName: Duet
+directories:
+  output: release
+  buildResources: resources
+files:
+  - out/**
+  - package.json
+extraResources:
+  # The tray icon is loaded from disk at runtime, not bundled.
+  - from: resources/tray.ico
+    to: tray.ico
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: resources/icon.ico
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Duet
+artifactName: ${productName}-${version}-setup.${ext}

@@ -1,0 +1,35 @@
+{
+  "name": "vk-and-ya-music-player",
+  "version": "0.1.0",
+  "description": "Десктоп-плеер для VK Музыки и Яндекс.Музыки с мини-плеером поверх экрана",
+  "main": "./out/main/index.js",
+  "author": "nikitarednikin2004@gmail.com",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "tsc --noEmit && electron-vite build",
+    "preview": "electron-vite preview",
+    "dist": "npm run build && electron-builder --win"
+  },
+  "dependencies": {
+    "@toil/vk-audio": "^0.0.10",
+    "discord-rpc": "^4.0.1",
+    "electron-store": "8.2.0",
+    "hls.js": "^1.7.3"
+  },
+  "devDependencies": {
+    "@types/discord-rpc": "^4.0.11",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  }
+}

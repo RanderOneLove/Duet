@@ -1,0 +1,9 @@
+node_modules/
+out/
+release/
+dist/
+*.log
+
+# Unrelated tool that happens to live here
+meridius-temp/
+meridius-src/

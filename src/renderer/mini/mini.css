@@ -1,0 +1,425 @@
+/*
+ * Mini-player variants, sized from the wireframe artboards 3a–3d.
+ * The window is transparent, so the rounded surface is painted here and the
+ * root element must hug the content exactly — see useAutoSize.
+ *
+ * That exact fit is why none of the plates carries an outer shadow: a shadow
+ * is painted outside the border box, which on a rounded plate means inside the
+ * corner notches, and the window edge cuts it off before it can fade. The
+ * result was four dark wedges in the corners. `--mini-edge` separates the
+ * plate from the desktop from the inside instead.
+ */
+
+:root {
+  --mini-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.mini-body {
+  background: transparent;
+  overflow: hidden;
+}
+
+.mini {
+  display: inline-block;
+  transition: opacity 0.16s ease;
+}
+
+/* Controls sit on top of a draggable surface, so they opt out of dragging. */
+.transportrow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: none;
+}
+
+.transport {
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.9;
+}
+.transport:hover:not(:disabled) {
+  opacity: 1;
+}
+
+/* ---- 3a · bar --------------------------------------------------------- */
+
+.v-bar {
+  width: 384px;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--mini-edge);
+  overflow: hidden;
+}
+
+.v-bar__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.v-bar__art {
+  width: 56px;
+  height: 56px;
+}
+
+.v-bar__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.v-bar__title {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.v-bar__sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.v-bar__progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 12px;
+}
+
+.v-bar__time {
+  font-size: 10.5px;
+  flex: none;
+}
+
+.v-bar__progress .bar {
+  flex: 1;
+}
+
+.v-bar__volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 72px;
+  margin-left: 4px;
+}
+
+.v-bar__volume .bar {
+  flex: 1;
+}
+
+/* ---- 3c · pill -------------------------------------------------------- */
+
+.v-pill {
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.v-pill--compact {
+  width: 230px;
+  border-radius: var(--r-pill);
+  box-shadow: var(--mini-edge);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px 7px 7px;
+}
+
+.v-pill--expanded {
+  width: 330px;
+  border-radius: 20px;
+  box-shadow: var(--mini-edge);
+}
+
+.v-pill__row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 14px 11px 11px;
+}
+
+.v-pill__art {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+}
+
+.v-pill__art--sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+
+.v-pill__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.v-pill__title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.v-pill--compact .v-pill__title {
+  flex: 1;
+  font-weight: 500;
+  font-size: 12.5px;
+}
+
+.v-pill__sub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+}
+
+.v-pill__progress {
+  padding: 0 14px 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Named rather than positional: the like button is the first child now, and
+   matching on :first-child left the seek bar with no width at all while the
+   volume slider took the whole row. */
+.v-pill__seek {
+  flex: 2;
+}
+
+.v-pill__volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.v-pill__volume .bar {
+  flex: 1;
+}
+
+.v-pill__progress .bar {
+  height: 3px;
+}
+
+/* ---- 3b · card -------------------------------------------------------- */
+
+.v-card {
+  width: 272px;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--mini-edge);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.v-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v-card__mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--accent);
+  flex: none;
+}
+
+.v-card__kicker {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.v-card__spacer,
+.v-cover__spacer {
+  flex: 1;
+}
+
+.v-card__icon,
+.v-cover__icon {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+.v-card__icon:hover,
+.v-cover__icon:hover {
+  color: var(--text);
+}
+
+.v-card__art {
+  height: 180px;
+  border-radius: var(--r-lg);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+  width: 100%;
+}
+
+.v-card__title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.v-card__sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.v-card__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.v-card__times {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10.5px;
+  margin-top: 6px;
+}
+
+.v-card__volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 72px;
+}
+
+.v-card__volume .bar {
+  flex: 1;
+}
+
+.v-card__transport {
+  justify-content: center;
+  gap: 22px;
+}
+
+.v-card__next {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.v-card__nextlabel {
+  font-size: 10.5px;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  flex: none;
+}
+
+.v-card__nexttitle {
+  font-size: 12.5px;
+  flex: 1;
+}
+
+/* ---- 3d · cover ------------------------------------------------------- */
+
+.v-cover {
+  width: 264px;
+  height: 264px;
+  border-radius: 18px;
+  box-shadow: var(--mini-edge);
+  position: relative;
+  overflow: hidden;
+  background-color: #2c2c36;
+  background-image: linear-gradient(135deg, #3c3c48, #22222c);
+  background-size: cover;
+  background-position: center;
+}
+
+.v-cover__scrim {
+  position: absolute;
+  inset: 0;
+  /* Fixed scrim: contrast must not depend on how bright the artwork is. */
+  background: linear-gradient(
+    180deg,
+    rgba(18, 18, 18, 0.15) 0%,
+    rgba(18, 18, 18, 0.55) 46%,
+    rgba(18, 18, 18, 0.92) 100%
+  );
+}
+
+.v-cover__inner {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 14px 14px;
+}
+
+.v-cover__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.v-cover__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.v-cover__title {
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.015em;
+}
+
+.v-cover__sub {
+  font-size: 12.5px;
+}
+
+.v-cover__progress {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.v-cover__progress .bar {
+  height: 3px;
+}
+
+.v-cover__progress > .bar:first-child {
+  flex: 2;
+}
+
+.v-cover__volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.v-cover__volume .bar {
+  flex: 1;
+}
+
+.v-cover__transport {
+  justify-content: space-between;
+}
+
+.v-cover__transport .playbtn {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+/* Dragging turned off in settings: the plate stays put and stops grabbing the
+   cursor, but the buttons on top of it keep working as they did. */
+body.mini--locked .drag {
+  -webkit-app-region: no-drag;
+}

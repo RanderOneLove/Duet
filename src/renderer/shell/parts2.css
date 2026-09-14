@@ -1,0 +1,254 @@
+/*
+ * Second pass: scrollbars, the enlarged radio hero, the coverless-artwork
+ * placeholder and the like button.
+ */
+
+/* ---- scrollbars --------------------------------------------------------- */
+
+/*
+ * Overlay-thin, and only visible against the surface they sit on. The corner
+ * square is removed so a pane that scrolls both ways has no grey notch.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  /* The border fakes padding, so the thumb reads as a slim pill. */
+  border: 3px solid transparent;
+  background-clip: content-box;
+  min-height: 42px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--accent);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---- coverless artwork -------------------------------------------------- */
+
+.cover-blank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.cover-blank::after {
+  /* A soft sheen keeps the flat gradient from looking like a loading block. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 80% at 25% 15%, rgba(255, 255, 255, 0.16), transparent 60%);
+}
+
+.cover-blank__mark {
+  width: 52%;
+  height: auto;
+  opacity: 0.62;
+  position: relative;
+}
+
+.art--round {
+  border-radius: 50%;
+}
+
+/* ---- like button -------------------------------------------------------- */
+
+.likebtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex: none;
+  transition: color 0.12s, transform 0.12s;
+}
+
+.likebtn:hover:not(:disabled) {
+  color: var(--text);
+  transform: scale(1.12);
+}
+
+.likebtn--on,
+.likebtn--on:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+/* ---- Home ---------------------------------------------------------------- */
+
+.home__spacer {
+  flex: 1;
+}
+
+.home__head {
+  /* The liked block puts a filter and a button in the heading row. */
+  flex-wrap: wrap;
+}
+
+/* ---- "Моя волна" — the headline block ----------------------------------- */
+
+.wave {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(120deg, #2b2340, #1b1c2b);
+}
+
+.wave--vk {
+  background: linear-gradient(120deg, #16304f, #1b1c2b);
+}
+
+.wave--yandex {
+  background: linear-gradient(120deg, #46202f, #1b1c2b);
+}
+
+/* The current cover, blown up and blurred, tints the whole plate. */
+.wave__glow {
+  position: absolute;
+  inset: -40%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(56px) saturate(140%);
+  opacity: 0.5;
+}
+
+.wave__inner {
+  position: relative;
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+  background: linear-gradient(100deg, rgba(10, 10, 14, 0.72), rgba(10, 10, 14, 0.3));
+}
+
+.wave__art {
+  width: 176px;
+  height: 176px;
+  border-radius: var(--r-xl);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.55);
+  flex: none;
+}
+
+.wave__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 9px;
+}
+
+.wave__kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.wave__title {
+  font-size: 44px;
+  line-height: 1.02;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.wave__sub {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wave__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.pill--lg {
+  padding: 11px 24px;
+  font-size: 15px;
+}
+
+.wave__next {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  min-width: 0;
+}
+
+.wave__nextlabel {
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  flex: none;
+}
+
+.wave__nextitem {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 4px 11px;
+  max-width: 190px;
+}
+
+/* ---- mini player control rows ------------------------------------------- */
+
+.v-card__controls,
+.v-cover__controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.v-card__controls {
+  justify-content: center;
+}
+
+.v-cover__controls {
+  justify-content: space-between;
+}
+
+.v-card__controls .transportrow,
+.v-cover__controls .transportrow {
+  flex: 1;
+}
+
+.v-bar__progress .likebtn,
+.v-pill__progress .likebtn {
+  margin-left: 2px;
+}

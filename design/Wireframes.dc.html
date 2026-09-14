@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics=""><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&amp;display=swap" rel="stylesheet"><style>
+body{margin:0;background:#f0eee9;font-family:'Patrick Hand',system-ui,sans-serif}
+a{color:#6b5fc0}a:hover{color:#4b3f9e}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 system-ui,sans-serif;color:#1a1a1a}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 system-ui,sans-serif;color:rgba(0,0,0,.55)}
+.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.dv-opt:target .dv-oid{background:#9184d9;color:#fff}
+.dv-next{margin:22px 0 0;font:12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5)}
+.dv-grp{width:100%;margin:22px 0 -10px;padding-top:16px;border-top:1px dashed rgba(0,0,0,.16);font:600 10px ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:rgba(0,0,0,.38)}
+.f{display:flex;flex-direction:column;width:760px;height:468px;font-size:13px;color:#1a1a1a;background:#fff}
+.fb{display:flex;flex:1;min-height:0}
+.sb{width:150px;border-right:1.5px solid #1a1a1a;padding:10px 8px;display:flex;flex-direction:column;gap:5px;flex:none}
+.mn{flex:1;display:flex;flex-direction:column;min-width:0}
+.tb{height:40px;border-bottom:1.5px solid #1a1a1a;display:flex;align-items:center;gap:10px;padding:0 12px;flex:none}
+.ct{flex:1;padding:12px;display:flex;flex-direction:column;gap:9px;overflow:hidden}
+.np{height:56px;border-top:1.5px solid #1a1a1a;display:flex;align-items:center;gap:12px;padding:0 12px;flex:none}
+.nav{padding:3px 6px;border-radius:5px;color:#333;display:flex;align-items:center;gap:5px}
+.nav.on{background:rgba(145,132,217,.14);border-left:3px solid #9184d9}
+.art{background:repeating-linear-gradient(45deg,#e8e6e1 0 5px,#f6f5f2 5px 10px);border:1.2px solid #c3c1bc;border-radius:5px;flex:none}
+.bx{border:1.3px dashed #a3a19c;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#8a8884;font:11px/1.4 ui-monospace,Menlo,monospace;text-align:center;padding:6px}
+.btn{border:1.4px solid #1a1a1a;border-radius:14px;padding:2px 10px;font-size:12px;white-space:nowrap}
+.btn.a{border-color:#9184d9;color:#6b5fc0}
+.btn.fill{background:#9184d9;color:#fff;border-color:#9184d9}
+.tr{display:flex;align-items:center;gap:8px;padding:4px 6px;border-bottom:1px solid #efedea}
+.t2{font-size:11px;color:#8a8884}
+.bd{font:10px ui-monospace,Menlo,monospace;border:1.2px solid #9184d9;color:#6b5fc0;border-radius:3px;padding:0 3px;flex:none}
+.bd.y{border-color:#595753;color:#595753}
+.sk{height:9px;border-radius:4px;background:#eae8e3}
+.seg{display:flex;border:1.4px solid #1a1a1a;border-radius:14px;overflow:hidden;font-size:11px;flex:none}
+.seg>span{padding:2px 9px;border-right:1px solid #cfcdc8}
+.seg>span:last-child{border-right:0}
+.seg>span.on{background:#9184d9;color:#fff}
+.hd{font-size:15px}
+.an{font:10px/1.35 ui-monospace,Menlo,monospace;color:#6b5fc0}
+.tab{font-size:12px;padding:2px 2px 4px;border-bottom:2px solid transparent;color:#8a8884}
+.tab.on{border-color:#9184d9;color:#1a1a1a}
+.cd{width:104px;display:flex;flex-direction:column;gap:4px;font-size:11px}
+.hf{width:900px;height:566px;display:flex;flex-direction:column;background:#121212;color:#fff;font-family:-apple-system,'SF Pro Display','Segoe UI',system-ui,sans-serif;font-size:14px;overflow:hidden}
+.hb{display:flex;flex:1;min-height:0;gap:8px;padding:8px 8px 0}
+.hsb{width:214px;background:#1E1E1E;border-radius:12px;padding:14px 10px;display:flex;flex-direction:column;gap:3px;flex:none}
+.hn{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;color:#A7A7A7;font-weight:500}
+.hn.on{background:rgba(74,108,247,.12);color:#fff;box-shadow:inset 3px 0 0 #4A6CF7}
+.hmn{flex:1;background:#1E1E1E;border-radius:12px;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.htb{height:52px;display:flex;align-items:center;gap:12px;padding:0 16px;flex:none;border-bottom:1px solid rgba(255,255,255,.06)}
+.hct{flex:1;padding:16px;display:flex;flex-direction:column;gap:13px;overflow:hidden}
+.hnp{height:76px;display:flex;align-items:center;gap:16px;padding:0 18px;flex:none}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 16px;font-size:13px;font-weight:600;background:#4A6CF7;color:#fff;box-shadow:0 4px 14px rgba(74,108,247,.34)}
+.pill.g{background:rgba(255,255,255,.08);box-shadow:none}
+.pill.o{background:transparent;border:1px solid rgba(255,255,255,.22);box-shadow:none}
+.pill.sm{padding:4px 12px;font-size:12px;font-weight:500}
+.hsr{height:34px;border-radius:999px;background:#2A2A2A;display:flex;align-items:center;padding:0 14px;color:#A7A7A7;font-size:13px;gap:8px}
+.hcard{box-sizing:border-box;background:#242424;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:7px;width:128px;box-shadow:0 2px 10px rgba(0,0,0,.32);flex:none}
+.hart{border-radius:8px;background:linear-gradient(135deg,#3c3c48,#26262e)}
+.hrow{display:flex;align-items:center;gap:12px;padding:7px 10px;border-radius:9px}
+.hrow.on{background:#282828}
+.hmut{color:#A7A7A7;font-size:12.5px}
+.hbadge{font:700 10px/1.5 ui-monospace,Menlo,monospace;letter-spacing:.04em;border-radius:5px;padding:1px 5px;flex:none}
+.bv{background:rgba(0,119,255,.2);color:#66aaff}
+.by{background:rgba(255,0,0,.17);color:#ff7a7a}
+.hplay{width:44px;height:44px;border-radius:50%;background:#4A6CF7;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(74,108,247,.45);flex:none}
+.hbar{height:4px;border-radius:2px;background:rgba(255,255,255,.16);overflow:hidden}
+.hfill{height:4px;border-radius:2px;background:#4A6CF7}
+.htog{width:42px;height:25px;border-radius:999px;background:#4A6CF7;padding:2.5px;display:flex;align-items:center;justify-content:flex-end;flex:none}
+.htog.off{background:rgba(255,255,255,.18);justify-content:flex-start}
+.hknob{width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.45)}
+.hseg{display:inline-flex;background:#2A2A2A;border-radius:9px;padding:2px;font-size:12.5px;font-weight:500}
+.hseg>span{padding:4px 13px;border-radius:7px;color:#A7A7A7}
+.hseg>span.on{background:#3B3B44;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.hic{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;color:#A7A7A7;font-size:12px;flex:none}
+</style></helmet>
+
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Мини-плеер поверх экрана (из трея) — четыре варианта, во всех есть переключение треков</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="3a"><div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Горизонтальная плашка — минимум места, всё на виду</div>
+<div class="dv-card" style="border:0;border-radius:16px;box-shadow:0 18px 44px rgba(0,0,0,.5)"><div class="hf" style="width:384px;height:auto;background:#1E1E1E;border-radius:16px">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+<div class="hart" style="width:56px;height:56px;flex:none"></div>
+<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Track title that is quite long</div><div class="hmut" style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Artist name</span> <span class="hbadge bv">VK</span></div></div>
+<div style="display:flex;align-items:center;gap:12px;flex:none"><span style="font-size:14px">◀◀</span><div style="width:36px;height:36px;border-radius:50%;background:#fff;color:#121212;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.5)">❚❚</div><span style="font-size:14px">▶▶</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;padding:0 14px 12px"><span class="hmut" style="font-size:10.5px">1:12</span><div class="hbar" style="flex:1"><div class="hfill" style="width:34%"></div></div><span class="hmut" style="font-size:10.5px">3:24</span><span class="hmut" style="font-size:12px">♥</span><span class="hmut" style="font-size:12px">☰</span><span class="hmut" style="font-size:12px">□</span></div>
+</div></div>
+<div class="hmut" style="color:rgba(0,0,0,.5);font:11px/1.4 system-ui;max-width:384px">Появляется у трея, прячется при потере фокуса. Перетаскивается за обложку.</div>
+</div>
+
+<div class="dv-opt" id="3b"><div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a>Вертикальная карточка — обложка крупно + что дальше</div>
+<div class="dv-card" style="border:0;border-radius:16px;box-shadow:0 18px 44px rgba(0,0,0,.5);align-self:flex-start"><div class="hf" style="width:272px;height:auto;background:#1E1E1E;border-radius:16px">
+<div style="padding:14px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:8px"><div style="width:18px;height:18px;border-radius:6px;background:#4A6CF7"></div><span class="hmut" style="font-size:11px;letter-spacing:.08em;font-weight:600">СЕЙЧАС ИГРАЕТ</span><div style="flex:1"></div><span class="hmut" style="font-size:12px">■</span><span class="hmut" style="font-size:12px">✕</span></div>
+<div class="hart" style="height:180px;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.5)"></div>
+<div><div style="font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Track title</div><div class="hmut" style="display:flex;align-items:center;gap:6px;font-size:12.5px">Artist name <span class="hbadge by">YA</span></div></div>
+<div style="display:flex;flex-direction:column;gap:5px"><div class="hbar"><div class="hfill" style="width:46%"></div></div><div style="display:flex;justify-content:space-between" class="hmut"><span style="font-size:10.5px">1:52</span><span style="font-size:10.5px">-2:09</span></div></div>
+<div style="display:flex;align-items:center;justify-content:center;gap:22px"><span class="hmut" style="font-size:13px">♥</span><span style="font-size:16px">◀◀</span><div style="width:46px;height:46px;border-radius:50%;background:#4A6CF7;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(74,108,247,.45)">❚❚</div><span style="font-size:16px">▶▶</span><span class="hmut" style="font-size:13px">☰</span></div>
+<div style="display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.05);border-radius:10px;padding:8px 10px"><span class="hmut" style="font-size:10.5px;letter-spacing:.07em;font-weight:600;flex:none">ДАЛЕЕ</span><span style="font-size:12.5px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Next track title</span><span class="hbadge bv">VK</span></div>
+</div>
+</div></div>
+<div class="hmut" style="color:rgba(0,0,0,.5);font:11px/1.4 system-ui;max-width:272px">Единственный вариант, где видно очередь — можно пропускать осознанно.</div>
+</div>
+
+<div class="dv-opt" id="3c"><div class="dv-olabel"><a class="dv-oid" href="#3c">3c</a>Узкая пилюля — свёрнута и раскрыта по наведению</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div class="dv-card" style="border:0;border-radius:999px;box-shadow:0 14px 34px rgba(0,0,0,.45);align-self:flex-start"><div class="hf" style="width:230px;height:auto;background:#1E1E1E;border-radius:999px">
+<div style="display:flex;align-items:center;gap:10px;padding:7px 12px 7px 7px">
+<div class="hart" style="width:34px;height:34px;border-radius:50%;flex:none"></div>
+<div style="flex:1;min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Track title</div>
+<span style="font-size:12px">◀◀</span><span style="font-size:13px">❚❚</span><span style="font-size:12px">▶▶</span>
+</div>
+</div></div>
+<div class="dv-card" style="border:0;border-radius:20px;box-shadow:0 18px 44px rgba(0,0,0,.5);align-self:flex-start"><div class="hf" style="width:330px;height:auto;background:#1E1E1E;border-radius:20px">
+<div style="display:flex;align-items:center;gap:11px;padding:11px 14px 11px 11px">
+<div class="hart" style="width:46px;height:46px;border-radius:50%;flex:none"></div>
+<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Track title</div><div class="hmut" style="display:flex;align-items:center;gap:5px;font-size:11.5px">Artist <span class="hbadge bv">VK</span></div></div>
+<div style="display:flex;align-items:center;gap:11px;flex:none"><span style="font-size:13px">◀◀</span><div style="width:32px;height:32px;border-radius:50%;background:#fff;color:#121212;display:flex;align-items:center;justify-content:center;font-size:12px">❚❚</div><span style="font-size:13px">▶▶</span></div>
+</div>
+<div style="padding:0 14px 11px"><div class="hbar" style="height:3px"><div class="hfill" style="height:3px;width:34%"></div></div></div>
+</div></div>
+</div>
+<div class="hmut" style="color:rgba(0,0,0,.5);font:11px/1.4 system-ui;max-width:330px">Сверху — покой (230px), снизу — раскрытие при наведении. Занимает меньше всего места, но лайка и очереди нет.</div>
+</div>
+
+<div class="dv-opt" id="3d"><div class="dv-olabel"><a class="dv-oid" href="#3d">3d</a>Квадрат с обложкой на фоне — контролы на затемнении</div>
+<div class="dv-card" style="border:0;border-radius:18px;box-shadow:0 18px 44px rgba(0,0,0,.5);align-self:flex-start"><div class="hf" style="width:264px;height:264px;background:linear-gradient(135deg,#3c3c48,#22222c);border-radius:18px;position:relative;overflow:hidden">
+<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,18,18,.15) 0%,rgba(18,18,18,.55) 46%,rgba(18,18,18,.92) 100%)"></div>
+<div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:12px 14px 14px">
+<div style="display:flex;align-items:center;gap:7px"><span class="hbadge bv">VK</span><div style="flex:1"></div><span class="hmut" style="font-size:12px">□</span><span class="hmut" style="font-size:12px">✕</span></div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div><div style="font-weight:700;font-size:17px;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Track title</div><div class="hmut" style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Artist name</div></div>
+<div class="hbar" style="height:3px"><div class="hfill" style="height:3px;width:34%"></div></div>
+<div style="display:flex;align-items:center;justify-content:space-between"><span class="hmut" style="font-size:13px">♥</span><span style="font-size:15px">◀◀</span><div style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.14);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)">❚❚</div><span style="font-size:15px">▶▶</span><span class="hmut" style="font-size:13px">☰</span></div>
+</div>
+</div>
+</div></div>
+<div class="hmut" style="color:rgba(0,0,0,.5);font:11px/1.4 system-ui;max-width:264px">Самый «обложечный». Контраст текста зависит от арта — нужен фиксированный градиент, он тут и есть.</div>
+</div>
+
+</div>
+<p class="dv-next">Дальше можно: «беру <a class="dv-oid" href="#3a">3a</a>, добавь громкость и источник» · «покажи <a class="dv-oid" href="#3b">3b</a> в свёрнутом состоянии» · «сделай <a class="dv-oid" href="#3c">3c</a> кликабельным прототипом»</p>
+</section>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Hi-fi pass — dark content-first layout, iOS-soft cards and pill controls. Structure from <a class="dv-oid" href="#1a">1a</a>, <a class="dv-oid" href="#1k">1k</a>, <a class="dv-oid" href="#1d">1d</a>, <a class="dv-oid" href="#1h">1h</a></span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Home</div>
+<div class="dv-card" style="border:0"><div class="hf">
+<div class="hb">
+<div class="hsb">
+<div style="display:flex;align-items:center;gap:9px;padding:4px 10px 12px"><div style="width:24px;height:24px;border-radius:7px;background:#4A6CF7;box-shadow:0 3px 10px rgba(74,108,247,.5)"></div><span style="font-weight:700;font-size:16px;letter-spacing:-.01em">Aggregator</span></div>
+<div class="hseg" style="margin:0 6px 10px"><span class="on">All</span><span>VK</span><span>Yandex</span></div>
+<div class="hn on">☉&nbsp; Home</div><div class="hn">⚲&nbsp; Search</div><div class="hn">▤&nbsp; Your Library</div><div class="hn">♥&nbsp; Liked</div><div class="hn">↓&nbsp; Downloads</div>
+<div class="hmut" style="padding:14px 10px 6px;font-size:11px;letter-spacing:.08em;font-weight:600">PLAYLISTS</div>
+<div class="hn" style="padding:6px 10px">Chill mix <span class="hbadge bv" style="margin-left:auto">VK</span></div>
+<div class="hn" style="padding:6px 10px">Road trip <span class="hbadge by" style="margin-left:auto">YA</span></div>
+<div class="hn" style="padding:6px 10px">Gym <span class="hbadge bv" style="margin-left:auto">VK</span></div>
+<div style="flex:1"></div><div class="hn">⚙&nbsp; Settings</div>
+</div>
+<div class="hmn">
+<div class="htb"><div class="hic">‹</div><div class="hic">›</div><div class="hsr" style="flex:1;max-width:330px">⚲ Search VK and Yandex</div><div style="flex:1"></div><div class="hic" style="background:#4A6CF7;color:#fff">A</div></div>
+<div class="hct" style="gap:10px">
+<div style="display:flex;gap:16px;background:linear-gradient(120deg,#2b2340,#1f2033);border-radius:14px;padding:14px;box-shadow:0 6px 22px rgba(0,0,0,.35)">
+<div class="hart" style="width:112px;height:112px;box-shadow:0 8px 20px rgba(0,0,0,.45)"></div>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:7px">
+<div style="display:flex;align-items:center;gap:7px"><span class="hbadge by">YANDEX</span><span class="hmut" style="font-size:11px;letter-spacing:.08em">ENDLESS RADIO</span></div>
+<div style="font-size:26px;font-weight:700;letter-spacing:-.02em">My Wave</div>
+<div class="hmut">Tuned to what you played this week</div>
+<div style="display:flex;gap:9px;margin-top:4px"><span class="pill">▶&nbsp; Play</span><span class="pill o sm">Mood</span><span class="pill o sm">Tempo</span></div>
+</div></div>
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:19px;font-weight:700;letter-spacing:-.01em">Recently played</span><span class="hmut" style="white-space:nowrap">both services</span><div style="flex:1"></div><span class="hmut" style="font-size:12px">Show all</span></div>
+<div style="display:flex;gap:12px">
+<div class="hcard"><div class="hart" style="height:96px"></div><div style="font-weight:600;font-size:13px">Album title</div><div class="hmut" style="font-size:11.5px;display:flex;align-items:center;gap:5px">Artist <span class="hbadge bv">VK</span></div></div>
+<div class="hcard"><div class="hart" style="height:96px"></div><div style="font-weight:600;font-size:13px">Album title</div><div class="hmut" style="font-size:11.5px;display:flex;align-items:center;gap:5px">Artist <span class="hbadge by">YA</span></div></div>
+<div class="hcard"><div class="hart" style="height:96px"></div><div style="font-weight:600;font-size:13px">Album title</div><div class="hmut" style="font-size:11.5px;display:flex;align-items:center;gap:5px">Artist <span class="hbadge by">YA</span></div></div>
+<div class="hcard"><div class="hart" style="height:96px;position:relative"><div class="hplay" style="position:absolute;right:8px;bottom:8px">▶</div></div><div style="font-weight:600;font-size:13px">Album title</div><div class="hmut" style="font-size:11.5px;display:flex;align-items:center;gap:5px">Artist <span class="hbadge bv">VK</span></div></div>
+</div>
+<div class="hmut" style="font-size:11.5px">Hover lifts the card 2px and brings up the play button.</div>
+</div></div></div>
+<div class="hnp">
+<div class="hart" style="width:52px;height:52px"></div>
+<div style="width:170px"><div style="font-weight:600;font-size:13.5px">Track title</div><div class="hmut" style="display:flex;align-items:center;gap:6px">Artist <span class="hbadge bv">VK</span></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px">
+<div style="display:flex;align-items:center;gap:20px;color:#A7A7A7"><span>⇆</span><span style="color:#fff;font-size:15px">◀◀</span><div style="width:36px;height:36px;border-radius:50%;background:#fff;color:#121212;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.5)">❚❚</div><span style="color:#fff;font-size:15px">▶▶</span><span>↻</span></div>
+<div style="display:flex;align-items:center;gap:9px;width:74%"><span class="hmut" style="font-size:11px">1:12</span><div class="hbar" style="flex:1"><div class="hfill" style="width:34%"></div></div><span class="hmut" style="font-size:11px">3:24</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;color:#A7A7A7"><span>☰</span><span>↓</span><span>♪</span><div class="hbar" style="width:76px"><div class="hfill" style="width:60%"></div></div></div>
+</div>
+</div></div></div>
+
+<div class="dv-opt" id="2b"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Liked — track rows, badges, downloaded state</div>
+<div class="dv-card" style="border:0"><div class="hf">
+<div class="hb">
+<div class="hsb">
+<div style="display:flex;align-items:center;gap:9px;padding:4px 10px 12px"><div style="width:24px;height:24px;border-radius:7px;background:#4A6CF7;box-shadow:0 3px 10px rgba(74,108,247,.5)"></div><span style="font-weight:700;font-size:16px;letter-spacing:-.01em">Aggregator</span></div>
+<div class="hseg" style="margin:0 6px 10px"><span class="on">All</span><span>VK</span><span>Yandex</span></div>
+<div class="hn">☉&nbsp; Home</div><div class="hn">⚲&nbsp; Search</div><div class="hn">▤&nbsp; Your Library</div><div class="hn on">♥&nbsp; Liked</div><div class="hn">↓&nbsp; Downloads</div>
+<div class="hmut" style="padding:14px 10px 6px;font-size:11px;letter-spacing:.08em;font-weight:600">PLAYLISTS</div>
+<div class="hn" style="padding:6px 10px">Chill mix <span class="hbadge bv" style="margin-left:auto">VK</span></div>
+<div class="hn" style="padding:6px 10px">Road trip <span class="hbadge by" style="margin-left:auto">YA</span></div>
+<div style="flex:1"></div><div class="hn">⚙&nbsp; Settings</div>
+</div>
+<div class="hmn">
+<div class="htb"><div class="hic">‹</div><div class="hic">›</div><div class="hsr" style="flex:1;max-width:280px">⚲ Filter in Liked</div><div style="flex:1"></div><div class="hic" style="background:#4A6CF7;color:#fff">A</div></div>
+<div class="hct" style="gap:7px">
+<div style="display:flex;gap:16px;align-items:flex-end">
+<div class="hart" style="width:88px;height:88px;box-shadow:0 8px 22px rgba(0,0,0,.5)"></div>
+<div style="flex:1"><div class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600">PLAYLIST</div>
+<div style="font-size:30px;font-weight:700;letter-spacing:-.025em;margin:2px 0 4px">Liked</div>
+<div class="hmut">312 from VK · 188 from Yandex · 27 h 14 min</div>
+<div style="display:flex;gap:9px;margin-top:10px;align-items:center"><span class="pill">▶&nbsp; Play</span><span class="pill g sm">⇆ Shuffle</span><span class="pill o sm">↓ Download all</span><span class="pill o sm">…</span></div></div>
+</div>
+<div class="hseg" style="align-self:flex-start"><span class="on">All</span><span>VK</span><span>Yandex</span><span>Downloaded</span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:0 10px 6px;border-bottom:1px solid rgba(255,255,255,.07)" class="hmut"><span style="width:16px;font-size:11px">#</span><span style="flex:1;font-size:11px;letter-spacing:.07em">TITLE</span><span style="width:130px;font-size:11px;letter-spacing:.07em">ALBUM</span><span style="font-size:11px">⏱</span></div>
+<div>
+<div class="hrow"><span class="hmut" style="width:16px">1</span><div class="hart" style="width:38px;height:38px"></div><div style="flex:1;min-width:0"><div style="font-weight:500">Track title</div><div class="hmut">Artist name</div></div><span class="hmut" style="width:130px;font-size:12.5px">Album name</span><span style="color:#4CAF50;font-size:13px">✓</span><span class="hbadge bv">VK</span><span class="hmut" style="font-size:12px">3:24</span></div>
+<div class="hrow"><span class="hmut" style="width:16px">2</span><div class="hart" style="width:38px;height:38px"></div><div style="flex:1;min-width:0"><div style="font-weight:500">Track title</div><div class="hmut">Artist name</div></div><span class="hmut" style="width:130px;font-size:12.5px">Album name</span><span class="hmut">↓</span><span class="hbadge by">YA</span><span class="hmut" style="font-size:12px">4:01</span></div>
+<div class="hrow on"><span style="width:16px;color:#4A6CF7">▶</span><div class="hart" style="width:38px;height:38px"></div><div style="flex:1;min-width:0"><div style="font-weight:500;color:#4A6CF7">Track title</div><div class="hmut">Artist name</div></div><span class="hmut" style="width:130px;font-size:12.5px">Album name</span><span style="display:flex;gap:10px;color:#fff;font-size:13px"><span style="color:#4A6CF7">♥</span><span>↓</span><span>…</span></span><span class="hbadge bv">VK</span><span class="hmut" style="font-size:12px">2:58</span></div>
+<div class="hrow"><span class="hmut" style="width:16px">4</span><div class="hart" style="width:38px;height:38px"></div><div style="flex:1;min-width:0"><div style="font-weight:500">Track title</div><div class="hmut">Artist name</div></div><span class="hmut" style="width:130px;font-size:12.5px">Album name</span><span class="hmut">↓</span><span class="hbadge by">YA</span><span class="hmut" style="font-size:12px">3:12</span></div>
+</div>
+</div></div></div>
+<div class="hnp">
+<div class="hart" style="width:52px;height:52px"></div>
+<div style="width:170px"><div style="font-weight:600;font-size:13.5px">Track title</div><div class="hmut" style="display:flex;align-items:center;gap:6px">Artist <span class="hbadge bv">VK</span></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px">
+<div style="display:flex;align-items:center;gap:20px;color:#A7A7A7"><span style="color:#4A6CF7">⇆</span><span style="color:#fff;font-size:15px">◀◀</span><div style="width:36px;height:36px;border-radius:50%;background:#fff;color:#121212;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.5)">❚❚</div><span style="color:#fff;font-size:15px">▶▶</span><span>↻</span></div>
+<div style="display:flex;align-items:center;gap:9px;width:74%"><span class="hmut" style="font-size:11px">0:58</span><div class="hbar" style="flex:1"><div class="hfill" style="width:33%"></div></div><span class="hmut" style="font-size:11px">2:58</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;color:#A7A7A7"><span>☰</span><span>↓</span><span>♪</span><div class="hbar" style="width:76px"><div class="hfill" style="width:60%"></div></div></div>
+</div>
+</div></div></div>
+
+<div class="dv-opt" id="2c"><div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Search — tabs, top result, one service still loading</div>
+<div class="dv-card" style="border:0"><div class="hf">
+<div class="hb">
+<div class="hsb">
+<div style="display:flex;align-items:center;gap:9px;padding:4px 10px 12px"><div style="width:24px;height:24px;border-radius:7px;background:#4A6CF7;box-shadow:0 3px 10px rgba(74,108,247,.5)"></div><span style="font-weight:700;font-size:16px;letter-spacing:-.01em">Aggregator</span></div>
+<div class="hseg" style="margin:0 6px 10px"><span class="on">All</span><span>VK</span><span>Yandex</span></div>
+<div class="hn">☉&nbsp; Home</div><div class="hn on">⚲&nbsp; Search</div><div class="hn">▤&nbsp; Your Library</div><div class="hn">♥&nbsp; Liked</div><div class="hn">↓&nbsp; Downloads</div>
+<div class="hmut" style="padding:14px 10px 6px;font-size:11px;letter-spacing:.08em;font-weight:600">RECENT SEARCHES</div>
+<div class="hn" style="padding:6px 10px">nirvana</div><div class="hn" style="padding:6px 10px">lo-fi beats</div>
+<div style="flex:1"></div><div class="hn">⚙&nbsp; Settings</div>
+</div>
+<div class="hmn">
+<div class="htb"><div class="hic">‹</div><div class="hic">›</div><div class="hsr" style="flex:1;max-width:330px;background:#333;box-shadow:0 0 0 2px rgba(74,108,247,.5)"><span style="color:#fff">nirvana</span><div style="flex:1"></div><span>✕</span></div><div style="flex:1"></div><div class="hic" style="background:#4A6CF7;color:#fff">A</div></div>
+<div class="hct" style="gap:12px">
+<div style="display:flex;gap:22px;border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:2px">
+<span style="font-weight:600;padding-bottom:8px;box-shadow:inset 0 -2px 0 #4A6CF7">All</span>
+<span class="hmut" style="padding-bottom:8px">VK · 128</span>
+<span class="hmut" style="padding-bottom:8px">Yandex · 94</span>
+<span class="hmut" style="padding-bottom:8px">Downloaded</span>
+</div>
+<div style="display:flex;gap:14px">
+<div style="width:300px;background:#242424;border-radius:12px;padding:13px;display:flex;flex-direction:column;gap:9px;box-shadow:0 2px 12px rgba(0,0,0,.3)">
+<div class="hmut" style="font-size:11px;letter-spacing:.08em;font-weight:600">TOP RESULT</div>
+<div class="hart" style="width:64px;height:64px;border-radius:50%"></div>
+<div style="font-size:20px;font-weight:700;letter-spacing:-.015em">Artist name</div>
+<div class="hmut" style="display:flex;align-items:center;gap:6px">Artist · on <span class="hbadge bv">VK</span> <span class="hbadge by">YA</span></div>
+<div style="display:flex;gap:8px;margin-top:2px"><span class="pill sm">▶&nbsp; Play</span><span class="pill o sm">Follow</span></div>
+</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+<div class="hmut" style="font-size:11px;letter-spacing:.08em;font-weight:600;padding:0 10px 4px">TRACKS — INTERLEAVED BY RELEVANCE</div>
+<div class="hrow"><div class="hart" style="width:36px;height:36px"></div><div style="flex:1;min-width:0"><div style="font-weight:500">Track title</div><div class="hmut">Artist</div></div><span class="hbadge bv">VK</span><span class="hmut" style="font-size:12px">3:24</span></div>
+<div class="hrow on"><div class="hart" style="width:36px;height:36px"></div><div style="flex:1;min-width:0"><div style="font-weight:500">Track title</div><div class="hmut">Artist</div></div><span style="display:flex;gap:10px;color:#fff;font-size:13px"><span>♥</span><span>↓</span></span><span class="hbadge by">YA</span><span class="hmut" style="font-size:12px">4:01</span></div>
+<div class="hrow"><div class="hart" style="width:36px;height:36px"></div><div style="flex:1;min-width:0"><div style="font-weight:500">Track title</div><div class="hmut">Artist</div></div><span class="hbadge bv">VK</span><span class="hmut" style="font-size:12px">2:58</span></div>
+<div class="hrow" style="opacity:.5"><div class="hart" style="width:36px;height:36px"></div><div style="flex:1;display:flex;flex-direction:column;gap:5px"><div class="hbar" style="width:60%"></div><div class="hbar" style="width:35%"></div></div><span class="hmut" style="font-size:11.5px">Yandex loading…</span></div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;background:rgba(255,0,0,.1);border-radius:10px;padding:9px 13px">
+<span class="hbadge by">YA</span><span style="font-size:13px">Yandex is slow to respond — VK results are already here.</span><div style="flex:1"></div><span class="pill o sm">Retry</span><span class="hmut">✕</span>
+</div>
+</div></div></div>
+<div class="hnp">
+<div class="hart" style="width:52px;height:52px"></div>
+<div style="width:170px"><div style="font-weight:600;font-size:13.5px">Track title</div><div class="hmut" style="display:flex;align-items:center;gap:6px">Artist <span class="hbadge by">YA</span></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px">
+<div style="display:flex;align-items:center;gap:20px;color:#A7A7A7"><span>⇆</span><span style="color:#fff;font-size:15px">◀◀</span><div style="width:36px;height:36px;border-radius:50%;background:#fff;color:#121212;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.5)">▶</div><span style="color:#fff;font-size:15px">▶▶</span><span>↻</span></div>
+<div style="display:flex;align-items:center;gap:9px;width:74%"><span class="hmut" style="font-size:11px">2:10</span><div class="hbar" style="flex:1"><div class="hfill" style="width:54%"></div></div><span class="hmut" style="font-size:11px">4:01</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;color:#A7A7A7"><span>☰</span><span>↓</span><span>♪</span><div class="hbar" style="width:76px"><div class="hfill" style="width:60%"></div></div></div>
+</div>
+</div></div></div>
+
+<div class="dv-opt" id="2d"><div class="dv-olabel"><a class="dv-oid" href="#2d">2d</a>Full-screen player + queue</div>
+<div class="dv-card" style="border:0"><div class="hf" style="background:linear-gradient(180deg,#2a2740,#121212 55%)">
+<div class="htb" style="border:0"><div class="hic">▾</div><div style="flex:1;text-align:center"><div class="hmut" style="font-size:10.5px;letter-spacing:.09em;font-weight:600">PLAYING FROM PLAYLIST</div><div style="font-size:13px;font-weight:600">Liked</div></div><div class="hic">…</div></div>
+<div style="flex:1;display:flex;min-height:0;padding:0 8px 8px;gap:8px">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:10px 30px">
+<div class="hart" style="width:248px;height:248px;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.6)"></div>
+<div style="text-align:center;display:flex;flex-direction:column;gap:5px"><div style="font-size:26px;font-weight:700;letter-spacing:-.02em">Track title</div><div class="hmut" style="font-size:14px;display:flex;align-items:center;gap:7px;justify-content:center">Artist name · Album <span class="hbadge bv">VK</span></div></div>
+<div style="width:86%;display:flex;flex-direction:column;gap:6px"><div class="hbar" style="height:5px"><div class="hfill" style="height:5px;width:34%"></div></div><div style="display:flex;justify-content:space-between" class="hmut"><span style="font-size:11px">1:12</span><span style="font-size:11px">-2:12</span></div></div>
+<div style="display:flex;align-items:center;gap:30px;color:#A7A7A7"><span style="color:#4A6CF7;font-size:16px">⇆</span><span style="color:#fff;font-size:20px">◀◀</span><div style="width:60px;height:60px;border-radius:50%;background:#fff;color:#121212;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 8px 24px rgba(0,0,0,.55)">❚❚</div><span style="color:#fff;font-size:20px">▶▶</span><span style="font-size:16px">↻</span></div>
+<div style="display:flex;gap:10px"><span class="pill o sm" style="color:#4A6CF7;border-color:rgba(74,108,247,.6)">♥&nbsp; Liked on VK</span><span class="pill o sm">↓&nbsp; Download</span><span class="pill o sm">+ Playlist</span></div>
+</div>
+<div style="width:290px;background:#1E1E1E;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;flex:none">
+<div class="hseg"><span class="on">Queue</span><span>Lyrics</span><span>Related</span></div>
+<div class="hmut" style="font-size:11px;letter-spacing:.08em;font-weight:600">NEXT UP · DRAG TO REORDER</div>
+<div class="hrow" style="padding:6px 8px"><span class="hmut">⋮⋮</span><div class="hart" style="width:34px;height:34px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">Track title</div><div class="hmut" style="font-size:11.5px">Artist</div></div><span class="hbadge by">YA</span></div>
+<div class="hrow" style="padding:6px 8px"><span class="hmut">⋮⋮</span><div class="hart" style="width:34px;height:34px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">Track title</div><div class="hmut" style="font-size:11.5px">Artist</div></div><span class="hbadge bv">VK</span></div>
+<div class="hrow" style="padding:6px 8px"><span class="hmut">⋮⋮</span><div class="hart" style="width:34px;height:34px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">Track title</div><div class="hmut" style="font-size:11.5px">Artist</div></div><span class="hbadge by">YA</span></div>
+<div class="hrow" style="padding:6px 8px"><span class="hmut">⋮⋮</span><div class="hart" style="width:34px;height:34px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">Track title</div><div class="hmut" style="font-size:11.5px">Artist</div></div><span class="hbadge bv">VK</span></div>
+<div class="hmut" style="font-size:11.5px">One queue, both services. Switching tabs never clears it.</div>
+<div style="flex:1"></div>
+<div style="display:flex;gap:8px"><span class="pill g sm">Save as playlist</span><span class="pill o sm">Clear</span></div>
+</div>
+</div>
+</div></div></div>
+
+<div class="dv-opt" id="2e"><div class="dv-olabel"><a class="dv-oid" href="#2e">2e</a>Control kit — buttons, toggles, badges, states</div>
+<div class="dv-card" style="border:0"><div class="hf" style="height:auto;width:460px;padding:20px;gap:16px;display:flex;flex-direction:column">
+<div>
+<div class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600;margin-bottom:9px">BUTTONS</div>
+<div style="display:flex;flex-wrap:wrap;gap:9px;align-items:center"><span class="pill">▶&nbsp; Play</span><span class="pill" style="background:#3c5ae0;box-shadow:0 2px 8px rgba(74,108,247,.3)">Pressed</span><span class="pill g">Secondary</span><span class="pill o">Outline</span><span class="pill" style="opacity:.45">Disabled</span></div>
+<div style="display:flex;gap:9px;align-items:center;margin-top:9px"><span class="pill sm">Small</span><span class="pill g sm">Small ghost</span><span class="pill o sm">↓ Download</span><span class="pill sm" style="background:rgba(76,175,80,.16);color:#4CAF50;box-shadow:none">✓ Downloaded</span></div>
+</div>
+<div>
+<div class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600;margin-bottom:9px">FOCUS RING (KEYBOARD)</div>
+<div style="display:flex;gap:9px"><span class="pill" style="box-shadow:0 0 0 2px #121212,0 0 0 4px #4A6CF7">Play</span><span class="pill o" style="box-shadow:0 0 0 2px #121212,0 0 0 4px #4A6CF7">Queue</span></div>
+</div>
+<div>
+<div class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600;margin-bottom:9px">CIRCULAR PLAY · HOVER SCALES 1.06</div>
+<div style="display:flex;gap:14px;align-items:center"><div class="hplay">▶</div><div class="hplay" style="transform:scale(1.06);box-shadow:0 10px 26px rgba(74,108,247,.55)">▶</div><div style="width:44px;height:44px;border-radius:50%;background:#fff;color:#121212;display:flex;align-items:center;justify-content:center">❚❚</div></div>
+</div>
+<div>
+<div class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600;margin-bottom:9px">SEGMENTED · TOGGLE · SLIDER</div>
+<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div class="hseg"><span class="on">All</span><span>VK</span><span>Yandex</span></div><div class="htog"><div class="hknob"></div></div><div class="htog off"><div class="hknob"></div></div></div>
+<div style="display:flex;align-items:center;gap:10px;margin-top:12px"><div class="hbar" style="flex:1;height:5px;overflow:visible;position:relative"><div class="hfill" style="height:5px;width:42%"></div><div style="position:absolute;left:42%;top:-4px;width:13px;height:13px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.6);margin-left:-6px"></div></div><span class="hmut" style="font-size:11px">42%</span></div>
+</div>
+<div>
+<div class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600;margin-bottom:9px">SOURCE BADGES &amp; STATUS</div>
+<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="hbadge bv">VK</span><span class="hbadge by">YA</span><span class="hbadge" style="background:rgba(76,175,80,.16);color:#4CAF50">✓ LOCAL</span><span class="hbadge" style="background:rgba(255,255,255,.09);color:#A7A7A7">EXPLICIT</span><span class="hbadge" style="background:rgba(255,0,0,.16);color:#ff7a7a">TOKEN EXPIRED</span></div>
+</div>
+<div>
+<div class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600;margin-bottom:9px">TRACK ROW — REST / HOVER</div>
+<div class="hrow"><span class="hmut" style="width:14px">3</span><div class="hart" style="width:34px;height:34px"></div><div style="flex:1"><div style="font-weight:500;font-size:13px">Track title</div><div class="hmut" style="font-size:11.5px">Artist</div></div><span class="hbadge bv">VK</span><span class="hmut" style="font-size:12px">3:24</span></div>
+<div class="hrow on"><span style="width:14px;color:#4A6CF7">▶</span><div class="hart" style="width:34px;height:34px"></div><div style="flex:1"><div style="font-weight:500;font-size:13px">Track title</div><div class="hmut" style="font-size:11.5px">Artist</div></div><span style="display:flex;gap:9px;font-size:13px"><span>♥</span><span>↓</span><span>…</span></span><span class="hbadge bv">VK</span><span class="hmut" style="font-size:12px">3:24</span></div>
+</div>
+<div class="hmut" style="font-size:11.5px">Accent #4A6CF7 · surface #1E1E1E on #121212 · radii 8–12px · 200ms ease on every state.</div>
+</div></div></div>
+
+<div class="dv-opt" id="2f"><div class="dv-olabel"><a class="dv-oid" href="#2f">2f</a>Your Library</div>
+<div class="dv-card" style="border:0"><div class="hf">
+<div class="hb">
+<div class="hsb">
+<div style="display:flex;align-items:center;gap:9px;padding:4px 10px 12px"><div style="width:24px;height:24px;border-radius:7px;background:#4A6CF7;box-shadow:0 3px 10px rgba(74,108,247,.5)"></div><span style="font-weight:700;font-size:16px;letter-spacing:-.01em">Aggregator</span></div>
+<div class="hseg" style="margin:0 6px 10px"><span class="on">All</span><span>VK</span><span>Yandex</span></div>
+<div class="hn">☉&nbsp; Home</div><div class="hn">⚲&nbsp; Search</div><div class="hn on">▤&nbsp; Your Library</div><div class="hn">♥&nbsp; Liked</div><div class="hn">↓&nbsp; Downloads</div>
+<div class="hmut" style="padding:14px 10px 6px;font-size:11px;letter-spacing:.08em;font-weight:600">PLAYLISTS</div>
+<div class="hn" style="padding:6px 10px">Chill mix <span class="hbadge bv" style="margin-left:auto">VK</span></div>
+<div class="hn" style="padding:6px 10px">Road trip <span class="hbadge by" style="margin-left:auto">YA</span></div>
+<div style="flex:1"></div><div class="hn">⚙&nbsp; Settings</div>
+</div>
+<div class="hmn">
+<div class="htb"><div class="hic">‹</div><div class="hic">›</div><div class="hsr" style="flex:1;max-width:260px">⚲ Filter your library</div><div style="flex:1"></div><span class="pill g sm">+ New playlist</span><div class="hic" style="background:#4A6CF7;color:#fff">A</div></div>
+<div class="hct" style="gap:12px">
+<div style="display:flex;align-items:center;gap:9px"><span style="font-size:22px;font-weight:700;letter-spacing:-.02em">Your Library</span><div style="flex:1"></div><span class="hmut" style="font-size:12px">Recents ▾</span><span class="hmut">▤</span></div>
+<div style="display:flex;gap:8px;align-self:flex-start"><span class="pill sm">All</span><span class="pill g sm">Playlists</span><span class="pill g sm">Albums</span><span class="pill g sm">Artists</span><span class="pill g sm">Mixed</span></div>
+<div style="display:flex;gap:12px">
+<div class="hcard"><div class="hart" style="height:96px"></div><div style="font-weight:600;font-size:13px">Playlist name</div><div class="hmut" style="font-size:11.5px;display:flex;align-items:center;gap:5px">42 tracks <span class="hbadge bv">VK</span></div></div>
+<div class="hcard"><div class="hart" style="height:96px"></div><div style="font-weight:600;font-size:13px">Playlist name</div><div class="hmut" style="font-size:11.5px;display:flex;align-items:center;gap:5px">18 tracks <span class="hbadge by">YA</span></div></div>
+<div class="hcard"><div class="hart" style="height:96px"></div><div style="font-weight:600;font-size:13px">Album name</div><div class="hmut" style="font-size:11.5px;display:flex;align-items:center;gap:5px">Artist <span class="hbadge by">YA</span></div></div>
+<div class="hcard" style="box-shadow:0 2px 10px rgba(0,0,0,.32),0 0 0 1px rgba(74,108,247,.55)"><div class="hart" style="height:96px;background:linear-gradient(135deg,#3b3560,#262634)"></div><div style="font-weight:600;font-size:13px">Mixed playlist</div><div class="hmut" style="font-size:11.5px;display:flex;align-items:center;gap:5px">Local · VK + YA</div></div>
+</div>
+<div class="hmut" style="font-size:11.5px">Local playlists that mix both services carry an accent hairline.</div>
+</div></div></div>
+<div class="hnp">
+<div class="hart" style="width:52px;height:52px"></div>
+<div style="width:170px"><div style="font-weight:600;font-size:13.5px">Track title</div><div class="hmut" style="display:flex;align-items:center;gap:6px">Artist <span class="hbadge bv">VK</span></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px">
+<div style="display:flex;align-items:center;gap:20px;color:#A7A7A7"><span>⇆</span><span style="color:#fff;font-size:15px">◀◀</span><div style="width:36px;height:36px;border-radius:50%;background:#fff;color:#121212;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.5)">❚❚</div><span style="color:#fff;font-size:15px">▶▶</span><span>↻</span></div>
+<div style="display:flex;align-items:center;gap:9px;width:74%"><span class="hmut" style="font-size:11px">1:12</span><div class="hbar" style="flex:1"><div class="hfill" style="width:34%"></div></div><span class="hmut" style="font-size:11px">3:24</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;color:#A7A7A7"><span>☰</span><span>↓</span><span>♪</span><div class="hbar" style="width:76px"><div class="hfill" style="width:60%"></div></div></div>
+</div>
+</div></div></div>
+
+<div class="dv-opt" id="2g"><div class="dv-olabel"><a class="dv-oid" href="#2g">2g</a>Downloads</div>
+<div class="dv-card" style="border:0"><div class="hf">
+<div class="hb">
+<div class="hsb">
+<div style="display:flex;align-items:center;gap:9px;padding:4px 10px 12px"><div style="width:24px;height:24px;border-radius:7px;background:#4A6CF7;box-shadow:0 3px 10px rgba(74,108,247,.5)"></div><span style="font-weight:700;font-size:16px;letter-spacing:-.01em">Aggregator</span></div>
+<div class="hseg" style="margin:0 6px 10px"><span class="on">All</span><span>VK</span><span>Yandex</span></div>
+<div class="hn">☉&nbsp; Home</div><div class="hn">⚲&nbsp; Search</div><div class="hn">▤&nbsp; Your Library</div><div class="hn">♥&nbsp; Liked</div><div class="hn on">↓&nbsp; Downloads</div>
+<div class="hmut" style="padding:14px 10px 6px;font-size:11px;letter-spacing:.08em;font-weight:600">PLAYLISTS</div>
+<div class="hn" style="padding:6px 10px">Chill mix <span class="hbadge bv" style="margin-left:auto">VK</span></div>
+<div style="flex:1"></div><div class="hn">⚙&nbsp; Settings</div>
+</div>
+<div class="hmn">
+<div class="htb"><div class="hic">‹</div><div class="hic">›</div><div class="hsr" style="flex:1;max-width:260px">⚲ Filter downloads</div><div style="flex:1"></div><span class="pill o sm">Open folder</span><div class="hic" style="background:#4A6CF7;color:#fff">A</div></div>
+<div class="hct" style="gap:11px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:22px;font-weight:700;letter-spacing:-.02em">Downloads</span><span class="hmut">214 tracks · 1.8 GB</span><div style="flex:1"></div><span class="pill g sm">Manage storage</span></div>
+<div style="background:#242424;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:3px;height:8px;border-radius:4px;overflow:hidden"><div style="width:28%;background:#4A6CF7"></div><div style="width:18%;background:#7f8cf0"></div><div style="flex:1;background:rgba(255,255,255,.1)"></div></div>
+<div style="display:flex;gap:16px;align-items:center" class="hmut"><span style="font-size:12px"><span style="color:#4A6CF7">●</span> VK 1.1 GB</span><span style="font-size:12px"><span style="color:#7f8cf0">●</span> Yandex 0.7 GB</span><span style="font-size:12px">1.8 GB of 4 GB cap</span></div>
+</div>
+<div style="display:flex;gap:8px;align-self:flex-start"><span class="pill sm">All</span><span class="pill g sm">Downloading · 2</span><span class="pill g sm">Failed · 1</span></div>
+<div>
+<div class="hrow"><div class="hart" style="width:36px;height:36px"></div><div style="flex:1;min-width:0"><div style="font-weight:500">Track title</div><div class="hmut">Artist</div></div><div style="width:110px"><div class="hbar"><div class="hfill" style="width:62%"></div></div></div><span class="hmut" style="font-size:12px;width:34px">62%</span><span class="hbadge bv">VK</span></div>
+<div class="hrow"><div class="hart" style="width:36px;height:36px"></div><div style="flex:1;min-width:0"><div style="font-weight:500">Track title</div><div class="hmut">Artist</div></div><span style="color:#ff7a7a;font-size:12.5px">Failed</span><span class="pill o sm">Retry</span><span class="hbadge by">YA</span></div>
+<div class="hrow on"><div class="hart" style="width:36px;height:36px"></div><div style="flex:1;min-width:0"><div style="font-weight:500">Track title</div><div class="hmut">Artist</div></div><span style="color:#4CAF50;font-size:13px">✓</span><span class="hmut" style="font-size:12px">7.2 MB</span><span class="hmut">✕</span><span class="hbadge bv">VK</span></div>
+<div class="hrow"><div class="hart" style="width:36px;height:36px"></div><div style="flex:1;min-width:0"><div style="font-weight:500">Track title</div><div class="hmut">Artist</div></div><span style="color:#4CAF50;font-size:13px">✓</span><span class="hmut" style="font-size:12px">9.0 MB</span><span class="hmut">✕</span><span class="hbadge by">YA</span></div>
+</div>
+</div></div></div>
+<div class="hnp">
+<div class="hart" style="width:52px;height:52px"></div>
+<div style="width:170px"><div style="font-weight:600;font-size:13.5px">Track title</div><div class="hmut" style="display:flex;align-items:center;gap:6px">Artist <span class="hbadge bv">VK</span></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px">
+<div style="display:flex;align-items:center;gap:20px;color:#A7A7A7"><span>⇆</span><span style="color:#fff;font-size:15px">◀◀</span><div style="width:36px;height:36px;border-radius:50%;background:#fff;color:#121212;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.5)">▶</div><span style="color:#fff;font-size:15px">▶▶</span><span>↻</span></div>
+<div style="display:flex;align-items:center;gap:9px;width:74%"><span class="hmut" style="font-size:11px">0:00</span><div class="hbar" style="flex:1"><div class="hfill" style="width:0%"></div></div><span class="hmut" style="font-size:11px">3:24</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;color:#A7A7A7"><span>☰</span><span>↓</span><span>♪</span><div class="hbar" style="width:76px"><div class="hfill" style="width:60%"></div></div></div>
+</div>
+</div></div></div>
+
+<div class="dv-opt" id="2h"><div class="dv-olabel"><a class="dv-oid" href="#2h">2h</a>Settings — accounts &amp; playback</div>
+<div class="dv-card" style="border:0"><div class="hf">
+<div class="hb">
+<div class="hsb">
+<div style="display:flex;align-items:center;gap:9px;padding:4px 10px 12px"><div style="width:24px;height:24px;border-radius:7px;background:#4A6CF7;box-shadow:0 3px 10px rgba(74,108,247,.5)"></div><span style="font-weight:700;font-size:16px;letter-spacing:-.01em">Aggregator</span></div>
+<div class="hseg" style="margin:0 6px 10px"><span class="on">All</span><span>VK</span><span>Yandex</span></div>
+<div class="hn">☉&nbsp; Home</div><div class="hn">⚲&nbsp; Search</div><div class="hn">▤&nbsp; Your Library</div><div class="hn">♥&nbsp; Liked</div><div class="hn">↓&nbsp; Downloads</div>
+<div style="flex:1"></div><div class="hn on">⚙&nbsp; Settings</div>
+</div>
+<div class="hmn">
+<div class="htb"><div class="hic">‹</div><span style="font-weight:600">Settings</span></div>
+<div style="flex:1;display:flex;min-height:0">
+<div style="width:158px;padding:14px 10px;display:flex;flex-direction:column;gap:3px;border-right:1px solid rgba(255,255,255,.06);flex:none"><div class="hn on" style="padding:7px 10px;font-size:13px">Accounts</div><div class="hn" style="padding:7px 10px;font-size:13px">Playback</div><div class="hn" style="padding:7px 10px;font-size:13px">Downloads</div><div class="hn" style="padding:7px 10px;font-size:13px">Shortcuts</div><div class="hn" style="padding:7px 10px;font-size:13px">About</div></div>
+<div class="hct" style="gap:10px">
+<div class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600">CONNECTED SERVICES</div>
+<div style="background:#242424;border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px"><span class="hbadge bv" style="font-size:11px;padding:4px 7px">VK</span><div style="flex:1"><div style="font-weight:600">VK Music</div><div class="hmut">Cookie auth · expires in 43 days</div></div><span class="pill g sm">Reconnect</span><span class="pill o sm">Remove</span></div>
+<div style="background:#242424;border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;box-shadow:0 0 0 1px rgba(255,0,0,.3)"><span class="hbadge by" style="font-size:11px;padding:4px 7px">YA</span><div style="flex:1"><div style="font-weight:600">Yandex Music</div><div style="color:#ff7a7a;font-size:12.5px">Token expired — reconnect to keep playing</div></div><span class="pill sm">Reconnect</span><span class="pill o sm">Remove</span></div>
+<div class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600;margin-top:4px">PLAYBACK</div>
+<div style="background:#242424;border-radius:12px;padding:4px 14px">
+<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div style="flex:1"><div>Prefer downloaded file</div><div class="hmut">Play local copies when they exist</div></div><div class="htog"><div class="hknob"></div></div></div>
+<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div style="flex:1">Crossfade</div><div class="htog off"><div class="hknob"></div></div></div>
+<div style="display:flex;align-items:center;gap:12px;padding:10px 0"><div style="flex:1">Resume last track on launch</div><div class="htog"><div class="hknob"></div></div></div>
+</div>
+<div class="hmut" style="font-size:11.5px">Queue, volume, last track and active tab persist between launches.</div>
+</div></div></div>
+</div>
+</div></div></div>
+
+<div class="dv-opt" id="2i"><div class="dv-olabel"><a class="dv-oid" href="#2i">2i</a>Connect — step 1</div>
+<div class="dv-card" style="border:0"><div class="hf" style="width:560px;height:auto">
+<div class="htb" style="border:0;justify-content:center"><span class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600">FIRST RUN</span></div>
+<div style="padding:6px 34px 34px;display:flex;flex-direction:column;align-items:center;gap:14px">
+<div style="width:46px;height:46px;border-radius:13px;background:#4A6CF7;box-shadow:0 8px 24px rgba(74,108,247,.45)"></div>
+<div style="font-size:25px;font-weight:700;letter-spacing:-.02em">Connect your music</div>
+<div class="hmut" style="text-align:center">Add one or both services. You can add the other later in Settings.</div>
+<div style="display:flex;gap:12px;width:100%;margin-top:4px">
+<div style="flex:1;background:#242424;border-radius:14px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:9px;box-shadow:0 3px 14px rgba(0,0,0,.3)"><span class="hbadge bv" style="font-size:11px;padding:4px 8px">VK</span><div style="font-weight:600;font-size:15px">VK Music</div><div class="hmut" style="text-align:center;font-size:12px">Cookie from the web client · lasts ~50 days</div><span class="pill sm">Connect VK</span></div>
+<div style="flex:1;background:#242424;border-radius:14px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:9px;box-shadow:0 3px 14px rgba(0,0,0,.3)"><span class="hbadge by" style="font-size:11px;padding:4px 8px">YA</span><div style="font-weight:600;font-size:15px">Yandex Music</div><div class="hmut" style="text-align:center;font-size:12px">Sign in with a device code in your browser</div><span class="pill sm">Connect Yandex</span></div>
+</div>
+<span class="pill g sm">Skip for now</span>
+</div>
+</div></div></div>
+
+<div class="dv-opt" id="2j"><div class="dv-olabel"><a class="dv-oid" href="#2j">2j</a>Connect — step 2, VK cookies</div>
+<div class="dv-card" style="border:0"><div class="hf" style="width:560px;height:auto">
+<div class="htb"><div class="hic">‹</div><span style="font-weight:600">Connect VK</span><div style="flex:1"></div><span class="hmut" style="font-size:12px">Step 2 of 4</span></div>
+<div style="padding:16px 22px 22px;display:flex;flex-direction:column;gap:12px">
+<div class="hmut">Open vk.com in your browser, then copy two cookie values from the Network tab.</div>
+<div style="display:flex;gap:12px">
+<div style="flex:1;border-radius:10px;background:#242424;border:1px dashed rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;text-align:center;font:11px/1.5 ui-monospace,Menlo,monospace;color:#A7A7A7;padding:10px;min-height:104px">screenshot:<br>where to find p &amp; remixsid</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:10px">
+<div><div class="hmut" style="font-size:11px;letter-spacing:.07em;font-weight:600;margin-bottom:5px">REMIXSID</div><div class="hsr" style="background:#333;box-shadow:0 0 0 2px rgba(74,108,247,.55);color:#fff;font:12px ui-monospace,Menlo,monospace">a1f9c0…|</div></div>
+<div><div class="hmut" style="font-size:11px;letter-spacing:.07em;font-weight:600;margin-bottom:5px">P</div><div class="hsr">Paste value</div></div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px"><span class="pill o sm">Use mobile token instead</span><span class="hmut" style="font-size:12px">10800 s, manual refresh</span></div>
+<div style="background:rgba(74,108,247,.1);border-radius:10px;padding:10px 13px;display:flex;gap:10px;align-items:center"><span style="color:#4A6CF7">●</span><span style="font-size:12.5px">Stored locally and encrypted. Sent only to VK.</span></div>
+<div style="display:flex;justify-content:flex-end;gap:9px"><span class="pill g sm">Cancel</span><span class="pill">Verify &amp; continue</span></div>
+</div>
+</div></div></div>
+
+<div class="dv-opt" id="2k"><div class="dv-olabel"><a class="dv-oid" href="#2k">2k</a>Connect — step 3, Yandex device code</div>
+<div class="dv-card" style="border:0"><div class="hf" style="width:560px;height:auto">
+<div class="htb"><div class="hic">‹</div><span style="font-weight:600">Connect Yandex</span><div style="flex:1"></div><span class="hmut" style="font-size:12px">Step 3 of 4</span></div>
+<div style="padding:20px 34px 30px;display:flex;flex-direction:column;align-items:center;gap:12px">
+<div class="hmut" style="font-size:12px;letter-spacing:.08em;font-weight:600">1 · GO TO</div>
+<div class="hsr" style="gap:12px;padding:0 6px 0 16px"><span style="color:#fff;font:13px ui-monospace,Menlo,monospace">ya.ru/device</span><span class="pill g sm">Copy</span></div>
+<div class="hmut" style="font-size:12px;letter-spacing:.08em;font-weight:600;margin-top:4px">2 · ENTER THIS CODE</div>
+<div style="border-radius:14px;background:#242424;box-shadow:0 0 0 1px rgba(74,108,247,.5),0 8px 24px rgba(0,0,0,.4);padding:14px 28px;font:600 30px/1.1 ui-monospace,Menlo,monospace;letter-spacing:.16em">F7K2-9QLD</div>
+<div class="hmut" style="font-size:12px">Expires in 4:52</div>
+<div style="display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.05);border-radius:999px;padding:7px 15px"><span style="width:9px;height:9px;border-radius:50%;background:#4A6CF7;display:inline-block"></span><span style="font-size:12.5px">Waiting for you to confirm in the browser…</span></div>
+<div style="display:flex;gap:9px;margin-top:4px"><span class="pill g sm">Cancel</span><span class="pill sm">Open in browser</span></div>
+</div>
+</div></div></div>
+
+<div class="dv-opt" id="2l"><div class="dv-olabel"><a class="dv-oid" href="#2l">2l</a>Connect — step 4, first sync</div>
+<div class="dv-card" style="border:0"><div class="hf" style="width:560px;height:auto">
+<div class="htb"><span style="font-weight:600">All set</span><div style="flex:1"></div><span class="hmut" style="font-size:12px">Step 4 of 4</span></div>
+<div style="padding:20px 34px 30px;display:flex;flex-direction:column;align-items:center;gap:14px">
+<div style="display:flex;gap:-8px"><div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3c3c48,#26262e);box-shadow:0 0 0 3px #121212"></div><div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3c3c48,#26262e);box-shadow:0 0 0 3px #121212;margin-left:-14px"></div></div>
+<div style="font-size:23px;font-weight:700;letter-spacing:-.02em">Both services connected</div>
+<div style="width:100%;display:flex;flex-direction:column;gap:11px;background:#242424;border-radius:12px;padding:14px">
+<div style="display:flex;align-items:center;gap:11px"><span class="hbadge bv">VK</span><div class="hbar" style="flex:1"><div class="hfill" style="width:100%"></div></div><span style="color:#4CAF50;font-size:12.5px;white-space:nowrap">✓ 412 tracks</span></div>
+<div style="display:flex;align-items:center;gap:11px"><span class="hbadge by">YA</span><div class="hbar" style="flex:1"><div class="hfill" style="width:64%"></div></div><span class="hmut" style="font-size:12.5px;white-space:nowrap">Importing playlists…</span></div>
+</div>
+<div class="hmut" style="text-align:center;font-size:12.5px">Likes stay on their own service — nothing is copied between them.</div>
+<span class="pill">Start listening</span>
+</div>
+</div></div></div>
+
+<div class="dv-opt" id="2m"><div class="dv-olabel"><a class="dv-oid" href="#2m">2m</a>Loading, empty &amp; service error</div>
+<div class="dv-card" style="border:0"><div class="hf">
+<div class="hb">
+<div class="hsb">
+<div style="display:flex;align-items:center;gap:9px;padding:4px 10px 12px"><div style="width:24px;height:24px;border-radius:7px;background:#4A6CF7;box-shadow:0 3px 10px rgba(74,108,247,.5)"></div><span style="font-weight:700;font-size:16px;letter-spacing:-.01em">Aggregator</span></div>
+<div class="hseg" style="margin:0 6px 10px"><span class="on">All</span><span>VK</span><span>Yandex</span></div>
+<div class="hn on">☉&nbsp; Home</div><div class="hn">⚲&nbsp; Search</div><div class="hn">▤&nbsp; Your Library</div><div class="hn">♥&nbsp; Liked</div><div class="hn">↓&nbsp; Downloads</div>
+<div style="flex:1"></div><div class="hn">⚙&nbsp; Settings</div>
+</div>
+<div class="hmn">
+<div class="htb"><div class="hic">‹</div><div class="hic">›</div><div class="hsr" style="flex:1;max-width:240px">⚲ Search</div><div style="flex:1"></div>
+<div style="display:flex;align-items:center;gap:9px;background:rgba(255,0,0,.12);border-radius:999px;padding:5px 12px"><span class="hbadge bv">VK</span><span style="font-size:12.5px">VK API error</span><span class="pill o sm" style="padding:2px 10px">Retry</span><span class="hmut">✕</span></div></div>
+<div class="hct" style="gap:12px">
+<div class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600">LOADING — SKELETONS</div>
+<div style="display:flex;gap:12px">
+<div class="hcard"><div class="hbar" style="height:96px;border-radius:8px"></div><div class="hbar" style="width:80%"></div><div class="hbar" style="width:52%"></div></div>
+<div class="hcard"><div class="hbar" style="height:96px;border-radius:8px"></div><div class="hbar" style="width:80%"></div><div class="hbar" style="width:52%"></div></div>
+<div class="hcard"><div class="hbar" style="height:96px;border-radius:8px"></div><div class="hbar" style="width:80%"></div><div class="hbar" style="width:52%"></div></div>
+<div class="hcard"><div class="hbar" style="height:96px;border-radius:8px"></div><div class="hbar" style="width:80%"></div><div class="hbar" style="width:52%"></div></div>
+</div>
+<div class="hmut" style="font-size:11px;letter-spacing:.09em;font-weight:600">EMPTY PLAYLIST</div>
+<div style="background:#242424;border-radius:14px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px">
+<div style="width:72px;height:54px;border-radius:9px;border:1px dashed rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font:10px ui-monospace,Menlo,monospace;color:#A7A7A7;text-align:center">empty-state<br>illustration</div>
+<div style="font-weight:600">No tracks here yet</div>
+<div class="hmut" style="font-size:12.5px">Search both services and add something.</div>
+<span class="pill sm">Search music</span>
+</div>
+</div></div></div>
+<div class="hnp">
+<div class="hart" style="width:52px;height:52px"></div>
+<div style="width:170px;display:flex;flex-direction:column;gap:6px"><div class="hbar" style="width:78%"></div><div class="hbar" style="width:48%"></div></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;opacity:.4">
+<div style="display:flex;align-items:center;gap:20px;color:#A7A7A7"><span>⇆</span><span style="color:#fff;font-size:15px">◀◀</span><div style="width:36px;height:36px;border-radius:50%;background:#fff;color:#121212;display:flex;align-items:center;justify-content:center">▶</div><span style="color:#fff;font-size:15px">▶▶</span><span>↻</span></div>
+<div style="display:flex;align-items:center;gap:9px;width:74%"><span class="hmut" style="font-size:11px">--:--</span><div class="hbar" style="flex:1"></div><span class="hmut" style="font-size:11px">--:--</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;color:#A7A7A7"><span>☰</span><span>↓</span><span>♪</span><div class="hbar" style="width:76px"><div class="hfill" style="width:60%"></div></div></div>
+</div>
+</div></div></div>
+
+</div>
+<p class="dv-next">Try next: “hi-fi the alternates too (<a class="dv-oid" href="#1c">1c</a>, <a class="dv-oid" href="#1f">1f</a>, <a class="dv-oid" href="#1i">1i</a>)” · “make <a class="dv-oid" href="#2a">2a</a> a light theme too” · “build <a class="dv-oid" href="#2b">2b</a> as a clickable prototype”</p>
+</section>
+
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}"></script>
+</body>
+</html>
