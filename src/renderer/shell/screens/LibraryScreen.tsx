@@ -3,7 +3,7 @@ import { ServiceBadge } from '../../shared/ServiceLogo'
 import { StateBlock } from '../components/StateBlock'
 import { Play } from '../../shared/Icons'
 import { Cover } from '../components/Cover'
-import { AddToPlaylist } from '../components/AddToPlaylist'
+import { NewPlaylistButton } from '../components/AddToPlaylist'
 
 interface Props {
   playlists: Playlist[]
@@ -44,7 +44,7 @@ export function LibraryScreen({ playlists, loading, onOpen }: Props): JSX.Elemen
         <h1 className="screen__title">Моя коллекция</h1>
         <span className="muted">{playlists.length} плейлистов</span>
         <div className="screen__spacer" />
-        <AddToPlaylist tracks={[]} playlists={playlists} label="+ Новый плейлист" />
+        <NewPlaylistButton />
       </div>
       <div className="grid">
         {playlists.map((playlist) => (

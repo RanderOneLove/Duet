@@ -183,3 +183,21 @@ export const Check = ({ size = 14 }: Props) => (
     <path d="M9.6 16.2 5.4 12l-1.4 1.4 5.6 5.6L20.4 8.2 19 6.8z" />
   </svg>
 )
+
+export const Timer = ({ size = 14 }: Props) => (
+  <svg {...base(size)}>
+    <path d="M9 2h6v2H9zm2 5h2v6l4 2-.9 1.8L11 14zM12 4a9 9 0 1 0 0 18 9 9 0 0 0 0-18m0 2a7 7 0 1 1 0 14 7 7 0 0 1 0-14" />
+  </svg>
+)
+
+export const PlaylistAdd = ({ size = 14 }: Props) => (
+  <svg {...base(size)}>
+    <path d="M3 5h12v2H3zm0 4h12v2H3zm0 4h8v2H3zm14-4h2v4h4v2h-4v4h-2v-4h-4v-2h4z" />
+  </svg>
+)
+
+export const Speaker = ({ size = 14 }: Props) => (
+  <svg {...base(size)}>
+    <path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m5 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4m0 6a5 5 0 1 0 0 10 5 5 0 0 0 0-10m0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6" />
+  </svg>
+)

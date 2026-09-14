@@ -463,12 +463,18 @@ export function App(): JSX.Element {
           <div className="app__content">{content}</div>
         </main>
       </div>
-      <NowPlayingBar state={player} onOpenPlayer={() => setFullPlayer(true)} />
+      <NowPlayingBar
+        state={player}
+        settings={settings}
+        playlists={playlists.data}
+        onOpenPlayer={() => setFullPlayer(true)}
+      />
       {fullPlayer && (
         <PlayerScreen
           state={player}
           onClose={() => setFullPlayer(false)}
           downloaded={currentTrack(player) ? downloadedIds.has(currentTrack(player)!.id) : false}
+          settings={settings}
           playlists={playlists.data}
           onDownload={toggleDownload}
           onOpenArtist={openArtistOf}

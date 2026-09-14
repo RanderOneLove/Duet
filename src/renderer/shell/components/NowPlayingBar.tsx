@@ -1,19 +1,23 @@
-import { artistLine } from '@shared/domain'
+import { artistLine, type Playlist } from '@shared/domain'
+import type { Settings } from '@shared/types'
 import { currentTrack, type PlayerState } from '@shared/player'
 import { formatTime, ratio } from '../../shared/format'
 import { ServiceBadge } from '../../shared/ServiceLogo'
 import { useSmoothPosition } from '../../shared/useSmoothPosition'
 import { Expand, Heart, Next, Pause, Play, Prev, Repeat, RepeatOne, Shuffle, Volume } from '../../shared/Icons'
 import { SeekBar } from './SeekBar'
+import { PlayerExtras } from './PlayerExtras'
 import { Cover } from './Cover'
 
 interface Props {
   state: PlayerState
+  settings: Settings
+  playlists: Playlist[]
   onOpenPlayer: () => void
 }
 
 /** The persistent transport bar from 2a, driven by our own player. */
-export function NowPlayingBar({ state, onOpenPlayer }: Props): JSX.Element {
+export function NowPlayingBar({ state, settings, playlists, onOpenPlayer }: Props): JSX.Element {
   const position = useSmoothPosition(state)
   const track = currentTrack(state)
   const badge = track ? track.service : null
@@ -97,6 +101,13 @@ export function NowPlayingBar({ state, onOpenPlayer }: Props): JSX.Element {
       </div>
 
       <div className="nowplaying__right">
+        <PlayerExtras
+          state={state}
+          settings={settings}
+          playlists={playlists}
+          tracks={track ? [track] : []}
+          align="up"
+        />
         <button
           className="transport"
           title={state.muted ? 'Включить звук' : 'Выключить звук'}

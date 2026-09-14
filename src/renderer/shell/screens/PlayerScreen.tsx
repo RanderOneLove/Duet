@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ArtistRef, Playlist, Track } from '@shared/domain'
+import type { Settings } from '@shared/types'
 import { currentTrack, type PlayerState, type RepeatMode } from '@shared/player'
 import { formatTime, ratio } from '../../shared/format'
 import { ServiceBadge } from '../../shared/ServiceLogo'
@@ -26,12 +27,13 @@ import { Cover } from '../components/Cover'
 import { QueueList } from '../components/QueueList'
 import { Segmented } from '../components/Segmented'
 import { StateBlock } from '../components/StateBlock'
-import { AddToPlaylist } from '../components/AddToPlaylist'
+import { PlayerExtras, PlaylistPicker } from '../components/PlayerExtras'
 
 interface Props {
   state: PlayerState
   onClose: () => void
   downloaded: boolean
+  settings: Settings
   playlists: Playlist[]
   onDownload: (track: Track) => void
   onOpenArtist: (track: Track, artist: ArtistRef) => void
@@ -42,6 +44,7 @@ export function PlayerScreen({
   state,
   onClose,
   downloaded,
+  settings,
   playlists,
   onDownload,
   onOpenArtist
@@ -131,6 +134,13 @@ export function PlayerScreen({
             <button className="transport" title="Следующий" onClick={() => window.shell.command({ type: 'next' })}>
               <Next size={24} />
             </button>
+            <PlayerExtras
+              state={state}
+              settings={settings}
+              playlists={playlists}
+              tracks={track ? [track] : []}
+              align="down"
+            />
             <button
               className={`togglebtn ${state.repeat !== 'off' ? 'togglebtn--on' : ''}`}
               title={repeatTitle(state.repeat)}
@@ -176,8 +186,6 @@ export function PlayerScreen({
                 {track.service === 'vk' ? 'VK' : 'Яндекс'}
               </button>
 
-              <AddToPlaylist tracks={[track]} playlists={playlists} label="+ В плейлист" />
-
               <button
                 className={`pill pill--outline ${downloaded ? 'liked' : ''}`}
                 title={downloaded ? 'Скачан — нажмите, чтобы удалить файл' : 'Скачать трек'}
@@ -188,11 +196,6 @@ export function PlayerScreen({
               </button>
             </div>
           )}
-
-          <div className="fullplayer__outputs">
-            <Output state={state} />
-            <SleepTimer endsAt={state.sleepEndsAt} />
-          </div>
 
           {state.error && <div className="fullplayer__error">{state.error}</div>}
         </div>
@@ -215,11 +218,7 @@ export function PlayerScreen({
             <div className="muted queue__note">Одна очередь на оба сервиса — переключение вкладок её не сбрасывает.</div>
             <div className="queue__footer-actions">
               {state.queue.length > 0 && (
-                <AddToPlaylist
-                  tracks={state.queue}
-                  playlists={playlists}
-                  label="Сохранить очередь"
-                />
+                <PlaylistPicker tracks={state.queue} playlists={playlists} align="up" />
               )}
               <button
                 className="pill pill--outline pill--sm"
@@ -268,102 +267,6 @@ function Artists({
       ))}
     </span>
   )
-}
-
-/** Which speakers the music comes out of. */
-function Output({ state }: { state: PlayerState }): JSX.Element {
-  return (
-    <label className="picker">
-      <span className="muted picker__label">Устройство</span>
-      <select
-        value={state.outputDeviceId}
-        onChange={(event) =>
-          window.shell.command({ type: 'setOutputDevice', deviceId: event.target.value })
-        }
-      >
-        <option value="">Системное</option>
-        {state.outputDevices
-          .filter((device) => device.id && device.id !== 'default')
-          .map((device) => (
-            <option key={device.id} value={device.id}>
-              {device.label}
-            </option>
-          ))}
-      </select>
-    </label>
-  )
-}
-
-const PRESETS = [5, 15, 30, 45, 60, 90]
-
-/** Stop the music after a while, with a countdown once it is running. */
-function SleepTimer({ endsAt }: { endsAt: number | null }): JSX.Element {
-  const [custom, setCustom] = useState(false)
-  const [minutes, setMinutes] = useState('20')
-  const left = useCountdown(endsAt)
-
-  return (
-    <label className="picker">
-      <span className="muted picker__label">Таймер сна</span>
-      <select
-        value={endsAt ? 'on' : custom ? 'custom' : 'off'}
-        onChange={(event) => {
-          const value = event.target.value
-          setCustom(value === 'custom')
-          if (value === 'custom') return
-          window.shell.command({
-            type: 'setSleepTimer',
-            minutes: value === 'off' || value === 'on' ? null : Number(value)
-          })
-        }}
-      >
-        {endsAt && <option value="on">Осталось {left}</option>}
-        <option value="off">Выключен</option>
-        {PRESETS.map((preset) => (
-          <option key={preset} value={preset}>
-            {preset} минут
-          </option>
-        ))}
-        <option value="custom">Своё время…</option>
-      </select>
-
-      {custom && !endsAt && (
-        <span className="picker__custom">
-          <input
-            type="number"
-            min={1}
-            max={600}
-            value={minutes}
-            onChange={(event) => setMinutes(event.target.value)}
-          />
-          <button
-            className="pill pill--sm"
-            disabled={!(Number(minutes) > 0)}
-            onClick={() => {
-              window.shell.command({ type: 'setSleepTimer', minutes: Number(minutes) })
-              setCustom(false)
-            }}
-          >
-            Пуск
-          </button>
-        </span>
-      )}
-    </label>
-  )
-}
-
-/** Time left as m:ss, ticking once a second only while a timer runs. */
-function useCountdown(endsAt: number | null): string {
-  const [, tick] = useState(0)
-
-  useEffect(() => {
-    if (!endsAt) return
-    const id = setInterval(() => tick((value) => value + 1), 1000)
-    return () => clearInterval(id)
-  }, [endsAt])
-
-  if (!endsAt) return ''
-  return formatTime(Math.max(0, endsAt - Date.now()))
 }
 
 /**

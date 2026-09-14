@@ -299,8 +299,27 @@ function startSleepTimer(minutes: number | null): void {
     // Pausing rather than stopping keeps the track and position, so carrying
     // on later is one press.
     if (state.playing) controlAudio({ type: 'pause' })
+    if (getSettings().sleepSuspendsPc) suspendMachine()
   }, ms)
   patch({ sleepEndsAt: Date.now() + ms })
+}
+
+/**
+ * Ask Windows to sleep. Done through the power profile helper rather than
+ * `shutdown`, which cannot suspend — and after the pause above, so the track
+ * is already saved if the machine goes down mid-write.
+ */
+function suspendMachine(): void {
+  if (process.platform !== 'win32') return
+  const { spawn } = require('node:child_process') as typeof import('node:child_process')
+  try {
+    spawn('rundll32.exe', ['powrprof.dll,SetSuspendState', '0,1,0'], {
+      detached: true,
+      stdio: 'ignore'
+    }).unref()
+  } catch {
+    // Nothing to do if the machine refuses; the music has stopped regardless.
+  }
 }
 
 /** Fold an event from the audio host into the state. */

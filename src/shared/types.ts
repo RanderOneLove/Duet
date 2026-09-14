@@ -72,6 +72,8 @@ export interface Settings {
   outputDeviceId: string
   /** The last few searches, newest first. */
   recentSearches: string[]
+  /** Put the machine to sleep when the sleep timer runs out. */
+  sleepSuspendsPc: boolean
   /** Collapse the sidebar to icons only. */
   sidebarCollapsed: boolean
   /** Launch with Windows. */
@@ -113,6 +115,7 @@ export const DEFAULT_SETTINGS: Settings = {
   waveCursors: {},
   outputDeviceId: '',
   recentSearches: [],
+  sleepSuspendsPc: false,
   sidebarCollapsed: false,
   autoStart: false,
   autoStartMinimized: true,
