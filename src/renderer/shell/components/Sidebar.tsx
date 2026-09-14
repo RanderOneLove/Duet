@@ -15,6 +15,8 @@ const NAV: { id: Route; label: string; icon: () => JSX.Element }[] = [
 interface Props {
   route: Route
   playlists: Playlist[]
+  recent: string[]
+  onSearch: (query: string) => void
   collapsed: boolean
   onNavigate: (route: Route) => void
   onOpenPlaylist: (playlist: Playlist) => void
@@ -29,6 +31,8 @@ interface Props {
 export function Sidebar({
   route,
   playlists,
+  recent,
+  onSearch,
   collapsed,
   onNavigate,
   onOpenPlaylist,
@@ -61,7 +65,27 @@ export function Sidebar({
         </button>
       ))}
 
-      {playlists.length > 0 && !collapsed && (
+      {/* While searching, what was searched before is more use than the
+          playlists — the same swap the wireframe makes. */}
+      {route === 'search' && recent.length > 0 && !collapsed ? (
+        <>
+          <div className="sidebar__label muted">НЕДАВНИЕ ЗАПРОСЫ</div>
+          <div className="sidebar__playlists">
+            {recent.map((query) => (
+              <button
+                key={query}
+                className="navitem navitem--sm"
+                title={query}
+                onClick={() => onSearch(query)}
+              >
+                <span className="truncate">{query}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {playlists.length > 0 && !collapsed && route !== 'search' && (
         <>
           <div className="sidebar__label muted">ПЛЕЙЛИСТЫ</div>
           <div className="sidebar__playlists">

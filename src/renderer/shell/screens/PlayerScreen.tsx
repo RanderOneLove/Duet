@@ -24,6 +24,8 @@ import {
 } from '../../shared/Icons'
 import { Cover } from '../components/Cover'
 import { QueueList } from '../components/QueueList'
+import { Segmented } from '../components/Segmented'
+import { StateBlock } from '../components/StateBlock'
 import { AddToPlaylist } from '../components/AddToPlaylist'
 
 interface Props {
@@ -46,6 +48,7 @@ export function PlayerScreen({
 }: Props): JSX.Element {
   const position = useSmoothPosition(state)
   const track = currentTrack(state)
+  const [tab, setTab] = useState<'queue' | 'lyrics'>('queue')
 
   return (
     <div className="fullplayer">
@@ -196,11 +199,17 @@ export function PlayerScreen({
 
         <aside className="queue">
           <div className="queue__head">
-            <span className="queue__title">Очередь</span>
-            <span className="muted">{state.queue.length}</span>
+            <Segmented
+              value={tab}
+              onChange={setTab}
+              options={[
+                { id: 'queue', label: 'Очередь', hint: String(state.queue.length) },
+                { id: 'lyrics', label: 'Текст' }
+              ]}
+            />
           </div>
 
-          <QueueList state={state} />
+          {tab === 'queue' ? <QueueList state={state} /> : <Lyrics track={track} />}
 
           <div className="queue__footer">
             <div className="muted queue__note">Одна очередь на оба сервиса — переключение вкладок её не сбрасывает.</div>
@@ -355,4 +364,47 @@ function useCountdown(endsAt: number | null): string {
 
   if (!endsAt) return ''
   return formatTime(Math.max(0, endsAt - Date.now()))
+}
+
+/**
+ * The words, fetched from whichever service the track came from. Plenty of
+ * tracks simply have none, which is an answer rather than a failure.
+ */
+function Lyrics({ track }: { track: Track | null }): JSX.Element {
+  const [text, setText] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!track) {
+      setText(null)
+      return
+    }
+    let current = true
+    setLoading(true)
+    void window.shell
+      .lyrics(track)
+      .then((value) => {
+        if (current) setText(value)
+      })
+      .finally(() => {
+        if (current) setLoading(false)
+      })
+    return () => {
+      current = false
+    }
+  }, [track?.id])
+
+  if (!track) return <StateBlock kind="empty" title="Ничего не играет" hint="Включите трек." />
+  if (loading) return <StateBlock kind="loading" title="Ищем текст…" />
+  if (!text) {
+    return (
+      <StateBlock
+        kind="empty"
+        title="Текста нет"
+        hint={`${track.service === 'vk' ? 'VK' : 'Яндекс'} не знает слов этого трека.`}
+      />
+    )
+  }
+
+  return <div className="lyrics">{text}</div>
 }

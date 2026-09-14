@@ -70,6 +70,8 @@ export interface Settings {
   waveCursors: Record<string, string>
   /** Playback output; '' follows whatever Windows is using. */
   outputDeviceId: string
+  /** The last few searches, newest first. */
+  recentSearches: string[]
   /** Collapse the sidebar to icons only. */
   sidebarCollapsed: boolean
   /** Launch with Windows. */
@@ -110,6 +112,7 @@ export const DEFAULT_SETTINGS: Settings = {
   waveService: 'yandex',
   waveCursors: {},
   outputDeviceId: '',
+  recentSearches: [],
   sidebarCollapsed: false,
   autoStart: false,
   autoStartMinimized: true,

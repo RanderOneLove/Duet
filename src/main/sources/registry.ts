@@ -130,6 +130,13 @@ export async function albumTracks(service: ServiceId, nativeId: string): Promise
   return sources[service].albumTracks(nativeId)
 }
 
+/** The words for a track, from the service it came from. */
+export async function lyrics(track: Track): Promise<string | null> {
+  const source = sources[track.service]
+  if (!source.isConnected()) return null
+  return source.lyrics(track)
+}
+
 export async function artistTracks(service: ServiceId, nativeId: string): Promise<Track[]> {
   return sources[service].artistTracks(nativeId)
 }

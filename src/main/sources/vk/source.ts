@@ -224,6 +224,19 @@ export class VkSource implements Source {
     }
   }
 
+  async lyrics(track: Track): Promise<string | null> {
+    if (!this.client) throw new SessionExpiredError('vk')
+    const [ownerId, audioId] = track.nativeId.split('_')
+    try {
+      const data = await this.call('audio.getLyrics', new URLSearchParams({ audio_id: `${ownerId}_${audioId}` }))
+      const lines = data?.lyrics?.text
+      if (!Array.isArray(lines) || lines.length === 0) return null
+      return lines.join(String.fromCharCode(10)).trim() || null
+    } catch {
+      return null
+    }
+  }
+
   async setLiked(track: Track, liked: boolean): Promise<void> {
     if (!this.client) throw new SessionExpiredError('vk')
     const [ownerId, audioId] = track.nativeId.split('_')

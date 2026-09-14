@@ -160,12 +160,24 @@ export function App(): JSX.Element {
     void window.shell.setSettings(patch).then(setSettings)
   }, [])
 
-  const goSearch = useCallback((text: string) => {
-    setQuery(text)
-    setRoute('search')
-    setOpenPlaylist(null)
-    setOpenAlbum(null)
-  }, [])
+  const goSearch = useCallback(
+    (text: string) => {
+      setQuery(text)
+      setRoute('search')
+      setOpenPlaylist(null)
+      setOpenAlbum(null)
+      setOpenArtist(null)
+
+      // Only deliberate searches are remembered — this runs on submit, not on
+      // every keystroke, so the list does not fill with half-typed prefixes.
+      const query = text.trim()
+      if (query.length < 2) return
+      patchSettings({
+        recentSearches: [query, ...settings.recentSearches.filter((item) => item !== query)].slice(0, 8)
+      })
+    },
+    [settings.recentSearches, patchSettings]
+  )
 
   const navigate = useCallback((next: Route) => {
     setRoute(next)
@@ -427,6 +439,8 @@ export function App(): JSX.Element {
         <Sidebar
           route={route}
           playlists={playlists.data}
+          recent={settings.recentSearches}
+          onSearch={goSearch}
           collapsed={settings.sidebarCollapsed}
           onNavigate={navigate}
           onOpenPlaylist={showPlaylist}

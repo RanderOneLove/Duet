@@ -153,6 +153,11 @@ export class YandexSource implements Source {
     return tracks.map((track) => this.toDomain(track, false))
   }
 
+  async lyrics(track: Track): Promise<string | null> {
+    const { api } = this.require()
+    return api.lyrics(track.nativeId)
+  }
+
   async setLiked(track: Track, liked: boolean): Promise<void> {
     const { api, uid } = this.require()
     await api.setLiked(uid, track.nativeId, liked)

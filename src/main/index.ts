@@ -33,6 +33,7 @@ import {
   getConnections,
   home,
   likedTracks,
+  lyrics,
   onConnectionsChanged,
   onLibraryChanged,
   playlists,
@@ -200,6 +201,7 @@ function registerIpc(): void {
   ipcMain.handle(IPC.libLocalRemoveTrack, (_event, id: string, trackId: string) =>
     removeFromPlaylist(id, trackId)
   )
+  ipcMain.handle(IPC.libLyrics, (_event, track: Track): Promise<string | null> => lyrics(track))
   ipcMain.handle(IPC.libSearch, (_event, query: string): Promise<SearchResult> => search(query))
   ipcMain.handle(IPC.libWave, (_event, choice: WaveChoice): Promise<Track[]> => wave(choice))
   ipcMain.handle(IPC.libSetLiked, async (_event, track: Track, liked: boolean) => {

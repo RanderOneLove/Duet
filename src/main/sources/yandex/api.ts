@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, createHmac } from 'node:crypto'
 import { SessionExpiredError } from '../types'
 
 /**
@@ -154,6 +154,29 @@ export class YandexApi {
       .filter((track): track is YandexTrack => track !== null)
   }
 
+  /**
+   * Lyrics come back as a link to plain text, and the endpoint refuses an
+   * unsigned request — the signature is an HMAC of the track and the moment
+   * asked for, the same one the mobile client sends.
+   */
+  async lyrics(trackId: string): Promise<string | null> {
+    const stamp = Math.floor(Date.now() / 1000)
+    const sign = createHmac('sha256', LYRICS_SALT).update(`${trackId}${stamp}`).digest('base64')
+    try {
+      const data = await this.get<Record<string, any>>(
+        `/tracks/${trackId}/lyrics?format=TEXT&timeStamp=${stamp}&sign=${encodeURIComponent(sign)}`
+      )
+      if (!data?.downloadUrl) return null
+      const response = await fetch(String(data.downloadUrl))
+      if (!response.ok) return null
+      const text = (await response.text()).trim()
+      return text || null
+    } catch {
+      // No lyrics for this track is the ordinary case, not a failure.
+      return null
+    }
+  }
+
   async setLiked(uid: string, trackId: string, liked: boolean): Promise<void> {
     const action = liked ? 'add-multiple' : 'remove'
     const body = new URLSearchParams({ 'track-ids': trackId })
@@ -227,6 +250,9 @@ export class YandexApi {
 
 /** Long-standing signing salt for Yandex Music download links. */
 const SIGN_SALT = 'XGRlBW9FXlekgbPrRHuSiA'
+
+/** Signing key for the lyrics endpoint, which uses its own. */
+const LYRICS_SALT = 'p93jhgh689SBReK6ghtw62'
 
 function toTrack(raw: any): YandexTrack | null {
   const id = String(raw?.id ?? raw?.trackId ?? '')

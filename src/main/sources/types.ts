@@ -31,6 +31,8 @@ export interface Source {
    */
   wave(afterNativeId?: string): Promise<Track[]>
   setLiked(track: Track, liked: boolean): Promise<void>
+  /** The words, or null when the service has none for this track. */
+  lyrics(track: Track): Promise<string | null>
 
   /**
    * A playable url for the track. Both services hand out short-lived links, so
