@@ -8,7 +8,7 @@ interface Props {
   title: string
   subtitle: string
   coverUrl: string | null
-  service: ServiceId
+  service: ServiceId | null
   /** An artist's portrait reads as a circle, a cover as a square. */
   round?: boolean
   tracks: Track[]
@@ -21,6 +21,8 @@ interface Props {
   downloadedIds: Set<string>
   onDownload: (track: Track) => void
   onDownloadAll: (tracks: Track[]) => void
+  /** Only ours can be deleted, so only ours are given the button. */
+  onDelete?: () => void
 }
 
 /** One opened collection — a playlist or an album; both read the same way. */
@@ -39,7 +41,8 @@ export function PlaylistScreen({
   onToggleLike,
   downloadedIds,
   onDownload,
-  onDownloadAll
+  onDownloadAll,
+  onDelete
 }: Props): JSX.Element {
   return (
     <div className="screen">
@@ -77,6 +80,11 @@ export function PlaylistScreen({
         >
           <Download size={14} /> Скачать всё
         </button>
+        {onDelete && (
+          <button className="pill pill--outline pill--sm" onClick={onDelete}>
+            Удалить плейлист
+          </button>
+        )}
       </div>
       <TrackList
         tracks={tracks}

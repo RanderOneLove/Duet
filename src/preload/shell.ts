@@ -25,12 +25,21 @@ const api = {
   home: (): Promise<HomeSection[]> => ipcRenderer.invoke(IPC.libHome),
   liked: (): Promise<Track[]> => ipcRenderer.invoke(IPC.libLiked),
   playlists: (): Promise<Playlist[]> => ipcRenderer.invoke(IPC.libPlaylists),
-  playlistTracks: (service: ServiceId, nativeId: string): Promise<Track[]> =>
+  playlistTracks: (service: ServiceId | null, nativeId: string): Promise<Track[]> =>
     ipcRenderer.invoke(IPC.libPlaylistTracks, service, nativeId),
   albumTracks: (service: ServiceId, nativeId: string): Promise<Track[]> =>
     ipcRenderer.invoke(IPC.libAlbumTracks, service, nativeId),
   artistTracks: (service: ServiceId, nativeId: string): Promise<Track[]> =>
     ipcRenderer.invoke(IPC.libArtistTracks, service, nativeId),
+  createPlaylist: (title: string, tracks: Track[] = []): Promise<string> =>
+    ipcRenderer.invoke(IPC.libLocalCreate, title, tracks),
+  renamePlaylist: (id: string, title: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.libLocalRename, id, title),
+  removePlaylist: (id: string): Promise<void> => ipcRenderer.invoke(IPC.libLocalRemove, id),
+  addToPlaylist: (id: string, tracks: Track[]): Promise<void> =>
+    ipcRenderer.invoke(IPC.libLocalAdd, id, tracks),
+  removeFromPlaylist: (id: string, trackId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.libLocalRemoveTrack, id, trackId),
   search: (query: string): Promise<SearchResult> => ipcRenderer.invoke(IPC.libSearch, query),
   wave: (choice: WaveChoice): Promise<Track[]> => ipcRenderer.invoke(IPC.libWave, choice),
   setLiked: (track: Track, liked: boolean): Promise<void> => ipcRenderer.invoke(IPC.libSetLiked, track, liked),

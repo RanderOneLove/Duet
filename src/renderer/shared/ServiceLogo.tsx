@@ -1,5 +1,6 @@
 import type { ServiceId } from '@shared/domain'
 import { SERVICE_META } from '@shared/domain'
+import { DuetMark } from './Icons'
 import vkLogo from '../assets/vk.png'
 import yandexLogo from '../assets/yandex.png'
 
@@ -37,9 +38,18 @@ export function ServiceBadge({
   service,
   className = ''
 }: {
-  service: ServiceId
+  service: ServiceId | null
   className?: string
 }): JSX.Element {
+  // No service behind it means it is one of ours, so it wears our mark.
+  if (service === null) {
+    return (
+      <span className={`servicebadge servicebadge--local ${className}`} title="Плейлист Duet">
+        <DuetMark size={13} />
+      </span>
+    )
+  }
+
   return (
     <img
       className={`servicebadge ${className}`}

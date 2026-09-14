@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ArtistRef, Track } from '@shared/domain'
+import type { ArtistRef, Playlist, Track } from '@shared/domain'
 import { currentTrack, type PlayerState, type RepeatMode } from '@shared/player'
 import { formatTime, ratio } from '../../shared/format'
 import { ServiceBadge } from '../../shared/ServiceLogo'
@@ -24,17 +24,26 @@ import {
 } from '../../shared/Icons'
 import { Cover } from '../components/Cover'
 import { QueueList } from '../components/QueueList'
+import { AddToPlaylist } from '../components/AddToPlaylist'
 
 interface Props {
   state: PlayerState
   onClose: () => void
   downloaded: boolean
+  playlists: Playlist[]
   onDownload: (track: Track) => void
   onOpenArtist: (track: Track, artist: ArtistRef) => void
 }
 
 /** Wireframe 2d: the full-screen player with the queue beside it. */
-export function PlayerScreen({ state, onClose, downloaded, onDownload, onOpenArtist }: Props): JSX.Element {
+export function PlayerScreen({
+  state,
+  onClose,
+  downloaded,
+  playlists,
+  onDownload,
+  onOpenArtist
+}: Props): JSX.Element {
   const position = useSmoothPosition(state)
   const track = currentTrack(state)
 
@@ -164,6 +173,8 @@ export function PlayerScreen({ state, onClose, downloaded, onDownload, onOpenArt
                 {track.service === 'vk' ? 'VK' : 'Яндекс'}
               </button>
 
+              <AddToPlaylist tracks={[track]} playlists={playlists} label="+ В плейлист" />
+
               <button
                 className={`pill pill--outline ${downloaded ? 'liked' : ''}`}
                 title={downloaded ? 'Скачан — нажмите, чтобы удалить файл' : 'Скачать трек'}
@@ -194,6 +205,13 @@ export function PlayerScreen({ state, onClose, downloaded, onDownload, onOpenArt
           <div className="queue__footer">
             <div className="muted queue__note">Одна очередь на оба сервиса — переключение вкладок её не сбрасывает.</div>
             <div className="queue__footer-actions">
+              {state.queue.length > 0 && (
+                <AddToPlaylist
+                  tracks={state.queue}
+                  playlists={playlists}
+                  label="Сохранить очередь"
+                />
+              )}
               <button
                 className="pill pill--outline pill--sm"
                 disabled={state.queue.length === 0}

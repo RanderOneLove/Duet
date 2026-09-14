@@ -9,6 +9,7 @@ import type {
 } from '@shared/domain'
 import { EMPTY_SEARCH } from '@shared/domain'
 import { SessionExpiredError, type Source } from './types'
+import { localPlaylists, localPlaylistTracks } from '../library/playlists'
 import { YandexSource } from './yandex/source'
 import { VkSource } from './vk/source'
 
@@ -116,10 +117,12 @@ export async function likedTracks(): Promise<Track[]> {
 
 export async function playlists(): Promise<Playlist[]> {
   const results = await eachConnected((source) => source.playlists())
-  return results.flat()
+  // Ours first: they are the only ones the listener actually assembled.
+  return [...localPlaylists(), ...results.flat()]
 }
 
-export async function playlistTracks(service: ServiceId, nativeId: string): Promise<Track[]> {
+export async function playlistTracks(service: ServiceId | null, nativeId: string): Promise<Track[]> {
+  if (service === null) return localPlaylistTracks(nativeId)
   return sources[service].playlistTracks(nativeId)
 }
 

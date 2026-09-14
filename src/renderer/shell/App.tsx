@@ -273,6 +273,14 @@ export function App(): JSX.Element {
           activeId={activeId}
           playing={player.playing}
           onBack={() => setOpenPlaylist(null)}
+          onDelete={
+            openPlaylist.service === null
+              ? () => {
+                  void window.shell.removePlaylist(openPlaylist.nativeId)
+                  setOpenPlaylist(null)
+                }
+              : undefined
+          }
           onPlay={(index) => playTracks(playlistTracks.data, index)}
           onToggleLike={toggleLike}
           downloadedIds={downloadedIds}
@@ -447,6 +455,7 @@ export function App(): JSX.Element {
           state={player}
           onClose={() => setFullPlayer(false)}
           downloaded={currentTrack(player) ? downloadedIds.has(currentTrack(player)!.id) : false}
+          playlists={playlists.data}
           onDownload={toggleDownload}
           onOpenArtist={openArtistOf}
         />

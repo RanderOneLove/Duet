@@ -54,6 +54,15 @@ import {
 } from './downloads/manager'
 import { registerMediaScheme, serveMediaScheme } from './downloads/protocol'
 import {
+  addToPlaylist,
+  createPlaylist,
+  loadPlaylists,
+  onPlaylistsChanged,
+  removeFromPlaylist,
+  removePlaylist,
+  renamePlaylist
+} from './library/playlists'
+import {
   createMainWindow,
   getMainWindow,
   hideMainWindow,
@@ -96,6 +105,7 @@ function start(): void {
 
   serveMediaScheme()
   void loadDownloads()
+  void loadPlaylists()
 
   const window = createMainWindow({ startHidden })
   createAudioHost()
@@ -121,6 +131,7 @@ function start(): void {
   })
   onConnectionsChanged((connections) => sendToShell(IPC.sourceConnectionsChanged, connections))
   onLibraryChanged(() => sendToShell(IPC.libChanged, undefined))
+  onPlaylistsChanged(() => sendToShell(IPC.libChanged, undefined))
   onDownloadsChanged((state) => sendToShell(IPC.downloadsChanged, state))
 
   void restoreSources().then(async () => {
@@ -171,7 +182,7 @@ function registerIpc(): void {
   ipcMain.handle(IPC.libHome, (): Promise<HomeSection[]> => home())
   ipcMain.handle(IPC.libLiked, (): Promise<Track[]> => likedTracks())
   ipcMain.handle(IPC.libPlaylists, (): Promise<Playlist[]> => playlists())
-  ipcMain.handle(IPC.libPlaylistTracks, (_event, service: ServiceId, nativeId: string): Promise<Track[]> =>
+  ipcMain.handle(IPC.libPlaylistTracks, (_event, service: ServiceId | null, nativeId: string): Promise<Track[]> =>
     playlistTracks(service, nativeId)
   )
   ipcMain.handle(IPC.libAlbumTracks, (_event, service: ServiceId, nativeId: string): Promise<Track[]> =>
@@ -179,6 +190,15 @@ function registerIpc(): void {
   )
   ipcMain.handle(IPC.libArtistTracks, (_event, service: ServiceId, nativeId: string): Promise<Track[]> =>
     artistTracks(service, nativeId)
+  )
+  ipcMain.handle(IPC.libLocalCreate, (_event, title: string, tracks: Track[]): Promise<string> =>
+    createPlaylist(title, tracks)
+  )
+  ipcMain.handle(IPC.libLocalRename, (_event, id: string, title: string) => renamePlaylist(id, title))
+  ipcMain.handle(IPC.libLocalRemove, (_event, id: string) => removePlaylist(id))
+  ipcMain.handle(IPC.libLocalAdd, (_event, id: string, tracks: Track[]) => addToPlaylist(id, tracks))
+  ipcMain.handle(IPC.libLocalRemoveTrack, (_event, id: string, trackId: string) =>
+    removeFromPlaylist(id, trackId)
   )
   ipcMain.handle(IPC.libSearch, (_event, query: string): Promise<SearchResult> => search(query))
   ipcMain.handle(IPC.libWave, (_event, choice: WaveChoice): Promise<Track[]> => wave(choice))

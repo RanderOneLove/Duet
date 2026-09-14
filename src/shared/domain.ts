@@ -49,7 +49,8 @@ export interface ArtistRef {
 
 export interface Playlist {
   id: string
-  service: ServiceId
+  /** null for a playlist kept here rather than at a service. */
+  service: ServiceId | null
   nativeId: string
   title: string
   description: string | null
