@@ -8,7 +8,7 @@ import type {
   WaveChoice
 } from '@shared/domain'
 import { EMPTY_SEARCH } from '@shared/domain'
-import { SessionExpiredError, type Source } from './types'
+import { SessionExpiredError, type Source, type WaveEvent } from './types'
 import { localPlaylists, localPlaylistTracks } from '../library/playlists'
 import { YandexSource } from './yandex/source'
 import { VkSource } from './vk/source'
@@ -128,6 +128,22 @@ export async function playlistTracks(service: ServiceId | null, nativeId: string
 
 export async function albumTracks(service: ServiceId, nativeId: string): Promise<Track[]> {
   return sources[service].albumTracks(nativeId)
+}
+
+/** Tell a service's station how a track went; quiet when it has none. */
+export async function waveFeedback(
+  service: ServiceId,
+  event: WaveEvent,
+  track?: Track,
+  playedSeconds?: number
+): Promise<void> {
+  const source = sources[service]
+  if (!source.isConnected()) return
+  try {
+    await source.waveFeedback(event, track, playedSeconds)
+  } catch {
+    // Never let a report get in the way of playing.
+  }
 }
 
 /** The words for a track, from the service it came from. */

@@ -8,7 +8,7 @@ import {
 } from '@shared/player'
 import type { AudioEvent } from '../../preload/audio'
 import { controlAudio, loadAudio } from '../windows/audioHost'
-import { resolveStream, setLiked, wave } from '../sources/registry'
+import { resolveStream, setLiked, wave, waveFeedback } from '../sources/registry'
 import { readSession, writeSession } from '../state/session'
 import { addDownloads, downloadedFile } from '../downloads/manager'
 import { mediaUrl } from '../downloads/protocol'
@@ -108,6 +108,8 @@ export async function command(input: PlayerCommand): Promise<void> {
         const playable = tracks.filter((track) => track.available)
         if (playable.length === 0) throw new Error('Волна не вернула треков')
         patch({ queue: playable, index: 0 })
+        if (input.service !== 'both') void waveFeedback(input.service, 'radioStarted')
+        else for (const id of ['yandex', 'vk'] as const) void waveFeedback(id, 'radioStarted')
         await loadCurrent(true)
         void topUpWave()
       } catch (error) {
@@ -142,6 +144,7 @@ export async function command(input: PlayerCommand): Promise<void> {
       return
 
     case 'next':
+      reportWaveTrack('skip')
       await advance(1, true)
       return
 
@@ -376,6 +379,7 @@ async function handleEnded(): Promise<void> {
     controlAudio({ type: 'play' })
     return
   }
+  reportWaveTrack('trackFinished')
   await advance(1, false)
 }
 
@@ -475,6 +479,19 @@ async function topUpWave(): Promise<void> {
   }
 }
 
+/**
+ * Tell the station what became of the track that was playing. Measured: with
+ * only the `queue` cursor the rotor hands back the same opening batch every
+ * time — it is these reports that make the wave move on, so a station left
+ * uninformed replays its first track on every launch.
+ */
+function reportWaveTrack(event: 'trackFinished' | 'skip'): void {
+  if (!state.waveService) return
+  const track = state.queue[state.index]
+  if (!track) return
+  void waveFeedback(track.service, event, track, state.positionMs / 1000)
+}
+
 /** Resolve the current track's stream and hand it to the audio host. */
 async function loadCurrent(autoplay: boolean, startAtMs = 0): Promise<void> {
   const track = state.queue[state.index]
@@ -497,6 +514,7 @@ async function loadCurrent(autoplay: boolean, startAtMs = 0): Promise<void> {
     // A newer track was selected while this lookup was in flight.
     if (token !== loadToken) return
     controlAudio({ type: 'setSink', deviceId: getSettings().outputDeviceId })
+    if (state.waveService) void waveFeedback(track.service, 'trackStarted', track)
     loadAudio({ url, positionMs: startAtMs, volume: state.volume, muted: state.muted, autoplay })
   } catch (error) {
     if (token !== loadToken) return

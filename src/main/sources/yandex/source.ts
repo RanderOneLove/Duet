@@ -1,7 +1,7 @@
 import type { Account, Playlist, SearchResult, Track } from '@shared/domain'
 import { trackKey } from '@shared/domain'
 import { getSecret, setSecret } from '../../state/secrets'
-import { SessionExpiredError, type Source } from '../types'
+import { SessionExpiredError, type Source, type WaveEvent } from '../types'
 import { YandexApi, type YandexTrack } from './api'
 import { clearSession, signIn } from './auth'
 
@@ -18,6 +18,8 @@ export class YandexSource implements Source {
   private api: YandexApi | null = null
   /** The whole library, so opening a screen does not re-read it. */
   private liked: { at: number; tracks: Track[] } | null = null
+  /** The batch the station last handed out; every report refers to it. */
+  private waveBatchId: string | null = null
   /** A read already under way; a second caller waits on it instead of starting its own. */
   private likedInFlight: Promise<Track[]> | null = null
   private uid: string | null = null
@@ -149,8 +151,14 @@ export class YandexSource implements Source {
 
   async wave(afterNativeId?: string): Promise<Track[]> {
     const { api } = this.require()
-    const tracks = await api.wave(afterNativeId)
-    return tracks.map((track) => this.toDomain(track, false))
+    const batch = await api.wave(afterNativeId)
+    this.waveBatchId = batch.batchId
+    return batch.tracks.map((track) => this.toDomain(track, false))
+  }
+
+  async waveFeedback(event: WaveEvent, track?: Track, playedSeconds?: number): Promise<void> {
+    const { api } = this.require()
+    await api.rotorFeedback(this.waveBatchId, event, track?.nativeId, playedSeconds)
   }
 
   async lyrics(track: Track): Promise<string | null> {

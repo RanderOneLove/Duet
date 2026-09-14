@@ -5,6 +5,9 @@ import type { Account, Album, Playlist, SearchResult, ServiceId, Track } from '@
  * sources authorize by having the user sign in on the service's own site, then
  * talk to the same endpoints that service's web client uses.
  */
+/** What can happen to a radio track, in the words the station understands. */
+export type WaveEvent = 'radioStarted' | 'trackStarted' | 'trackFinished' | 'skip'
+
 export interface Source {
   readonly id: ServiceId
 
@@ -30,6 +33,11 @@ export interface Source {
    * than restart it.
    */
   wave(afterNativeId?: string): Promise<Track[]>
+  /**
+   * Report how a radio track went. Yandex's station will not advance without
+   * this; VK's mix moves on its own and ignores it.
+   */
+  waveFeedback(event: WaveEvent, track?: Track, playedSeconds?: number): Promise<void>
   setLiked(track: Track, liked: boolean): Promise<void>
   /** The words, or null when the service has none for this track. */
   lyrics(track: Track): Promise<string | null>

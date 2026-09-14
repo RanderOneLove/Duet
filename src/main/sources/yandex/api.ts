@@ -144,14 +144,52 @@ export class YandexApi {
    * "Моя волна" — the personal rotor station. The response is a sequence of
    * wrapped tracks rather than a plain list.
    */
-  async wave(afterId?: string): Promise<YandexTrack[]> {
+  /**
+   * A batch from the personal radio. The `batchId` matters as much as the
+   * tracks: the station only moves on once it is told what happened to them,
+   * and every such report is tied to the batch it came from.
+   */
+  async wave(afterId?: string): Promise<{ tracks: YandexTrack[]; batchId: string | null }> {
     const params = new URLSearchParams({ settings2: 'true' })
-    // Without `queue` the rotor keeps handing back the same opening batch.
     if (afterId) params.set('queue', afterId)
     const data = await this.get<Record<string, any>>(`/rotor/station/user:onyourwave/tracks?${params}`)
-    return asArray(data?.sequence)
-      .map((item: any) => toTrack(item?.track))
-      .filter((track): track is YandexTrack => track !== null)
+    return {
+      tracks: asArray(data?.sequence)
+        .map((item: any) => toTrack(item?.track))
+        .filter((track): track is YandexTrack => track !== null),
+      batchId: data?.batchId ? String(data.batchId) : null
+    }
+  }
+
+  /**
+   * Tell the station how a track went. Measured: with only `queue` the rotor
+   * hands back the very same opening batch every time — it is these reports,
+   * not the cursor, that make the wave go on.
+   */
+  async rotorFeedback(
+    batchId: string | null,
+    type: string,
+    trackId?: string,
+    playedSeconds?: number
+  ): Promise<void> {
+    const body: Record<string, unknown> = {
+      type,
+      timestamp: new Date().toISOString(),
+      from: 'desktop-duet'
+    }
+    if (trackId) body.trackId = trackId
+    if (playedSeconds !== undefined) body.totalPlayedSeconds = Math.max(0, Math.round(playedSeconds))
+
+    const query = batchId ? `?batch-id=${encodeURIComponent(batchId)}` : ''
+    try {
+      await this.request(`/rotor/station/user:onyourwave/feedback${query}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+    } catch {
+      // The station not hearing us costs variety, never playback.
+    }
   }
 
   /**

@@ -237,6 +237,10 @@ export class VkSource implements Source {
     }
   }
 
+  async waveFeedback(): Promise<void> {
+    // The VK mix advances server-side; there is nothing to report to.
+  }
+
   async setLiked(track: Track, liked: boolean): Promise<void> {
     if (!this.client) throw new SessionExpiredError('vk')
     const [ownerId, audioId] = track.nativeId.split('_')
