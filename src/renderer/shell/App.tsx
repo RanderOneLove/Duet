@@ -38,6 +38,8 @@ export function App(): JSX.Element {
   const [openPlaylist, setOpenPlaylist] = useState<Playlist | null>(null)
   const [openAlbum, setOpenAlbum] = useState<Album | null>(null)
   const [openArtist, setOpenArtist] = useState<Artist | null>(null)
+  /** The track a «похожее» detour started from. */
+  const [openSimilar, setOpenSimilar] = useState<Track | null>(null)
   /**
    * Which service's personal radio the Home hero shows. The choice is a stored
    * setting so it survives a restart; the override only stands in for this run
@@ -93,6 +95,11 @@ export function App(): JSX.Element {
     () => (openArtist ? window.shell.artistTracks(openArtist.service, openArtist.nativeId) : Promise.resolve([])),
     [],
     [openArtist?.id]
+  )
+  const similarTracks = useAsync(
+    () => (openSimilar ? window.shell.similarTracks(openSimilar) : Promise.resolve([])),
+    [],
+    [openSimilar?.id]
   )
   const wave = useAsync(
     () => (isConnected(connections, waveService) ? window.shell.wave(waveService) : Promise.resolve([])),
@@ -200,6 +207,15 @@ export function App(): JSX.Element {
     setOpenArtist(artist)
     setOpenAlbum(null)
     setOpenPlaylist(null)
+    setOpenSimilar(null)
+  }, [])
+
+  const showSimilar = useCallback((track: Track): void => {
+    setOpenSimilar(track)
+    setOpenArtist(null)
+    setOpenAlbum(null)
+    setOpenPlaylist(null)
+    setFullPlayer(false)
   }, [])
 
   // The hero follows the player only while the player is on that same station.
@@ -232,6 +248,31 @@ export function App(): JSX.Element {
     if (showConnect) {
       return <ConnectScreen connections={connections} onConnect={connect} onSkip={() => setSkippedConnect(true)} />
     }
+    if (openSimilar) {
+      return (
+        <PlaylistScreen
+          title={`Похоже на «${openSimilar.title}»`}
+          subtitle={openSimilar.artists.join(', ')}
+          coverUrl={openSimilar.coverUrl}
+          service={openSimilar.service}
+          tracks={similarTracks.data}
+          loading={similarTracks.loading}
+          activeId={activeId}
+          playing={player.playing}
+          onBack={() => setOpenSimilar(null)}
+          onPlay={(index) => playTracks(similarTracks.data, index)}
+          onToggleLike={toggleLike}
+          downloadedIds={downloadedIds}
+          onDownload={toggleDownload}
+          onDownloadAll={downloadAll}
+          onSimilar={showSimilar}
+          empty={{
+            title: 'Похожего не нашлось',
+            hint: `${openSimilar.service === 'vk' ? 'VK' : 'Яндекс'} не знает, на что похож этот трек — так бывает с редкими записями.`
+          }}
+        />
+      )
+    }
     if (openArtist) {
       return (
         <PlaylistScreen
@@ -250,6 +291,7 @@ export function App(): JSX.Element {
           downloadedIds={downloadedIds}
           onDownload={toggleDownload}
           onDownloadAll={downloadAll}
+          onSimilar={showSimilar}
         />
       )
     }
@@ -270,6 +312,7 @@ export function App(): JSX.Element {
           downloadedIds={downloadedIds}
           onDownload={toggleDownload}
           onDownloadAll={downloadAll}
+          onSimilar={showSimilar}
         />
       )
     }
@@ -298,6 +341,7 @@ export function App(): JSX.Element {
           downloadedIds={downloadedIds}
           onDownload={toggleDownload}
           onDownloadAll={downloadAll}
+          onSimilar={showSimilar}
         />
       )
     }
@@ -330,6 +374,7 @@ export function App(): JSX.Element {
             onToggleLike={toggleLike}
             downloadedIds={downloadedIds}
             onDownload={toggleDownload}
+            onSimilar={showSimilar}
           />
         )
       case 'search':
@@ -347,6 +392,7 @@ export function App(): JSX.Element {
             onOpenAlbum={showAlbum}
             onOpenPlaylist={showPlaylist}
             onOpenArtist={showArtist}
+            onSimilar={showSimilar}
           />
         )
       case 'liked':
@@ -361,6 +407,7 @@ export function App(): JSX.Element {
             downloadedIds={downloadedIds}
             onDownload={toggleDownload}
             onDownloadAll={downloadAll}
+            onSimilar={showSimilar}
           />
         )
       case 'library':
@@ -478,6 +525,7 @@ export function App(): JSX.Element {
           playlists={playlists.data}
           onDownload={toggleDownload}
           onOpenArtist={openArtistOf}
+          onSimilar={showSimilar}
         />
       )}
     </div>

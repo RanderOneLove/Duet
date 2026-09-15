@@ -21,6 +21,9 @@ interface Props {
   downloadedIds: Set<string>
   onDownload: (track: Track) => void
   onDownloadAll: (tracks: Track[]) => void
+  onSimilar: (track: Track) => void
+  /** Overrides the empty state, which differs between a playlist and a detour. */
+  empty?: { title: string; hint: string }
   /** Only ours can be deleted, so only ours are given the button. */
   onDelete?: () => void
 }
@@ -42,6 +45,8 @@ export function PlaylistScreen({
   downloadedIds,
   onDownload,
   onDownloadAll,
+  onSimilar,
+  empty,
   onDelete
 }: Props): JSX.Element {
   return (
@@ -95,8 +100,9 @@ export function PlaylistScreen({
         onToggleLike={onToggleLike}
         downloadedIds={downloadedIds}
         onDownload={onDownload}
-        emptyTitle="Здесь пусто"
-        emptyHint="В этой подборке пока нет треков."
+        onSimilar={onSimilar}
+        emptyTitle={empty?.title ?? 'Здесь пусто'}
+        emptyHint={empty?.hint ?? 'В этой подборке пока нет треков.'}
       />
     </div>
   )

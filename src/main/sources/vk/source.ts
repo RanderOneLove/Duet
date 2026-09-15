@@ -224,6 +224,14 @@ export class VkSource implements Source {
     }
   }
 
+  async similarTracks(track: Track): Promise<Track[]> {
+    if (!this.client) throw new SessionExpiredError('vk')
+    const params = new URLSearchParams({ target_audio: track.nativeId, count: String(PAGE_SIZE) })
+    const items = (await this.call('audio.getRecommendations', params))?.items
+    if (!Array.isArray(items)) return []
+    return items.map((item: any) => this.mapRawAudio(item, false))
+  }
+
   async lyrics(track: Track): Promise<string | null> {
     if (!this.client) throw new SessionExpiredError('vk')
     const [ownerId, audioId] = track.nativeId.split('_')

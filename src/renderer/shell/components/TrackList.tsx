@@ -18,6 +18,7 @@ interface Props {
   onToggleLike: (track: Track) => void
   downloadedIds?: Set<string>
   onDownload?: (track: Track) => void
+  onSimilar?: (track: Track) => void
 }
 
 /** The shared list body, including 2m's loading / empty / error states. */
@@ -31,7 +32,8 @@ export function TrackList({
   onPlay,
   onToggleLike,
   downloadedIds,
-  onDownload
+  onDownload,
+  onSimilar
 }: Props): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   // A library runs to thousands of tracks; only the visible ones are rendered.
@@ -58,6 +60,7 @@ export function TrackList({
             onToggleLike={() => onToggleLike(track)}
             downloaded={downloadedIds?.has(track.id)}
             onDownload={onDownload ? () => onDownload(track) : undefined}
+            onSimilar={onSimilar ? () => onSimilar(track) : undefined}
           />
         )
       })}

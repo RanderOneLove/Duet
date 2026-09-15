@@ -1,7 +1,7 @@
 import type { Track } from '@shared/domain'
 import { formatTime } from '../../shared/format'
 import { ServiceBadge } from '../../shared/ServiceLogo'
-import { Check, Download, Pause, Play } from '../../shared/Icons'
+import { Check, Download, Pause, Play, Sparkle } from '../../shared/Icons'
 import { Cover } from './Cover'
 
 interface Props {
@@ -14,6 +14,8 @@ interface Props {
   /** Omitted where downloading makes no sense, e.g. the Downloads screen. */
   downloaded?: boolean
   onDownload?: () => void
+  /** Omitted where a detour into similar tracks makes no sense. */
+  onSimilar?: () => void
 }
 
 /** A row from wireframe 2b: index, cover, title, service badge, like, length. */
@@ -25,7 +27,8 @@ export function TrackRow({
   onPlay,
   onToggleLike,
   downloaded,
-  onDownload
+  onDownload,
+  onSimilar
 }: Props): JSX.Element {
   return (
     <div
@@ -51,6 +54,12 @@ export function TrackRow({
         <div className="truncate trackrow__title">{track.title}</div>
         <div className="truncate muted trackrow__artist">{track.artists.join(', ') || '—'}</div>
       </div>
+
+      {onSimilar && (
+        <button className="trackrow__dl" title="Похожие треки" onClick={onSimilar}>
+          <Sparkle size={13} />
+        </button>
+      )}
 
       {onDownload && (
         <button

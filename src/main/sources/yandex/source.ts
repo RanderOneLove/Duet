@@ -161,6 +161,12 @@ export class YandexSource implements Source {
     await api.rotorFeedback(this.waveBatchId, event, track?.nativeId, playedSeconds)
   }
 
+  async similarTracks(track: Track): Promise<Track[]> {
+    const { api } = this.require()
+    const tracks = await api.similarTracks(track.nativeId)
+    return tracks.map((item) => this.toDomain(item, false))
+  }
+
   async lyrics(track: Track): Promise<string | null> {
     const { api } = this.require()
     return api.lyrics(track.nativeId)

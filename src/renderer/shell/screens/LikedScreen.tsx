@@ -14,6 +14,7 @@ interface Props {
   downloadedIds: Set<string>
   onDownload: (track: Track) => void
   onDownloadAll: (tracks: Track[]) => void
+  onSimilar: (track: Track) => void
 }
 
 /** Wireframe 2b: liked tracks from both services in one list. */

@@ -201,3 +201,10 @@ export const Speaker = ({ size = 14 }: Props) => (
     <path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m5 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4m0 6a5 5 0 1 0 0 10 5 5 0 0 0 0-10m0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6" />
   </svg>
 )
+
+/** A four-point sparkle: "find me more like this". */
+export const Sparkle = ({ size = 14 }: Props) => (
+  <svg {...base(size)}>
+    <path d="M12 2.5 13.9 8a4 4 0 0 0 2.6 2.6L22 12.5l-5.5 1.9A4 4 0 0 0 13.9 17L12 22.5 10.1 17a4 4 0 0 0-2.6-2.6L2 12.5l5.5-1.9A4 4 0 0 0 10.1 8zM19 3l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z" />
+  </svg>
+)

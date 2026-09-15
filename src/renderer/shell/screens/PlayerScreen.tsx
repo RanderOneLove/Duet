@@ -20,6 +20,7 @@ import {
   Repeat,
   RepeatOne,
   Shuffle,
+  Sparkle,
   TrayDown,
   Volume
 } from '../../shared/Icons'
@@ -37,6 +38,7 @@ interface Props {
   playlists: Playlist[]
   onDownload: (track: Track) => void
   onOpenArtist: (track: Track, artist: ArtistRef) => void
+  onSimilar: (track: Track) => void
 }
 
 /** Wireframe 2d: the full-screen player with the queue beside it. */
@@ -47,7 +49,8 @@ export function PlayerScreen({
   settings,
   playlists,
   onDownload,
-  onOpenArtist
+  onOpenArtist,
+  onSimilar
 }: Props): JSX.Element {
   const position = useSmoothPosition(state)
   const track = currentTrack(state)
@@ -184,6 +187,14 @@ export function PlayerScreen({
                 <Heart size={14} />
                 {track.liked ? ' В избранном' : ' В избранное'} ·{' '}
                 {track.service === 'vk' ? 'VK' : 'Яндекс'}
+              </button>
+
+              <button
+                className="pill pill--outline"
+                title="Треки, похожие на этот"
+                onClick={() => onSimilar(track)}
+              >
+                <Sparkle size={14} /> Похожее
               </button>
 
               <button

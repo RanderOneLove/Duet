@@ -37,6 +37,7 @@ interface Props {
   onToggleLike: (track: Track) => void
   downloadedIds: Set<string>
   onDownload: (track: Track) => void
+  onSimilar: (track: Track) => void
 }
 
 /** Wireframe 2a: the radio hero, one merged playlist row, then liked tracks. */
@@ -55,7 +56,8 @@ export function HomeScreen({
   onOpenPlaylist,
   onToggleLike,
   downloadedIds,
-  onDownload
+  onDownload,
+  onSimilar
 }: Props): JSX.Element {
   const available = connections.filter((connection) => connection.connected)
   const playlists = sections.find((section) => section.kind === 'playlists')?.playlists ?? []
@@ -119,6 +121,7 @@ export function HomeScreen({
               onToggleLike={onToggleLike}
               downloadedIds={downloadedIds}
               onDownload={onDownload}
+              onSimilar={onSimilar}
             />
           )}
         </>
@@ -135,7 +138,8 @@ function LikedBlock({
   onPlayTracks,
   onToggleLike,
   downloadedIds,
-  onDownload
+  onDownload,
+  onSimilar
 }: {
   tracks: Track[]
   activeId: string | null
@@ -144,6 +148,7 @@ function LikedBlock({
   onToggleLike: (track: Track) => void
   downloadedIds: Set<string>
   onDownload: (track: Track) => void
+  onSimilar: (track: Track) => void
 }): JSX.Element {
   const { filter, setFilter, filtered, options } = useServiceFilter(tracks)
 
@@ -167,6 +172,7 @@ function LikedBlock({
         onToggleLike={onToggleLike}
         downloadedIds={downloadedIds}
         onDownload={onDownload}
+        onSimilar={onSimilar}
         emptyTitle="В этом сервисе пусто"
         emptyHint="Выберите другую вкладку фильтра."
       />

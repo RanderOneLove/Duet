@@ -39,6 +39,8 @@ export interface Source {
    */
   waveFeedback(event: WaveEvent, track?: Track, playedSeconds?: number): Promise<void>
   setLiked(track: Track, liked: boolean): Promise<void>
+  /** Tracks the service considers close to this one; empty when it has none. */
+  similarTracks(track: Track): Promise<Track[]>
   /** The words, or null when the service has none for this track. */
   lyrics(track: Track): Promise<string | null>
 

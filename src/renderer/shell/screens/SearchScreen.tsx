@@ -19,6 +19,7 @@ interface Props {
   onToggleLike: (track: Track) => void
   downloadedIds: Set<string>
   onDownload: (track: Track) => void
+  onSimilar: (track: Track) => void
   onOpenAlbum: (album: Album) => void
   onOpenPlaylist: (playlist: Playlist) => void
   onOpenArtist: (artist: Artist) => void
@@ -35,6 +36,7 @@ export function SearchScreen({
   onToggleLike,
   downloadedIds,
   onDownload,
+  onSimilar,
   onOpenAlbum,
   onOpenPlaylist,
   onOpenArtist
@@ -132,6 +134,7 @@ export function SearchScreen({
                 onToggleLike={onToggleLike}
                 downloadedIds={downloadedIds}
                 onDownload={onDownload}
+            onSimilar={onSimilar}
                 emptyTitle="Треков нет"
                 emptyHint="Попробуйте другой запрос или другую вкладку."
               />

@@ -40,6 +40,7 @@ const api = {
     ipcRenderer.invoke(IPC.libLocalAdd, id, tracks),
   removeFromPlaylist: (id: string, trackId: string): Promise<void> =>
     ipcRenderer.invoke(IPC.libLocalRemoveTrack, id, trackId),
+  similarTracks: (track: Track): Promise<Track[]> => ipcRenderer.invoke(IPC.libSimilar, track),
   lyrics: (track: Track): Promise<string | null> => ipcRenderer.invoke(IPC.libLyrics, track),
   search: (query: string): Promise<SearchResult> => ipcRenderer.invoke(IPC.libSearch, query),
   wave: (choice: WaveChoice): Promise<Track[]> => ipcRenderer.invoke(IPC.libWave, choice),

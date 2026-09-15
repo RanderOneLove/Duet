@@ -146,6 +146,13 @@ export async function waveFeedback(
   }
 }
 
+/** Tracks close to this one, from the service it came from. */
+export async function similarTracks(track: Track): Promise<Track[]> {
+  const source = sources[track.service]
+  if (!source.isConnected()) return []
+  return source.similarTracks(track)
+}
+
 /** The words for a track, from the service it came from. */
 export async function lyrics(track: Track): Promise<string | null> {
   const source = sources[track.service]

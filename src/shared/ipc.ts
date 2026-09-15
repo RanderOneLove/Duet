@@ -39,6 +39,7 @@ export const IPC = {
   libLocalRemove: 'lib:localRemove',
   libLocalAdd: 'lib:localAdd',
   libLocalRemoveTrack: 'lib:localRemoveTrack',
+  libSimilar: 'lib:similar',
   libLyrics: 'lib:lyrics',
   libAlbumTracks: 'lib:albumTracks',
   libSearch: 'lib:search',

@@ -192,6 +192,14 @@ export class YandexApi {
     }
   }
 
+  /** What the service considers close to a track. Often empty for a rarity. */
+  async similarTracks(trackId: string): Promise<YandexTrack[]> {
+    const data = await this.get<Record<string, any>>(`/tracks/${trackId}/similar`)
+    return asArray(data?.similarTracks)
+      .map((raw: any) => toTrack(raw))
+      .filter((track): track is YandexTrack => track !== null)
+  }
+
   /**
    * Lyrics come back as a link to plain text, and the endpoint refuses an
    * unsigned request — the signature is an HMAC of the track and the moment
