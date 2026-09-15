@@ -1,0 +1,60 @@
+# Сборка установщика и публикация его в Releases.
+#
+# Запускается по тегу вида v0.2.0 — тег и есть решение «это релиз».
+# Собирать можно только на Windows: electron-builder делает NSIS-установщик
+# нативными средствами системы, на Linux-раннере он бы не получился.
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # Чтобы можно было собрать вручную, не создавая тег.
+  workflow_dispatch:
+
+permissions:
+  # Нужно, чтобы шаг публикации мог создать релиз и приложить к нему файл.
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # ci, а не install: ставит ровно то, что записано в package-lock.json.
+      - run: npm ci
+
+      # Проверка типов входит в `npm run build`, который вызывает dist,
+      # так что ошибка типов остановит сборку до упаковки.
+      - name: Собрать установщик
+        run: npm run dist
+        env:
+          # Подписи у нас нет; без этого electron-builder ищет сертификат
+          # и засоряет лог предупреждениями.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Приложить установщик к релизу
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.exe
+            release/*.exe.blockmap
+          # Черновик не нужен: тег ставится осознанно.
+          draft: false
+          generate_release_notes: true
+
+      # При ручном запуске релиза нет — установщик остаётся артефактом сборки.
+      - name: Сохранить установщик как артефакт
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: duet-setup
+          path: release/*.exe
