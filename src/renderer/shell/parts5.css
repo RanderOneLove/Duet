@@ -414,3 +414,16 @@
   background: var(--accent);
   border-color: var(--accent);
 }
+
+/* A plain text field in settings, matching the panels' inputs. */
+.settings__input {
+  width: 280px;
+  max-width: 100%;
+  background: var(--fill-soft);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-sm);
+  padding: 5px 9px;
+  font: inherit;
+  font-size: 13px;
+}

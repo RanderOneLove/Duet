@@ -1,5 +1,6 @@
 import DiscordRPC from 'discord-rpc'
 import { getPlayer, onPlayerChanged } from './player/engine'
+import { getSettings } from './state/settings'
 import type { PlayerState } from '@shared/player'
 import { SERVICE_META } from '@shared/domain'
 import { artistLine } from '@shared/domain'
@@ -92,6 +93,10 @@ function updateActivity(state: PlayerState): void {
     }
   }
 
+  // An empty link means no button: one that leads nowhere is worse than none.
+  const shareUrl = getSettings().listenTogetherUrl.trim()
+  const buttons = shareUrl ? [{ label: 'Слушать вместе', url: shareUrl }] : []
+
   // Используем raw request, так как discord-rpc обертка не позволяет менять type активности на 2 (Listening)
   void (rpc as any).request('SET_ACTIVITY', {
     pid: process.pid,
@@ -109,6 +114,10 @@ function updateActivity(state: PlayerState): void {
         small_image: SERVICE_ICON[track.service] ?? 'default',
         small_text: serviceName
       },
+      // Rich Presence allows two buttons, and each is a plain link — Discord
+      // has no way to hand a click back to the app. The page behind this one
+      // is what decides between opening Duet and offering the download.
+      ...(buttons.length > 0 ? { buttons } : {}),
       instance: false
     }
   }).catch((err: unknown) => console.error('[discord] Failed to set activity:', err))

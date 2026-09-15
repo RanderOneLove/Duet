@@ -227,6 +227,27 @@ function PlaybackPane({
         </Row>
       </Card>
 
+      <Group label="DISCORD" />
+      <Card>
+        <Row
+          label="Ссылка «Слушать вместе»"
+          hint={
+            settings.listenTogetherUrl.trim()
+              ? 'Кнопка появится в вашем статусе Discord'
+              : 'Пока пусто — кнопки в статусе нет'
+          }
+          last
+        >
+          <input
+            className="settings__input"
+            placeholder="https://…"
+            spellCheck={false}
+            value={settings.listenTogetherUrl}
+            onChange={(event) => onChange({ listenTogetherUrl: event.target.value })}
+          />
+        </Row>
+      </Card>
+
       <p className="muted settings__note">
         Громкость сохраняется между запусками. Последний трек подгружается при старте на паузе.
       </p>

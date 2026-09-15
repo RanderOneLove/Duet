@@ -74,6 +74,11 @@ export interface Settings {
   recentSearches: string[]
   /** Put the machine to sleep when the sleep timer runs out. */
   sleepSuspendsPc: boolean
+  /**
+   * Where the «Слушать вместе» button in Discord leads. Empty means no button
+   * at all — better than one that goes nowhere.
+   */
+  listenTogetherUrl: string
   /** Collapse the sidebar to icons only. */
   sidebarCollapsed: boolean
   /** Launch with Windows. */
@@ -116,6 +121,7 @@ export const DEFAULT_SETTINGS: Settings = {
   outputDeviceId: '',
   recentSearches: [],
   sleepSuspendsPc: false,
+  listenTogetherUrl: '',
   sidebarCollapsed: false,
   autoStart: false,
   autoStartMinimized: true,
