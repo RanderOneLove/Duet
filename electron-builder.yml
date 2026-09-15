@@ -1,5 +1,12 @@
 appId: com.rednikin.duet
 productName: Duet
+
+# Windows кладёт описание из package.json в свойства .exe, и браузер
+# показывает его в вопросе «открыть приложение?». Длинная фраза там
+# выглядит как чужая программа — в свойствах файла должно стоять имя.
+# Описание при этом остаётся в package.json для самого репозитория.
+extraMetadata:
+  description: Duet
 directories:
   output: release
   buildResources: resources
