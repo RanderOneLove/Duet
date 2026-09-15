@@ -10,6 +10,14 @@ extraResources:
   # The tray icon is loaded from disk at runtime, not bundled.
   - from: resources/tray.ico
     to: tray.ico
+# Установщик регистрирует схему в системе — так Windows узнаёт, что ссылку
+# duet://join/... открывает Duet. В запуске из исходников регистрируется
+# бинарник Electron, что для разработки нормально.
+protocols:
+  - name: Duet
+    schemes:
+      - duet
+
 win:
   target:
     - target: nsis

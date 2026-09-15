@@ -101,7 +101,7 @@ function updateActivity(state: PlayerState): void {
   void (rpc as any).request('SET_ACTIVITY', {
     pid: process.pid,
     activity: {
-      type: 2, // 2 = Listening
+      type: 2, // 2 = Listening; Discord draws presence buttons here too.
       details: track.title,
       state: artistLine(track),
       timestamps: {

@@ -55,6 +55,7 @@ import {
   retryDownload
 } from './downloads/manager'
 import { registerMediaScheme, serveMediaScheme } from './downloads/protocol'
+import { claimJoinScheme, joinCodeFrom, offerJoinCode } from './together/join'
 import {
   addToPlaylist,
   createPlaylist,
@@ -84,7 +85,12 @@ registerMediaScheme()
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
-  app.on('second-instance', showMainWindow)
+  // A `duet://join/...` link opens a second copy; Windows puts the link in its
+  // arguments, and that copy hands them here before quitting.
+  app.on('second-instance', (_event, argv) => {
+    showMainWindow()
+    offerJoinCode(joinCodeFrom(argv))
+  })
   void app.whenReady().then(start)
 }
 
@@ -105,6 +111,7 @@ function start(): void {
     process.argv.includes('--hidden') ||
     (app.getLoginItemSettings().wasOpenedAtLogin && settings.autoStartMinimized)
 
+  claimJoinScheme()
   serveMediaScheme()
   void loadDownloads()
   void loadPlaylists()
@@ -136,6 +143,8 @@ function start(): void {
   onLibraryChanged(() => sendToShell(IPC.libChanged, undefined))
   onPlaylistsChanged(() => sendToShell(IPC.libChanged, undefined))
   onDownloadsChanged((state) => sendToShell(IPC.downloadsChanged, state))
+
+  offerJoinCode(joinCodeFrom(process.argv))
 
   void restoreSources().then(async () => {
     await restoreSession()
