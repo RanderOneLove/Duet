@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Duet — слушать вместе</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #121212;
+        --surface: #1e1e1e;
+        --text: #fff;
+        --muted: #a7a7a7;
+        --accent: #4a6cf7;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif;
+      }
+      .card {
+        width: 100%;
+        max-width: 460px;
+        background: var(--surface);
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+        text-align: center;
+      }
+      .mark {
+        width: 56px;
+        height: 40px;
+        margin: 0 auto 18px;
+        display: block;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0 0 20px;
+        color: var(--muted);
+      }
+      .pill {
+        display: inline-block;
+        padding: 11px 22px;
+        border-radius: 999px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        text-decoration: none;
+        box-shadow: 0 6px 18px rgba(74, 108, 247, 0.4);
+      }
+      .pill--ghost {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        box-shadow: none;
+        font-weight: 500;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .note {
+        margin-top: 22px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      code {
+        font-family: ui-monospace, Menlo, monospace;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 2px 6px;
+        border-radius: 5px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <svg class="mark" viewBox="0 0 115 80" fill="none" aria-hidden="true">
+        <circle cx="40" cy="40" r="40" fill="#4a6cf7" />
+        <circle cx="75" cy="40" r="40" fill="#fff" fill-opacity="0.32" />
+      </svg>
+
+      <div id="join" hidden>
+        <h1>Подключаемся к прослушиванию</h1>
+        <p>Duet должен открыться сам. Если этого не произошло — нажмите кнопку.</p>
+        <div class="row">
+          <a class="pill" id="open" href="#">Открыть Duet</a>
+          <a class="pill pill--ghost" id="download-join" href="#">Скачать Duet</a>
+        </div>
+        <p class="note">Код приглашения: <code id="code"></code></p>
+      </div>
+
+      <div id="plain" hidden>
+        <h1>Duet</h1>
+        <p>VK Музыка и Яндекс.Музыка в одном плеере для Windows.</p>
+        <div class="row">
+          <a class="pill" id="download" href="#">Скачать</a>
+        </div>
+        <p class="note">Ссылка без кода приглашения — открывать нечего.</p>
+      </div>
+    </main>
+
+    <script>
+      // The page is served from GitHub Pages, so the repository is right here
+      // in the address: no need to hard-code the owner or the project name.
+      const [owner, repo] = location.hostname.endsWith('github.io')
+        ? [location.hostname.split('.')[0], location.pathname.split('/').filter(Boolean)[0] || '']
+        : ['RanderOneLove', 'Duet']
+      const releases = `https://github.com/${owner}/${repo || 'Duet'}/releases/latest`
+
+      for (const id of ['download', 'download-join']) {
+        document.getElementById(id).href = releases
+      }
+
+      // A code arrives as ?join=CODE or as #CODE, whichever the host used.
+      const params = new URLSearchParams(location.search)
+      const raw = params.get('join') || location.hash.replace(/^#/, '')
+      const code = /^[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : ''
+
+      if (!code) {
+        document.getElementById('plain').hidden = false
+      } else {
+        document.getElementById('join').hidden = false
+        document.getElementById('code').textContent = code
+        const link = `duet://join/${code}`
+        document.getElementById('open').href = link
+        // Try it straight away; a browser with no handler simply does nothing,
+        // which is why the buttons above stay on screen either way.
+        location.href = link
+      }
+    </script>
+  </body>
+</html>
