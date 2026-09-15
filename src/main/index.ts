@@ -22,7 +22,7 @@ import {
   initPlayer,
   onPlayerChanged,
   restoreSession,
-  wirePlayer
+  createPlayerWire
 } from './player/engine'
 import {
   albumTracks,
@@ -125,8 +125,9 @@ function start(): void {
   window.on('show', hideMiniPlayer)
   window.on('restore', hideMiniPlayer)
 
+  const toShell = createPlayerWire()
   onPlayerChanged((state) => {
-    sendToShell(IPC.playerState, wirePlayer(state))
+    sendToShell(IPC.playerState, toShell(state))
     // Volume survives restarts; the rest of the state is deliberately not kept.
     persistVolume(state)
   })

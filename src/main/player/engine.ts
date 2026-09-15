@@ -33,12 +33,19 @@ let unshuffled: Track[] | null = null
 /**
  * Trim a broadcast down to what changed. Every window fetches the full state
  * once when it mounts, so dropping an unchanged queue never leaves one short.
+ *
+ * Each window needs its own tracker. Sharing one meant that whichever window
+ * was served first marked the queue as sent, and the second never received it
+ * at all — the mini player went on showing a track from an older queue while
+ * its clock ticked against the new one.
  */
-let wiredQueue: Track[] | null = null
-export function wirePlayer(state: PlayerState): PlayerUpdate {
-  if (state.queue === wiredQueue) return { ...state, queue: undefined }
-  wiredQueue = state.queue
-  return state
+export function createPlayerWire(): (state: PlayerState) => PlayerUpdate {
+  let sent: Track[] | null = null
+  return (state) => {
+    if (state.queue === sent) return { ...state, queue: undefined }
+    sent = state.queue
+    return state
+  }
 }
 
 export function getPlayer(): PlayerState {
