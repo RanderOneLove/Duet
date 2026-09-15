@@ -125,14 +125,24 @@ function start(): void {
   initDiscordRPC()
 
   // Hiding to the tray is exactly when the mini player earns its keep.
+  const showsWhenAway = (): boolean => getSettings().miniShowWhen !== 'never'
   window.on('hide', () => {
-    if (getSettings().miniOnMinimize) showMiniPlayer()
+    if (showsWhenAway()) showMiniPlayer()
   })
   window.on('minimize', () => {
-    if (getSettings().miniOnMinimize) showMiniPlayer()
+    if (showsWhenAway()) showMiniPlayer()
   })
   window.on('show', hideMiniPlayer)
   window.on('restore', hideMiniPlayer)
+
+  // Окно может остаться на экране и всё равно быть ненужным — когда смотришь
+  // в другое. Выход из приложения тоже снимает фокус, поэтому проверка.
+  window.on('blur', () => {
+    if (getSettings().miniShowWhen === 'inactive' && !isQuitting()) showMiniPlayer()
+  })
+  window.on('focus', () => {
+    if (getSettings().miniShowWhen === 'inactive') hideMiniPlayer()
+  })
 
   const toShell = createPlayerWire()
   // Приглашение может прийти и до того, как окно готово: тогда оно ждёт здесь.
@@ -176,7 +186,7 @@ function start(): void {
   })
 
   // Nothing is shown yet when we start hidden, so the mini player stands in.
-  if (startHidden && settings.miniOnMinimize) showMiniPlayer()
+  if (startHidden && settings.miniShowWhen !== 'never') showMiniPlayer()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow()

@@ -46,6 +46,13 @@ export const MINI_ANCHORS: { id: MiniAnchor; label: string }[] = [
 
 export type AutoDownloadScope = 'played' | 'liked'
 
+/**
+ * Когда мини-плееру появляться. «Неактивно» — как только окно теряет фокус,
+ * даже если оно осталось на экране: плеер нужен именно тогда, когда смотришь
+ * в другое окно.
+ */
+export type MiniShowWhen = 'never' | 'minimized' | 'inactive'
+
 export interface Settings {
   /** Player volume and mute, restored between runs. */
   volume: number
@@ -95,7 +102,7 @@ export interface Settings {
   /** When auto-started, go straight to the tray instead of opening a window. */
   autoStartMinimized: boolean
   /** Show the mini player automatically whenever the app hides to the tray. */
-  miniOnMinimize: boolean
+  miniShowWhen: MiniShowWhen
   miniVariant: MiniVariant
   miniAnchor: MiniAnchor
   /** Gap from the screen edge for non-custom anchors, in px. */
@@ -138,7 +145,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarCollapsed: false,
   autoStart: false,
   autoStartMinimized: true,
-  miniOnMinimize: true,
+  miniShowWhen: 'minimized',
   miniVariant: 'bar',
   miniAnchor: 'bottom-right',
   miniMargin: 24,

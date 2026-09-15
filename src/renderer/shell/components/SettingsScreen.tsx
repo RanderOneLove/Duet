@@ -6,6 +6,7 @@ import {
   type HotkeyStatus,
   type MiniAnchor,
   type AutoDownloadScope,
+  type MiniShowWhen,
   type MiniVariant,
   type Settings
 } from '@shared/types'
@@ -372,8 +373,25 @@ function MiniPane({
 
       <Group label="ПОВЕДЕНИЕ" />
       <Card>
-        <Row label="Показывать при сворачивании в трей">
-          <Toggle value={settings.miniOnMinimize} onChange={(v) => onChange({ miniOnMinimize: v })} />
+        <Row
+          label="Когда показывать"
+          hint={
+            settings.miniShowWhen === 'inactive'
+              ? 'Как только окно перестало быть активным, даже если видно на экране'
+              : settings.miniShowWhen === 'minimized'
+                ? 'Только когда окно свёрнуто или убрано в трей'
+                : 'Мини-плеер появляется только вручную'
+          }
+        >
+          <Segmented
+            value={settings.miniShowWhen}
+            onChange={(value: MiniShowWhen) => onChange({ miniShowWhen: value })}
+            options={[
+              { id: 'never', label: 'Вручную' },
+              { id: 'minimized', label: 'При сворачивании' },
+              { id: 'inactive', label: 'Когда неактивно' }
+            ]}
+          />
         </Row>
         <Row label="Раскрывать по наведению" hint="Иначе — только двойным щелчком по плееру">
           <Toggle

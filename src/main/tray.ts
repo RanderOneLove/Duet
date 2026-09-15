@@ -51,8 +51,11 @@ function render(): void {
       {
         label: 'Показывать мини-плеер при сворачивании',
         type: 'checkbox',
-        checked: settings.miniOnMinimize,
-        click: () => setSettings({ miniOnMinimize: !settings.miniOnMinimize })
+        checked: settings.miniShowWhen !== 'never',
+        click: () =>
+          setSettings({
+            miniShowWhen: settings.miniShowWhen === 'never' ? 'minimized' : 'never'
+          })
       },
       { type: 'separator' },
       { label: 'Открыть приложение', click: showMainWindow },

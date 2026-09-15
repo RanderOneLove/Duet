@@ -12,7 +12,15 @@ const listeners = new Set<Listener>()
 export function getSettings(): Settings {
   // Spread over the defaults so a settings file written by an older version
   // still yields every key the app expects.
-  return { ...DEFAULT_SETTINGS, ...(store.store as Partial<Settings>) }
+  const stored = store.store as Partial<Settings> & { miniOnMinimize?: boolean }
+  const settings = { ...DEFAULT_SETTINGS, ...stored }
+
+  // Выключатель «показывать при сворачивании» стал выбором из трёх. Тот, кто
+  // его выключил, не должен обнаружить мини-плеер снова.
+  if (stored.miniShowWhen === undefined && stored.miniOnMinimize === false) {
+    settings.miniShowWhen = 'never'
+  }
+  return settings
 }
 
 export function setSettings(patch: Partial<Settings>): Settings {
