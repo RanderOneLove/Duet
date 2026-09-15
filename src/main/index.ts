@@ -55,7 +55,8 @@ import {
   retryDownload
 } from './downloads/manager'
 import { registerMediaScheme, serveMediaScheme } from './downloads/protocol'
-import { claimJoinScheme, joinCodeFrom, offerJoinCode } from './together/join'
+import { claimJoinScheme, joinCodeFrom, offerJoinCode, onJoinRequest } from './together/join'
+import { ensureInvite, publish } from './together/host'
 import {
   addToPlaylist,
   createPlaylist,
@@ -134,8 +135,16 @@ function start(): void {
   window.on('restore', hideMiniPlayer)
 
   const toShell = createPlayerWire()
+  // Приглашение может прийти и до того, как окно готово: тогда оно ждёт здесь.
+  onJoinRequest((code) => {
+    showMainWindow()
+    void command({ type: 'follow', code })
+  })
+
   onPlayerChanged((state) => {
     sendToShell(IPC.playerState, toShell(state))
+    // Ведомым нужно знать, что здесь играет, — если публикация включена.
+    void publish(state)
     // Volume survives restarts; the rest of the state is deliberately not kept.
     persistVolume(state)
   })
@@ -157,6 +166,8 @@ function start(): void {
   sendToShell(IPC.hotkeyStatus, registerHotkeys(settings))
   let previous = settings
   onSettingsChanged((next) => {
+    // Приглашение нужно уже в настройках, а не с первой сыгранной секундой.
+    if (next.listenTogether && !next.togetherCode) ensureInvite()
     if (hotkeysChanged(previous, next)) sendToShell(IPC.hotkeyStatus, registerHotkeys(next))
     if (next.autoStart !== previous.autoStart || next.autoStartMinimized !== previous.autoStartMinimized) {
       applyAutoStart(next)

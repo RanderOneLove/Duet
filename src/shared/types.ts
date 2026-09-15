@@ -75,10 +75,19 @@ export interface Settings {
   /** Put the machine to sleep when the sleep timer runs out. */
   sleepSuspendsPc: boolean
   /**
-   * Where the «Слушать вместе» button in Discord leads. Empty means no button
-   * at all — better than one that goes nowhere.
+   * Publish what is playing, so someone who follows the invite hears the same
+   * thing. Off by default: this sends track names to a server, and that should
+   * be a decision rather than a surprise.
    */
-  listenTogetherUrl: string
+  listenTogether: boolean
+  /** The relay that passes «which track and from what second» along. */
+  relayUrl: string
+  /** The page that turns an invite link into a launch of the app. */
+  joinPageUrl: string
+  /** This machine's invite, made once and kept so the link stays the same. */
+  togetherCode: string
+  /** Proves this machine is the host; goes to the relay and nowhere else. */
+  togetherKey: string
   /** Collapse the sidebar to icons only. */
   sidebarCollapsed: boolean
   /** Launch with Windows. */
@@ -121,7 +130,11 @@ export const DEFAULT_SETTINGS: Settings = {
   outputDeviceId: '',
   recentSearches: [],
   sleepSuspendsPc: false,
-  listenTogetherUrl: '',
+  listenTogether: false,
+  relayUrl: 'https://rander.pro/duet',
+  joinPageUrl: 'https://randeronelove.github.io/Duet/',
+  togetherCode: '',
+  togetherKey: '',
   sidebarCollapsed: false,
   autoStart: false,
   autoStartMinimized: true,

@@ -93,9 +93,18 @@ function updateActivity(state: PlayerState): void {
     }
   }
 
-  // An empty link means no button: one that leads nowhere is worse than none.
-  const shareUrl = getSettings().listenTogetherUrl.trim()
-  const buttons = shareUrl ? [{ label: 'Слушать вместе', url: shareUrl }] : []
+  // The button only makes sense while this machine is actually publishing;
+  // otherwise it would invite people to a session that does not exist.
+  const settings = getSettings()
+  const buttons =
+    settings.listenTogether && settings.togetherCode
+      ? [
+          {
+            label: 'Слушать вместе',
+            url: `${settings.joinPageUrl}?join=${encodeURIComponent(settings.togetherCode)}`
+          }
+        ]
+      : []
 
   // Используем raw request, так как discord-rpc обертка не позволяет менять type активности на 2 (Listening)
   void (rpc as any).request('SET_ACTIVITY', {

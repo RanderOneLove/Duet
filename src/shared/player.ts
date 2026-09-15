@@ -40,6 +40,10 @@ export interface PlayerState {
   outputDeviceId: string
   /** When playback stops by itself, as a timestamp, or null when no timer. */
   sleepEndsAt: number | null
+  /** Код сессии, за которой идём, или null когда слушаем сами. */
+  following: string | null
+  /** Ведомый видит это, когда у ведущего играет недоступный ему трек. */
+  followError: string | null
   /** Set when the current track failed to load, cleared on the next track. */
   error: string | null
   /** Wall clock at which positionMs was sampled, for smooth interpolation. */
@@ -61,6 +65,8 @@ export const EMPTY_PLAYER: PlayerState = {
   outputDevices: [],
   outputDeviceId: '',
   sleepEndsAt: null,
+  following: null,
+  followError: null,
   error: null,
   sampledAt: 0
 }
@@ -92,6 +98,8 @@ export type PlayerCommand =
   | { type: 'setOutputDevice'; deviceId: string }
   /** null cancels a running timer. */
   | { type: 'setSleepTimer'; minutes: number | null }
+  | { type: 'follow'; code: string }
+  | { type: 'stopFollowing' }
   /** Jump to a position in the existing queue. */
   | { type: 'playIndex'; index: number }
   | { type: 'removeFromQueue'; index: number }

@@ -230,21 +230,24 @@ function PlaybackPane({
       <Group label="DISCORD" />
       <Card>
         <Row
-          label="Ссылка «Слушать вместе»"
+          label="Разрешить слушать вместе"
+          hint="Ваш статус получит кнопку, а приглашённые — то же, что играет у вас"
+        >
+          <Toggle
+            value={settings.listenTogether}
+            onChange={(value) => onChange({ listenTogether: value })}
+          />
+        </Row>
+        <Row
+          label="Ссылка-приглашение"
           hint={
-            settings.listenTogetherUrl.trim()
-              ? 'Кнопка появится в вашем статусе Discord'
-              : 'Пока пусто — кнопки в статусе нет'
+            settings.listenTogether
+              ? 'Её же открывает кнопка в Discord'
+              : 'Появится, когда включите'
           }
           last
         >
-          <input
-            className="settings__input"
-            placeholder="https://…"
-            spellCheck={false}
-            value={settings.listenTogetherUrl}
-            onChange={(event) => onChange({ listenTogetherUrl: event.target.value })}
-          />
+          <InviteLink settings={settings} />
         </Row>
       </Card>
 
@@ -498,6 +501,36 @@ function AboutPane(): JSX.Element {
         каталог и ссылки на треки приложение запрашивает от вашего имени.
       </p>
     </>
+  )
+}
+
+/**
+ * Готовое приглашение. Показывается только при включённой публикации: ссылка
+ * на выключённую сессию ведёт в никуда, и лучше её не давать вовсе.
+ */
+function InviteLink({ settings }: { settings: Settings }): JSX.Element {
+  const [copied, setCopied] = useState(false)
+
+  if (!settings.listenTogether || !settings.togetherCode) {
+    return <span className="muted">—</span>
+  }
+
+  const link = `${settings.joinPageUrl}?join=${encodeURIComponent(settings.togetherCode)}`
+  return (
+    <span className="addto">
+      <input className="settings__input" readOnly value={link} onFocus={(e) => e.target.select()} />
+      <button
+        className="pill pill--sm"
+        onClick={() => {
+          void navigator.clipboard.writeText(link).then(() => {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+          })
+        }}
+      >
+        {copied ? 'Скопировано' : 'Копировать'}
+      </button>
+    </span>
   )
 }
 

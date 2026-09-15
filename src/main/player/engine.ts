@@ -9,6 +9,8 @@ import {
 import type { AudioEvent } from '../../preload/audio'
 import { controlAudio, loadAudio } from '../windows/audioHost'
 import { resolveStream, setLiked, wave, waveFeedback } from '../sources/registry'
+import { startFollowing, stopFollowing } from '../together/follow'
+import type { SharedState } from '../together/host'
 import { readSession, writeSession } from '../state/session'
 import { addDownloads, downloadedFile } from '../downloads/manager'
 import { mediaUrl } from '../downloads/protocol'
@@ -89,7 +91,24 @@ function scheduleSave(): void {
 
 const SAVE_INTERVAL_MS = 4000
 
+/** Команды, которыми слушатель заявляет о себе, — они и прекращают следование. */
+const OWN_CHOICE = new Set<PlayerCommand['type']>([
+  'playQueue',
+  'playIndex',
+  'playWave',
+  'next',
+  'prev',
+  'seek'
+])
+
 export async function command(input: PlayerCommand): Promise<void> {
+  // «Пока ведомый не нажмёт паузу или не включит своё»: любой такой шаг
+  // означает, что человек больше не хочет идти следом.
+  if (state.following && !applyingFollowed) {
+    const ownPause = input.type === 'playPause' && state.playing
+    if (ownPause || OWN_CHOICE.has(input.type)) leaveFollowing()
+  }
+
   switch (input.type) {
     case 'playQueue': {
       const tracks = input.tracks.filter((track) => track.available)
@@ -231,6 +250,22 @@ export async function command(input: PlayerCommand): Promise<void> {
       startSleepTimer(input.minutes)
       return
 
+    case 'follow': {
+      const joined = await startFollowing(input.code, applyFollowed, () => {
+        // Ведущий закрыл приложение или связь оборвалась.
+        patch({ following: null, followError: null })
+      })
+      patch({
+        following: joined ? input.code : null,
+        followError: joined ? null : 'Сессия не найдена — возможно, её уже закрыли'
+      })
+      return
+    }
+
+    case 'stopFollowing':
+      leaveFollowing()
+      return
+
     case 'clearQueue':
       unshuffled = null
       patch({ queue: [], index: -1, shuffle: false })
@@ -330,6 +365,55 @@ function suspendMachine(): void {
   } catch {
     // Nothing to do if the machine refuses; the music has stopped regardless.
   }
+}
+
+/**
+ * Расхождение, ниже которого подгонять не стоит: перемотка ради полусекунды
+ * слышна как заикание, а несовпадение — нет.
+ */
+const SYNC_TOLERANCE_MS = 2000
+
+/** Пока это поднято, команды движка идут от ведущего, а не от слушателя. */
+let applyingFollowed = false
+
+function leaveFollowing(): void {
+  stopFollowing()
+  if (state.following || state.followError) patch({ following: null, followError: null })
+}
+
+/** Принять состояние ведущего и привести своё воспроизведение к нему. */
+function applyFollowed(shared: SharedState): void {
+  void (async () => {
+    applyingFollowed = true
+    try {
+      const track = shared.track
+      if (!track) {
+        controlAudio({ type: 'pause' })
+        return
+      }
+
+      // Пока сообщение шло, время не стояло.
+      const target = shared.positionMs + (shared.playing ? Date.now() - shared.at : 0)
+      const current = state.queue[state.index]
+
+      if (current?.id !== track.id) {
+        if (!track.available) {
+          patch({ followError: `«${track.title}» недоступен в вашем аккаунте` })
+          return
+        }
+        patch({ queue: [track], index: 0, waveService: null, followError: null })
+        await loadCurrent(shared.playing, Math.max(0, target))
+        return
+      }
+
+      const drift = Math.abs(state.positionMs - target)
+      if (drift > SYNC_TOLERANCE_MS) controlAudio({ type: 'seek', positionMs: Math.max(0, target) })
+      if (shared.playing && !state.playing) controlAudio({ type: 'play' })
+      if (!shared.playing && state.playing) controlAudio({ type: 'pause' })
+    } finally {
+      applyingFollowed = false
+    }
+  })()
 }
 
 /** Fold an event from the audio host into the state. */
