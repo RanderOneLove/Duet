@@ -67,13 +67,16 @@ export function PlaylistScreen({
         <button className="pill" disabled={tracks.length === 0} onClick={() => onPlay(0)}>
           <Play size={14} /> Слушать
         </button>
+        {/* Одной командой, а не «включить и следом перещёлкнуть»: та пара
+            зависела от того, каким тумблер был до нажатия, и на включённом
+            перемешивании выключала его. */}
         <button
           className="pill pill--ghost"
+          title="Слушать вперемешку"
           disabled={tracks.length === 0}
-          onClick={() => {
-            onPlay(0)
-            window.shell.command({ type: 'toggleShuffle' })
-          }}
+          onClick={() =>
+            window.shell.command({ type: 'playQueue', tracks, startIndex: 0, shuffle: true })
+          }
         >
           <Shuffle size={14} /> Перемешать
         </button>

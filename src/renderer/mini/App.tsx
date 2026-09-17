@@ -7,6 +7,7 @@ import { PillVariant } from './variants/PillVariant'
 import { CoverVariant } from './variants/CoverVariant'
 import type { VariantProps } from './variants/shared'
 import type { MiniVariant } from '@shared/types'
+import { useAppearance } from '../shared/useAppearance'
 
 const VARIANTS: Record<MiniVariant, (props: VariantProps) => JSX.Element> = {
   bar: BarVariant,
@@ -21,6 +22,7 @@ const VARIANTS: Record<MiniVariant, (props: VariantProps) => JSX.Element> = {
  */
 export function App(): JSX.Element {
   const { player, settings } = useMiniState()
+  useAppearance(settings)
   const ref = useRef<HTMLDivElement>(null)
   /**
    * Authoritative hover, measured against the cursor position by the main
@@ -48,12 +50,22 @@ export function App(): JSX.Element {
   const expanded = pinned || (settings.miniExpandOnHover && hovered)
   const Variant = VARIANTS[settings.miniVariant] ?? BarVariant
 
+  /**
+   * Двойной щелчок по плите. Проверено настоящим системным щелчком: Windows
+   * глотает по drag-поверхности движения мыши, но не щелчки, — поэтому здесь
+   * можно обойтись обычным обработчиком, без своего перетаскивания.
+   */
+  const onDoubleClick = (): void => {
+    if (settings.miniDoubleClick === 'openPlayer') window.mini.openPlayer()
+    else if (settings.miniDoubleClick === 'expand') setPinned((value) => !value)
+  }
+
   return (
     <div ref={ref} className="mini" style={{ opacity: hovered ? 1 : settings.miniIdleOpacity }}>
       <Variant
         player={player}
         expanded={expanded}
-        onToggleExpand={() => setPinned((value) => !value)}
+        onToggleExpand={onDoubleClick}
         onCommand={(command) => window.mini.command(command)}
         onClose={() => window.mini.close()}
         onRestore={() => window.mini.restoreMain()}

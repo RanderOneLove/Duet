@@ -10,6 +10,9 @@ const api = {
   // player
   getPlayer: (): Promise<PlayerState> => ipcRenderer.invoke(IPC.playerGet),
   command: (input: PlayerCommand): void => ipcRenderer.send(IPC.playerCommand, input),
+  /** Просьба из мини-плеера открыть полноэкранный плеер. */
+  onOpenPlayer: (handler: () => void) => subscribe(IPC.shellOpenPlayer, handler),
+
   onPlayer: (handler: (state: PlayerUpdate) => void) => subscribe(IPC.playerState, handler),
 
   // sources

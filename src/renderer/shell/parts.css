@@ -21,8 +21,8 @@
 }
 
 .search__label {
+  letter-spacing: var(--tr-caps);
   font-size: 11px;
-  letter-spacing: 0.08em;
   font-weight: 600;
   padding: 0 10px 6px;
 }
@@ -44,8 +44,8 @@
 }
 
 .topresult__kicker {
+  letter-spacing: var(--tr-caps);
   font-size: 11px;
-  letter-spacing: 0.08em;
   font-weight: 600;
 }
 
@@ -60,9 +60,11 @@
 }
 
 .topresult__title {
+  font-family: var(--font-display);
+  letter-spacing: var(--tr-display);
+  line-height: 1.12;
   font-size: 20px;
   font-weight: 700;
-  letter-spacing: -0.015em;
 }
 
 .topresult__sub {
@@ -99,8 +101,8 @@
 /* ---- full player extras ------------------------------------------------- */
 
 .fullplayer__kicker {
+  letter-spacing: var(--tr-caps);
   font-size: 10.5px;
-  letter-spacing: 0.09em;
   font-weight: 600;
 }
 
@@ -159,8 +161,8 @@
 }
 
 .settings__group {
+  letter-spacing: var(--tr-caps);
   font-size: 11px;
-  letter-spacing: 0.09em;
   font-weight: 600;
   margin: 18px 0 9px;
 }
@@ -241,12 +243,19 @@
 }
 
 .about__name {
+  font-family: var(--font-display);
+  letter-spacing: var(--tr-display);
+  line-height: 1.12;
   font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.02em;
 }
 
 /* Rows sit inside a card now, so the last one drops its divider. */
 .srow--last {
   border-bottom: 0;
+}
+
+/* Кнопка «показать остальные треки» под коротким списком в поиске. */
+.search__more {
+  margin-top: 10px;
 }

@@ -25,7 +25,17 @@ export function createTray(): Tray {
 export function destroyTray(): void {
   tray?.destroy()
   tray = null
+  lastFace = ''
 }
+
+/**
+ * Всё, что видно в трее, одной строкой. Пока она та же — перестраивать нечего.
+ *
+ * Меню и подсказка перерисовывались на каждое изменение состояния плеера, а
+ * оно меняется четыре раза в секунду: тикает позиция. Каждая такая перерисовка
+ * — сборка меню из двенадцати пунктов и два обращения к системному трею.
+ */
+let lastFace = ''
 
 /** Rebuild the menu — Electron cannot mutate a single item's label. */
 function render(): void {
@@ -33,6 +43,17 @@ function render(): void {
   const state = getPlayer()
   const settings = getSettings()
   const track = currentTrack(state)
+
+  const face = [
+    nowPlayingLabel(state),
+    tooltip(state),
+    state.playing,
+    track !== null,
+    isMiniPlayerVisible(),
+    settings.miniShowWhen
+  ].join(' | ')
+  if (face === lastFace) return
+  lastFace = face
 
   tray.setToolTip(tooltip(state))
   tray.setContextMenu(

@@ -9,6 +9,8 @@ interface Props<T extends string> {
   options: Option<T>[]
   value: T
   className?: string
+  /** Выбор виден, но недоступен — когда его отменяет настройка выше. */
+  disabled?: boolean
   onChange: (value: T) => void
 }
 
@@ -16,13 +18,20 @@ interface Props<T extends string> {
  * The wireframe's `.hseg` control. Buttons rather than spans: the styling hangs
  * off `aria-pressed`, and a segmented filter has to be reachable by keyboard.
  */
-export function Segmented<T extends string>({ options, value, className, onChange }: Props<T>): JSX.Element {
+export function Segmented<T extends string>({
+  options,
+  value,
+  className,
+  disabled,
+  onChange
+}: Props<T>): JSX.Element {
   return (
-    <div className={`seg ${className ?? ''}`} role="group">
+    <div className={`seg ${disabled ? 'seg--off' : ''} ${className ?? ''}`} role="group">
       {options.map((option) => (
         <button
           key={option.id}
           type="button"
+          disabled={disabled}
           aria-pressed={value === option.id}
           onClick={() => onChange(option.id)}
         >

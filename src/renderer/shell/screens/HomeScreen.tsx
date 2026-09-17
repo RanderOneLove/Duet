@@ -206,7 +206,7 @@ function WaveHero({
   const upNext = live ? live.next : wave.tracks.slice(0, 4)
 
   return (
-    <section className={`wave wave--${service}`}>
+    <section className={`on-media wave wave--${service}`}>
       {/* The current cover, blurred, carries the plate's colour. */}
       {cover && <div className="wave__glow" style={{ backgroundImage: `url("${cover}")` }} />}
 

@@ -10,7 +10,8 @@
     "dev": "electron-vite dev",
     "build": "tsc --noEmit && electron-vite build",
     "preview": "electron-vite preview",
-    "dist": "npm run build && electron-builder --win"
+    "dist": "npm run build && electron-builder --win",
+    "perf": "node scripts/perf.mjs"
   },
   "dependencies": {
     "@toil/vk-audio": "^0.0.10",

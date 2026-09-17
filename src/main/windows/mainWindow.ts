@@ -2,6 +2,7 @@ import { BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { IPC } from '@shared/ipc'
 import { getSettings, onSettingsChanged } from '../state/settings'
+import { mark } from '../perf'
 
 /**
  * The app shell: our own dark chrome (sidebar, top bar, now-playing bar) with
@@ -47,6 +48,7 @@ export function createMainWindow(options: { startHidden?: boolean } = {}): Brows
   else void win.loadFile(join(__dirname, '../renderer/shell/index.html'))
 
   win.once('ready-to-show', () => {
+    mark('shellReady')
     // Auto-started into the tray: stay out of the way until asked for.
     if (options.startHidden) return
     win?.show()

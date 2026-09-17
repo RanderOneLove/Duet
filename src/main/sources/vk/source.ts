@@ -4,6 +4,9 @@ import { SessionExpiredError, type Source } from '../types'
 import { clearSession, getAuthCookies, isSignedIn, signIn } from './bridge'
 import { VKAudio } from '@toil/vk-audio'
 import { VKWebClient } from '@toil/vk-audio/client'
+import { forgetLists, readList, writeList } from '../../library/cache'
+import { listChanged, notifyLibraryChanged } from '../../library/changed'
+import { matchKey } from '../../library/match'
 
 
 /** Items per request, and a ceiling on how many requests one listing may make. */
@@ -13,6 +16,8 @@ const MAX_PAGES = 60
 const PAGE_CONCURRENCY = 4
 /** How long the cached library stays good before it is walked again. */
 const LIKED_TTL_MS = 5 * 60 * 1000
+/** Плейлисты меняются реже треков, поэтому и держатся дольше. */
+const LISTS_TTL_MS = 10 * 60 * 1000
 
 export class VkSource implements Source {
   readonly id = 'vk' as const
@@ -42,6 +47,8 @@ export class VkSource implements Source {
     this.account = null
     this.client = null
     this.liked = null
+    this.lists = null
+    forgetLists('vk')
     await clearSession()
   }
 
@@ -62,9 +69,31 @@ export class VkSource implements Source {
     // they would each walk the whole library.
     if (this.likedInFlight) return this.likedInFlight
 
+    // Список с прошлого запуска отдаётся сразу, а обход уходит в фон:
+    // восемнадцать страниц по двести треков — это секунды, которые иначе
+    // человек смотрит на пустую Главную.
+    const stored = this.liked ? null : readList<Track>('liked', 'vk')
+    if (stored) {
+      this.liked = { at: Date.now(), tracks: stored.items }
+      this.indexLiked(stored.items)
+      void this.walkLibrary(true)
+      return stored.items
+    }
+
+    return this.walkLibrary(false)
+  }
+
+  /** Обойти библиотеку целиком и запомнить её — в памяти и на диске. */
+  private walkLibrary(background: boolean): Promise<Track[]> {
+    const known = this.liked?.tracks
     this.likedInFlight = this.pagedAudioGet({ owner_id: this.accountId || '' }, true)
       .then((tracks) => {
         this.liked = { at: Date.now(), tracks }
+        this.indexLiked(tracks)
+        writeList('liked', 'vk', tracks)
+        // Фоновый обход никто не ждёт, поэтому об изменениях надо сказать —
+        // иначе экран останется с прошлым списком до следующего запуска.
+        if (background && listChanged(known, tracks)) notifyLibraryChanged()
         return tracks
       })
       .finally(() => {
@@ -73,10 +102,33 @@ export class VkSource implements Source {
     return this.likedInFlight
   }
 
+  /**
+   * Плейлисты меняются редко, а запрашивались при каждом открытии Главной —
+   * полсекунды сети на то, что почти всегда то же самое. Поэтому здесь тот же
+   * порядок, что и с лайками: сохранённое сразу, свежее следом.
+   */
   async playlists(): Promise<Playlist[]> {
     if (!this.client) throw new SessionExpiredError('vk')
+    if (this.lists && Date.now() - this.lists.at < LISTS_TTL_MS) return this.lists.items
+
+    const stored = this.lists ? null : readList<Playlist>('playlists', 'vk')
+    if (stored) {
+      this.lists = { at: Date.now(), items: stored.items }
+      void this.readPlaylists(true)
+      return stored.items
+    }
+    return this.readPlaylists(false)
+  }
+
+  private async readPlaylists(background: boolean): Promise<Playlist[]> {
+    if (!this.client) throw new SessionExpiredError('vk')
+    const known = this.lists?.items
     const data = await this.client.getSectionsWithBlocks(this.accountId || undefined)
-    return data.playlists.map(p => this.mapPlaylist(p))
+    const items = data.playlists.map((p) => this.mapPlaylist(p))
+    this.lists = { at: Date.now(), items }
+    writeList('playlists', 'vk', items)
+    if (background && listChanged(known, items)) notifyLibraryChanged()
+    return items
   }
 
   async playlistTracks(nativeId: string): Promise<Track[]> {
@@ -144,17 +196,47 @@ export class VkSource implements Source {
     // VK exposes audios through one method and the rest through others that are
     // not part of the library's typed surface. Each extra lookup is optional:
     // if VK drops it, the row simply stays empty instead of failing the search.
-    const [result, albums, artists] = await Promise.all([
+    const [result, albums, artists, lists] = await Promise.all([
       this.client.searchAudio(query),
       this.searchAlbums(query),
-      this.searchArtists(query)
+      this.searchArtists(query),
+      this.searchPlaylists(query)
     ])
 
     return {
       tracks: result.audios.map((a) => this.mapTrack(a, false)),
       albums,
       artists,
-      playlists: []
+      playlists: lists
+    }
+  }
+
+  /**
+   * Плейлисты по запросу. Раньше здесь стояла пустая заглушка, и раздел
+   * «Плейлисты» в поиске держался на одном Яндексе. У VK для этого есть
+   * отдельный метод — альбомы и плейлисты он различает, хотя поля у них общие.
+   */
+  private async searchPlaylists(query: string): Promise<Playlist[]> {
+    try {
+      const params = new URLSearchParams({ q: query, count: '10' })
+      const items = (await this.call('audio.searchPlaylists', params))?.items
+      if (!Array.isArray(items)) return []
+      return items.map((raw: any) => {
+        // Тот же вид идентификатора, что и у своих плейлистов: по нему
+        // playlistTracks потом разбирает владельца, номер и ключ доступа.
+        const nativeId = `${raw.owner_id}_${raw.id}_${raw.access_key ?? ''}`
+        return {
+          id: `vk:${nativeId}`,
+          service: 'vk' as const,
+          nativeId,
+          title: String(raw.title ?? ''),
+          description: raw.description ? String(raw.description) : null,
+          trackCount: Number(raw.count ?? 0),
+          coverUrl: thumbOf(raw.photo ?? raw.thumb)
+        }
+      })
+    } catch {
+      return []
     }
   }
 
@@ -251,8 +333,13 @@ export class VkSource implements Source {
 
   async setLiked(track: Track, liked: boolean): Promise<void> {
     if (!this.client) throw new SessionExpiredError('vk')
-    const [ownerId, audioId] = track.nativeId.split('_')
-    
+
+    // Удалять надо свою копию, а не тот трек, который показан. У пришедшего
+    // из волны владелец чужой, и удаление по его номеру не сделало бы ничего.
+    const twin = this.likedTwin(track)
+    const target = liked ? track : twin ?? track
+    const [ownerId, audioId] = target.nativeId.split('_')
+
     if (liked) {
       await this.client.add(Number(ownerId), Number(audioId))
     } else {
@@ -262,8 +349,11 @@ export class VkSource implements Source {
     // Patch the cached library so the change shows immediately, without paying
     // for the full walk again.
     if (this.liked) {
-      const without = this.liked.tracks.filter((item) => item.id !== track.id)
+      const without = this.liked.tracks.filter(
+        (item) => item.id !== target.id && item.id !== track.id
+      )
       this.liked.tracks = liked ? [{ ...track, liked: true }, ...without] : without
+      this.indexLiked(this.liked.tracks)
     }
   }
 
@@ -309,6 +399,30 @@ export class VkSource implements Source {
   private liked: { at: number; tracks: Track[] } | null = null
   /** A walk already under way; a second caller waits on it instead of starting its own. */
   private likedInFlight: Promise<Track[]> | null = null
+  /** Плейлисты — тот же приём, только список короткий. */
+  private lists: { at: number; items: Playlist[] } | null = null
+
+  /**
+   * Избранное, разложенное для узнавания. По имени — потому что добавленный
+   * трек VK хранит как вашу копию с другим номером: из волны тот же трек
+   * приходит с исходным владельцем, и сравнение по идентификатору его не
+   * узнаёт. Значение — та самая копия: именно её надо удалять, когда сердечко
+   * гасят у трека, пришедшего не из библиотеки.
+   */
+  private likedIndex = new Map<string, Track>()
+
+  private indexLiked(tracks: Track[]): void {
+    this.likedIndex = new Map()
+    for (const track of tracks) {
+      this.likedIndex.set(track.id, track)
+      this.likedIndex.set(matchKey(track), track)
+    }
+  }
+
+  /** Та же песня в избранном, если она там есть. */
+  private likedTwin(track: Pick<Track, 'id' | 'title' | 'artists'>): Track | undefined {
+    return this.likedIndex.get(track.id) ?? this.likedIndex.get(matchKey(track))
+  }
 
   private async adopt(): Promise<Account> {
     const cookies = await getAuthCookies()
@@ -341,6 +455,7 @@ export class VkSource implements Source {
   private mapTrack(a: any, liked: boolean): Track {
     const nativeId = `${a.ownerId}_${a.id}`
     const id = trackKey('vk', nativeId)
+    const artists: string[] = a.artists?.map((art: any) => art.name) || [a.artist].filter(Boolean)
     
     if (a.fileUrl) {
       this.streamHints.set(id, a.fileUrl)
@@ -351,7 +466,7 @@ export class VkSource implements Source {
       service: 'vk',
       nativeId,
       title: a.title,
-      artists: a.artists?.map((art: any) => art.name) || [a.artist].filter(Boolean),
+      artists,
       artistRefs: (a.artists ?? [])
         .map((art: any) => ({ nativeId: String(art?.id ?? ''), name: String(art?.name ?? '') }))
         .filter((art: { nativeId: string; name: string }) => art.nativeId && art.name),
@@ -359,7 +474,7 @@ export class VkSource implements Source {
       albumId: null,
       durationMs: a.duration * 1000,
       coverUrl: a.thumbnail?.photo300 ?? a.thumbnail?.photo135 ?? a.thumbnail?.photo68 ?? null,
-      liked: a.isLiked ?? liked,
+      liked: liked || a.isLiked === true || this.likedTwin({ id, title: a.title, artists }) !== undefined,
       available: !!a.fileUrl
     }
   }
@@ -390,7 +505,9 @@ export class VkSource implements Source {
       albumId: null,
       durationMs: (a.duration || 0) * 1000,
       coverUrl,
-      liked: liked,
+      // Из волны и плейлистов трек приходит без отметки об избранном — её
+      // подсказывает библиотека, иначе сердечко не горит на уже лайкнутом.
+      liked: liked || this.likedTwin({ id, title: a.title, artists }) !== undefined,
       available: !!a.url
     }
   }

@@ -15,9 +15,11 @@
 }
 
 .screen__title {
+  font-family: var(--font-display);
+  letter-spacing: var(--tr-display);
+  line-height: 1.12;
   font-size: 24px;
   font-weight: 700;
-  letter-spacing: -0.02em;
   margin: 0;
 }
 
@@ -41,9 +43,9 @@
 /* ---- sidebar playlists ------------------------------------------------- */
 
 .sidebar__label {
+  letter-spacing: var(--tr-caps);
   padding: 14px 10px 6px;
   font-size: 11px;
-  letter-spacing: 0.08em;
   font-weight: 600;
 }
 
@@ -178,7 +180,7 @@
   width: 140px;
   height: 140px;
   border-radius: var(--r-xl);
-  background: linear-gradient(135deg, #4A6CF7, #26262e);
+  background: linear-gradient(135deg, var(--accent), var(--art-to));
   box-shadow: var(--shadow-float);
   flex: none;
 }
@@ -188,16 +190,18 @@
 }
 
 .liked-hero__kicker {
+  letter-spacing: var(--tr-caps);
   font-size: 12px;
-  letter-spacing: 0.09em;
   font-weight: 600;
   margin-bottom: 6px;
 }
 
 .liked-hero__title {
+  font-family: var(--font-display);
+  letter-spacing: var(--tr-display);
+  line-height: 1.12;
   font-size: 42px;
   font-weight: 700;
-  letter-spacing: -0.025em;
   margin: 0 0 8px;
 }
 
@@ -218,7 +222,7 @@
   align-items: center;
   gap: 12px;
   padding: 0 10px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid var(--hairline);
   font-size: 11px;
   letter-spacing: 0.07em;
   margin-bottom: 8px;
@@ -253,9 +257,11 @@
 }
 
 .home__title {
+  font-family: var(--font-display);
+  letter-spacing: var(--tr-display);
+  line-height: 1.12;
   font-size: 19px;
   font-weight: 700;
-  letter-spacing: -0.01em;
   margin: 0;
 }
 
@@ -312,7 +318,7 @@
   height: 34px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -435,7 +441,7 @@
 }
 
 .stateblock__empty {
-  border: 2px dashed rgba(255, 255, 255, 0.1);
+  border: 2px dashed var(--fill-3);
   border-radius: 18px;
   display: flex;
   flex-direction: column;
@@ -450,7 +456,7 @@
   width: 48px;
   height: 48px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fill-1);
 }
 
 .stateblock__empty-title {
@@ -467,15 +473,17 @@
 }
 
 .connect__kicker {
+  letter-spacing: var(--tr-caps);
   font-size: 11px;
-  letter-spacing: 0.08em;
   font-weight: 600;
 }
 
 .connect__title {
+  font-family: var(--font-display);
+  letter-spacing: var(--tr-display);
+  line-height: 1.12;
   font-size: 28px;
   font-weight: 700;
-  letter-spacing: -0.02em;
   margin: 8px 0 6px;
 }
 
@@ -553,13 +561,20 @@
 
 /* ---- full player + queue (2d) ------------------------------------------ */
 
+/*
+ * Плеер приходит снизу — оттуда, где стоит панель воспроизведения, по которой
+ * его и открывают. Появляется он как материал: размытие и масштаб меняются
+ * вместе, поэтому читается как приехавшая поверхность, а не как проявившаяся
+ * из ничего картинка.
+ */
 .fullplayer {
   position: fixed;
   inset: 0;
   z-index: 30;
-  background: linear-gradient(180deg, #2a2740, #121212 55%);
+  background: linear-gradient(180deg, var(--player-from), var(--player-to) 55%);
   display: flex;
   flex-direction: column;
+  /* Чем именно он появляется — решает настройка; см. shared/motion.css. */
 }
 
 .fullplayer__header {
@@ -597,7 +612,7 @@
   width: min(46vh, 248px);
   height: min(46vh, 248px);
   border-radius: 14px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-float);
 }
 
 .fullplayer__meta {
@@ -607,9 +622,11 @@
 }
 
 .fullplayer__title {
+  font-family: var(--font-display);
+  letter-spacing: var(--tr-display);
+  line-height: 1.12;
   font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.02em;
 }
 
 .fullplayer__artist {
@@ -652,12 +669,12 @@
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: #fff;
-  color: #121212;
+  background: var(--invert-bg);
+  color: var(--invert-fg);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-play);
 }
 
 .fullplayer__actions {
@@ -692,8 +709,8 @@
 }
 
 .queue__head {
+  letter-spacing: var(--tr-caps);
   font-size: 11px;
-  letter-spacing: 0.08em;
   font-weight: 600;
   padding: 0 8px;
 }
@@ -753,7 +770,7 @@
   flex-direction: column;
   gap: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--hairline);
 }
 
 .queue__footer-actions {
@@ -803,8 +820,10 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 0, 0, 0.25);
-  border-top-color: #121212;
+  /* Крутилка живёт внутри кнопки и берёт её цвет — так она уместна и на
+     белой кнопке, и на акцентной, и в любой теме. */
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
   animation: spin 0.7s linear infinite;
   display: block;
 }
@@ -813,4 +832,12 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/*
+ * Слой одного экрана. Существует ради перехода: анимация проигрывается при
+ * появлении узла, поэтому у него меняется ключ — и весь экран считается новым.
+ */
+.app__screen {
+  min-height: 100%;
 }

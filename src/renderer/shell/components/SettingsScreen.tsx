@@ -8,7 +8,13 @@ import {
   type AutoDownloadScope,
   type MiniShowWhen,
   type MiniVariant,
-  type Settings
+  type MiniDoubleClick,
+  type MotionLevel,
+  type PlayerAnimation,
+  type ScreenAnimation,
+  type Settings,
+  type ThemeChoice,
+  type WaveAnimation
 } from '@shared/types'
 import { SERVICE_META, type Connection, type ServiceId } from '@shared/domain'
 import type { PlayerState, RepeatMode } from '@shared/player'
@@ -27,9 +33,10 @@ interface Props {
   onDisconnect: (id: ServiceId) => Promise<void>
 }
 
-type Pane = 'accounts' | 'playback' | 'downloads' | 'mini' | 'shortcuts' | 'about'
+type Pane = 'appearance' | 'accounts' | 'playback' | 'downloads' | 'mini' | 'shortcuts' | 'about'
 
 const PANES: { id: Pane; label: string }[] = [
+  { id: 'appearance', label: 'Оформление' },
   { id: 'accounts', label: 'Аккаунты' },
   { id: 'playback', label: 'Воспроизведение' },
   { id: 'downloads', label: 'Загрузки' },
@@ -57,7 +64,7 @@ export function SettingsScreen({
   onConnect,
   onDisconnect
 }: Props): JSX.Element {
-  const [pane, setPane] = useState<Pane>('accounts')
+  const [pane, setPane] = useState<Pane>('appearance')
 
   return (
     <div className="settings">
@@ -75,6 +82,7 @@ export function SettingsScreen({
       </div>
 
       <div className="settings__pane">
+        {pane === 'appearance' && <AppearancePane settings={settings} onChange={onChange} />}
         {pane === 'accounts' && (
           <AccountsPane connections={connections} onConnect={onConnect} onDisconnect={onDisconnect} />
         )}
@@ -89,6 +97,125 @@ export function SettingsScreen({
 }
 
 // ---------------------------------------------------------------------------
+
+const THEMES: { id: ThemeChoice; label: string; hint: string }[] = [
+  { id: 'system', label: 'Как в системе', hint: 'Следует настройке Windows' },
+  { id: 'light', label: 'Светлая', hint: 'Белые поверхности, мягкие тени' },
+  { id: 'dark', label: 'Тёмная', hint: 'Обложка светится на чёрном' }
+]
+
+function AppearancePane({ settings, onChange }: Pick<Props, 'settings' | 'onChange'>): JSX.Element {
+  // Просит ли система покоя прямо сейчас. Без этого «Как в системе» на машине
+  // с выключенными анимациями выглядит как сломанная настройка.
+  const systemQuiet = useMediaQuery('(prefers-reduced-motion: reduce)')
+
+  return (
+    <>
+      <Group label="ТЕМА" />
+      <div className="themes">
+        {THEMES.map((option) => (
+          <button
+            key={option.id}
+            className="themecard"
+            aria-pressed={settings.theme === option.id}
+            onClick={() => onChange({ theme: option.id })}
+          >
+            {/* Образец рисуется теми же значениями, что и само окно, поэтому
+                показывает настоящую тему, а не картинку про неё. */}
+            <span className={`themecard__stage themecard__stage--${option.id}`} aria-hidden={true}>
+              <span className="themecard__bar" />
+              <span className="themecard__line" />
+              <span className="themecard__line themecard__line--short" />
+              <span className="themecard__dot" />
+            </span>
+            <span className="themecard__label">{option.label}</span>
+            <span className="muted themecard__hint">{option.hint}</span>
+          </button>
+        ))}
+      </div>
+
+      <p className="muted settings__note">
+        Тема применяется сразу и к мини-плееру тоже. «Как в системе» переключается
+        вместе с Windows — выбранное вручную остаётся до тех пор, пока его не сменят.
+      </p>
+
+      <Group label="АНИМАЦИИ" />
+      <Card>
+        <Row
+          label="Сколько движения"
+          warn={settings.motion === 'system' && systemQuiet}
+          hint={
+            settings.motion === 'system'
+              ? systemQuiet
+                ? 'В Windows анимации выключены — приложение молчит вместе с ней. Выберите уровень, чтобы включить их здесь.'
+                : 'Следует настройке анимаций в Windows'
+              : settings.motion === 'off'
+                ? 'Интерфейс меняется мгновенно, без переходов'
+                : settings.motion === 'calm'
+                  ? 'Короткие переходы, ничего не отвлекает'
+                  : 'Длиннее переходы, обложка живёт'
+          }
+        >
+          <Segmented
+            value={settings.motion}
+            onChange={(value: MotionLevel) => onChange({ motion: value })}
+            options={[
+              { id: 'system', label: 'Как в системе' },
+              { id: 'off', label: 'Выкл' },
+              { id: 'calm', label: 'Сдержанно' },
+              { id: 'lively', label: 'Живо' }
+            ]}
+          />
+        </Row>
+
+        <Row label="Полноэкранный плеер" hint="Как он появляется поверх окна">
+          <Segmented
+            value={settings.motionPlayer}
+            disabled={settings.motion === 'off' || (settings.motion === 'system' && systemQuiet)}
+            onChange={(value: PlayerAnimation) => onChange({ motionPlayer: value })}
+            options={[
+              { id: 'sheet', label: 'Снизу' },
+              { id: 'zoom', label: 'Раскрытие' },
+              { id: 'fade', label: 'Проявление' }
+            ]}
+          />
+        </Row>
+
+        <Row label="«Моя волна»" hint="Что делает обложка на главной, пока вы смотрите">
+          <Segmented
+            value={settings.motionWave}
+            disabled={settings.motion === 'off' || (settings.motion === 'system' && systemQuiet)}
+            onChange={(value: WaveAnimation) => onChange({ motionWave: value })}
+            options={[
+              { id: 'still', label: 'Неподвижно' },
+              { id: 'breathe', label: 'Дыхание' },
+              { id: 'drift', label: 'Дрейф' }
+            ]}
+          />
+        </Row>
+
+        <Row label="Переход между экранами" hint="Когда переключаетесь между разделами" last>
+          <Segmented
+            value={settings.motionScreens}
+            disabled={settings.motion === 'off' || (settings.motion === 'system' && systemQuiet)}
+            onChange={(value: ScreenAnimation) => onChange({ motionScreens: value })}
+            options={[
+              { id: 'none', label: 'Без него' },
+              { id: 'fade', label: 'Проявление' },
+              { id: 'slide', label: 'Подъём' }
+            ]}
+          />
+        </Row>
+      </Card>
+
+      <p className="muted settings__note">
+        «Как в системе» слушается Windows: при выключенных там анимациях приложение
+        тоже замирает. Выбранный вручную уровень — решение про это приложение, и оно
+        системную настройку перекрывает.
+      </p>
+    </>
+  )
+}
 
 function AccountsPane({
   connections,
@@ -393,6 +520,26 @@ function MiniPane({
             ]}
           />
         </Row>
+        <Row
+          label="Двойной щелчок по плите"
+          hint={
+            settings.miniDoubleClick === 'openPlayer'
+              ? 'Разворачивает приложение и открывает плеер во весь экран'
+              : settings.miniDoubleClick === 'expand'
+                ? 'Раскрывает плиту и оставляет раскрытой'
+                : 'Ничего не делает'
+          }
+        >
+          <Segmented
+            value={settings.miniDoubleClick}
+            onChange={(value: MiniDoubleClick) => onChange({ miniDoubleClick: value })}
+            options={[
+              { id: 'expand', label: 'Раскрыть' },
+              { id: 'openPlayer', label: 'Открыть плеер' },
+              { id: 'nothing', label: 'Ничего' }
+            ]}
+          />
+        </Row>
         <Row label="Раскрывать по наведению" hint="Иначе — только двойным щелчком по плееру">
           <Toggle
             value={settings.miniExpandOnHover}
@@ -553,6 +700,21 @@ function InviteLink({ settings }: { settings: Settings }): JSX.Element {
 }
 
 // ---- small building blocks -------------------------------------------------
+
+/** Следить за системной настройкой, а не спрашивать её один раз при открытии. */
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
+
+  useEffect(() => {
+    const media = window.matchMedia(query)
+    const update = (): void => setMatches(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [query])
+
+  return matches
+}
 
 function Group({ label }: { label: string }): JSX.Element {
   return <div className="settings__group muted">{label}</div>

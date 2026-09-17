@@ -9,7 +9,17 @@ const store = new Store<Settings>({
 type Listener = (settings: Settings) => void
 const listeners = new Set<Listener>()
 
+/**
+ * Собранные настройки. Их спрашивают на каждом тике позиции — из движка, из
+ * трея, из публикации совместного прослушивания, — а сборка означала чтение
+ * хранилища и склейку объекта поверх умолчаний по четыре раза в секунду.
+ * Файл меняем только мы, так что достаточно пересобирать его при записи.
+ */
+let cached: Settings | null = null
+
 export function getSettings(): Settings {
+  if (cached) return cached
+
   // Spread over the defaults so a settings file written by an older version
   // still yields every key the app expects.
   const stored = store.store as Partial<Settings> & { miniOnMinimize?: boolean }
@@ -20,11 +30,14 @@ export function getSettings(): Settings {
   if (stored.miniShowWhen === undefined && stored.miniOnMinimize === false) {
     settings.miniShowWhen = 'never'
   }
+  cached = settings
   return settings
 }
 
 export function setSettings(patch: Partial<Settings>): Settings {
   const next = { ...getSettings(), ...patch }
+  // Снимок обновляется до записи: слушатели ниже читают настройки сразу же.
+  cached = next
   store.set(next)
   for (const listener of listeners) listener(next)
   return next

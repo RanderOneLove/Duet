@@ -7,6 +7,7 @@ import './parts2.css'
 import './parts3.css'
 import './parts4.css'
 import './parts5.css'
+import '../shared/motion.css'
 import { App } from './App'
 
 createRoot(document.getElementById('root') as HTMLElement).render(<App />)

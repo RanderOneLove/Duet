@@ -52,16 +52,30 @@ export class YandexApi {
       .filter(Boolean)
   }
 
-  /** Hydrate ids into full tracks. The endpoint takes a POST form, not a query. */
+  /**
+   * Hydrate ids into full tracks. The endpoint takes a POST form, not a query,
+   * and rejects very long id lists — отсюда страницы. Страницы уходят
+   * одновременно, а не одна за другой: тысяча лайков — это четыре запроса, и
+   * выстраивать их в очередь означало складывать четыре задержки сети подряд.
+   */
   async tracks(ids: string[]): Promise<YandexTrack[]> {
     if (ids.length === 0) return []
+
+    const pages: string[][] = []
+    for (let i = 0; i < ids.length; i += 250) pages.push(ids.slice(i, i + 250))
+
+    const hydrated = await Promise.all(
+      pages.map(async (page) => {
+        const body = new URLSearchParams()
+        body.set('trackIds', page.join(','))
+        body.set('withPositions', 'false')
+        return this.post<any[]>('/tracks', body)
+      })
+    )
+
     const out: YandexTrack[] = []
-    // The endpoint rejects very long id lists, so hydrate in pages.
-    for (let i = 0; i < ids.length; i += 250) {
-      const body = new URLSearchParams()
-      body.set('trackIds', ids.slice(i, i + 250).join(','))
-      body.set('withPositions', 'false')
-      const data = await this.post<any[]>('/tracks', body)
+    // Порядок страниц сохраняется, поэтому список остаётся тем же, что и был.
+    for (const data of hydrated) {
       for (const raw of asArray(data)) {
         const track = toTrack(raw)
         if (track) out.push(track)

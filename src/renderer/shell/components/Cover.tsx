@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface Props {
   url: string | null | undefined
@@ -17,10 +17,25 @@ interface Props {
  */
 export function Cover({ url, seed = '', className = '', rounded = false, alt = '' }: Props): JSX.Element {
   const [failed, setFailed] = useState(false)
+  const ref = useRef<HTMLImageElement>(null)
+
+  useEffect(() => {
+    // Новая ссылка заслуживает новой попытки.
+    setFailed(false)
+
+    // Картинка могла не загрузиться до того, как обработчик оказался на месте
+    // — так бывает с адресом, о неудаче которого браузер уже знает. События
+    // тогда не будет вовсе, и о провале говорит только нулевой размер: без
+    // этой проверки вместо подставной обложки оставался значок сломанной
+    // картинки.
+    const image = ref.current
+    if (image?.complete && image.naturalWidth === 0) setFailed(true)
+  }, [url])
 
   if (url && !failed) {
     return (
       <img
+        ref={ref}
         className={`art ${rounded ? 'art--round' : ''} ${className}`}
         src={url}
         alt={alt}

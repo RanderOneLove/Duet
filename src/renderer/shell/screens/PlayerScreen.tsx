@@ -63,7 +63,10 @@ export function PlayerScreen({
         <div className="fullplayer__glow" style={{ backgroundImage: `url("${track.coverUrl}")` }} />
       )}
 
-      <div className="fullplayer__header">
+      {/* Шапка и левая половина лежат на размытой обложке — там свой набор
+          значений. Очередь справа остаётся обычной панелью приложения, иначе
+          в светлой теме её текст оказывался белым на белом. */}
+      <div className="on-media fullplayer__header">
         <button className="iconbtn" title="Свернуть" onClick={onClose}>
           ▾
         </button>
@@ -92,7 +95,7 @@ export function PlayerScreen({
       </div>
 
       <div className="fullplayer__body">
-        <div className="fullplayer__now">
+        <div className="on-media fullplayer__now">
           <Cover url={track?.coverUrl} seed={track?.title ?? ''} className="fullplayer__art" />
 
           <div className="fullplayer__meta">

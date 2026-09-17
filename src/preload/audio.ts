@@ -17,6 +17,11 @@ export type AudioControl =
   | { type: 'setVolume'; volume: number }
   | { type: 'setMuted'; muted: boolean }
   | { type: 'setSink'; deviceId: string }
+  /**
+   * Начать буферизовать то, что заиграет следующим. Ничего не проигрывает:
+   * когда этот же url придёт обычной загрузкой, он уже будет наготове.
+   */
+  | { type: 'preload'; url: string }
 
 export interface AudioOutput {
   id: string

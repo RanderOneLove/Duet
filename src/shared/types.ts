@@ -53,7 +53,49 @@ export type AutoDownloadScope = 'played' | 'liked'
  */
 export type MiniShowWhen = 'never' | 'minimized' | 'inactive'
 
+/**
+ * Оформление окна. «Как в системе» разрешается уже в самих окнах — через
+ * запрос к системной настройке, — а здесь хранится именно выбор человека,
+ * иначе переключение системы на светлое молча переписывало бы его решение.
+ */
+export type ThemeChoice = 'system' | 'light' | 'dark'
+
+/**
+ * Сколько в интерфейсе движения.
+ *
+ * Общий уровень, а не выключатель у каждой анимации: «выключено» должно гасить
+ * всё разом, не заставляя обходить четыре тумблера.
+ *
+ * «Как в системе» — умолчание: если в Windows выключены анимации, приложение
+ * молчит вместе с ней. Остальные три — осознанное решение человека, и оно
+ * систему перекрывает. Без этого выбор в настройках был бы обманом: на машине
+ * с выключенными анимациями включить их было бы невозможно.
+ */
+export type MotionLevel = 'system' | 'off' | 'calm' | 'lively'
+
+/** Как появляется полноэкранный плеер. */
+export type PlayerAnimation = 'sheet' | 'zoom' | 'fade'
+
+/** Живёт ли обложка в «Моей волне». */
+export type WaveAnimation = 'still' | 'breathe' | 'drift'
+
+/** Переход между экранами приложения. */
+export type ScreenAnimation = 'none' | 'fade' | 'slide'
+
+/** Что делает двойной щелчок по мини-плееру. */
+export type MiniDoubleClick = 'expand' | 'openPlayer' | 'nothing'
+
 export interface Settings {
+  /** Светлое или тёмное оформление, либо вслед за системой. */
+  theme: ThemeChoice
+  /** Общий уровень движения в интерфейсе. */
+  motion: MotionLevel
+  /** Чем появляется полноэкранный плеер. */
+  motionPlayer: PlayerAnimation
+  /** Что происходит с обложкой в «Моей волне». */
+  motionWave: WaveAnimation
+  /** Как сменяются экраны. */
+  motionScreens: ScreenAnimation
   /** Player volume and mute, restored between runs. */
   volume: number
   muted: boolean
@@ -118,6 +160,8 @@ export interface Settings {
   miniExpandOnHover: boolean
   /** Let the plate be dragged around, or pin it where it stands. */
   miniDraggable: boolean
+  /** Что делает двойной щелчок по плите мини-плеера. */
+  miniDoubleClick: MiniDoubleClick
   hotkeyToggleMini: string
   hotkeyPlayPause: string
   hotkeyNext: string
@@ -125,6 +169,11 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  theme: 'system',
+  motion: 'system',
+  motionPlayer: 'sheet',
+  motionWave: 'breathe',
+  motionScreens: 'fade',
   volume: 0.8,
   muted: false,
   preferDownloaded: true,
@@ -155,6 +204,7 @@ export const DEFAULT_SETTINGS: Settings = {
   miniIdleOpacity: 0.92,
   miniExpandOnHover: true,
   miniDraggable: true,
+  miniDoubleClick: 'expand',
   hotkeyToggleMini: 'CommandOrControl+Shift+M',
   hotkeyPlayPause: 'MediaPlayPause',
   hotkeyNext: 'MediaNextTrack',

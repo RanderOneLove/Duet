@@ -48,7 +48,22 @@ export function LikedScreen(props: Props): JSX.Element {
             <button className="pill" disabled={filteredTracks.length === 0} onClick={() => filteredTracks.length > 0 && playTrack(filteredTracks[0])}>
               <Play size={14} /> Слушать
             </button>
-            <button className="pill pill--ghost" title="Перемешать" onClick={() => window.shell.command({ type: 'toggleShuffle' })}>
+            {/* Кнопка обязана включить именно этот список вперемешку. Раньше она
+                лишь переключала тумблер — то есть на пустом плеере не делала
+                ничего, а на чужой очереди перемешивала чужое. */}
+            <button
+              className="pill pill--ghost"
+              title="Слушать вперемешку"
+              disabled={filteredTracks.length === 0}
+              onClick={() =>
+                window.shell.command({
+                  type: 'playQueue',
+                  tracks: filteredTracks,
+                  startIndex: 0,
+                  shuffle: true
+                })
+              }
+            >
               <Shuffle size={14} /> Перемешать
             </button>
             <button

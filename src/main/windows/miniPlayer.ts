@@ -2,7 +2,7 @@ import { BrowserWindow, screen } from 'electron'
 import { join } from 'node:path'
 import { IPC } from '@shared/ipc'
 import { MINI_SIZES, type MiniAnchor, type Settings } from '@shared/types'
-import { createPlayerWire, getPlayer, onPlayerChanged } from '../player/engine'
+import { createMiniWire, getPlayer, onPlayerChanged } from '../player/engine'
 import { getSettings, onSettingsChanged, setSettings } from '../state/settings'
 
 /**
@@ -26,7 +26,7 @@ export function createMiniPlayer(): BrowserWindow {
   size = { ...MINI_SIZES[settings.miniVariant] }
 
   // A new window knows nothing, so the next push must carry the queue.
-  toMini = createPlayerWire()
+  toMini = createMiniWire()
 
   win = new BrowserWindow({
     ...size,
@@ -165,7 +165,7 @@ export function resizeMiniPlayer(width: number, height: number): void {
 }
 
 /** Reset with the window: a fresh one must be told the queue it starts on. */
-let toMini = createPlayerWire()
+let toMini = createMiniWire()
 
 export function pushPlayback(): void {
   if (!win || win.isDestroyed()) return

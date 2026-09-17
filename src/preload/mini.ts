@@ -17,6 +17,8 @@ const api = {
   resize: (width: number, height: number): void => ipcRenderer.send(IPC.miniResize, { width, height }),
   close: (): void => ipcRenderer.send(IPC.miniToggle),
   restoreMain: (): void => ipcRenderer.send(IPC.miniRestoreMain),
+  /** Развернуть приложение и открыть плеер во весь экран. */
+  openPlayer: (): void => ipcRenderer.send(IPC.miniOpenPlayer),
 
   onPlayer: (handler: (state: PlayerUpdate) => void) => subscribe(IPC.playerState, handler),
   /** Hover comes from the main process — drag regions swallow DOM mouse events. */

@@ -7,3 +7,9 @@ dist/
 # Unrelated tool that happens to live here
 meridius-temp/
 meridius-src/
+
+# Навыки, поставленные через `npx skills add`: чужой текст, который
+# восстанавливается той же командой. В репозитории ему делать нечего.
+.agents/
+.claude/skills/
+skills-lock.json

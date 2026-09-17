@@ -4,9 +4,14 @@ import { getSecret, setSecret } from '../../state/secrets'
 import { SessionExpiredError, type Source, type WaveEvent } from '../types'
 import { YandexApi, type YandexTrack } from './api'
 import { clearSession, signIn } from './auth'
+import { forgetLists, readList, writeList } from '../../library/cache'
+import { listChanged, notifyLibraryChanged } from '../../library/changed'
+import { matchKey } from '../../library/match'
 
 /** How long the cached library stays good before it is read again. */
 const LIKED_TTL_MS = 5 * 60 * 1000
+/** Плейлисты меняются реже треков, поэтому и держатся дольше. */
+const LISTS_TTL_MS = 10 * 60 * 1000
 
 const TOKEN_KEY = 'yandex.token'
 const UID_KEY = 'yandex.uid'
@@ -22,6 +27,23 @@ export class YandexSource implements Source {
   private waveBatchId: string | null = null
   /** A read already under way; a second caller waits on it instead of starting its own. */
   private likedInFlight: Promise<Track[]> | null = null
+  /** Плейлисты — тот же приём, только список короткий. */
+  private lists: { at: number; items: Playlist[] } | null = null
+
+  /**
+   * Избранное для узнавания. Номера треков у Яндекса сквозные, так что здесь
+   * хватило бы и их, но по имени тоже: одна и та же песня попадается и как
+   * трек альбома, и как сингл, с разными номерами.
+   */
+  private likedIndex = new Set<string>()
+
+  private indexLiked(tracks: Track[]): void {
+    this.likedIndex = new Set()
+    for (const track of tracks) {
+      this.likedIndex.add(track.id)
+      this.likedIndex.add(matchKey(track))
+    }
+  }
   private uid: string | null = null
   private account: Account | null = null
 
@@ -53,7 +75,9 @@ export class YandexSource implements Source {
     this.api = null
     this.uid = null
     this.liked = null
+    this.lists = null
     this.account = null
+    forgetLists('yandex')
     await clearSession()
   }
 
@@ -63,10 +87,26 @@ export class YandexSource implements Source {
    * without this, every visit to either screen paid for them again.
    */
   async likedTracks(): Promise<Track[]> {
-    const { api, uid } = this.require()
+    this.require()
     if (this.liked && Date.now() - this.liked.at < LIKED_TTL_MS) return this.liked.tracks
     if (this.likedInFlight) return this.likedInFlight
 
+    // Как и у VK: прошлый список показывается сразу, свежий догоняет.
+    const stored = this.liked ? null : readList<Track>('liked', 'yandex')
+    if (stored) {
+      this.liked = { at: Date.now(), tracks: stored.items }
+      this.indexLiked(stored.items)
+      void this.readLibrary(true)
+      return stored.items
+    }
+
+    return this.readLibrary(false)
+  }
+
+  /** Перечитать библиотеку целиком и запомнить её — в памяти и на диске. */
+  private readLibrary(background: boolean): Promise<Track[]> {
+    const { api, uid } = this.require()
+    const known = this.liked?.tracks
     this.likedInFlight = (async () => {
       const ids = await api.likedTrackIds(uid)
       const raw = await api.tracks(ids)
@@ -74,6 +114,9 @@ export class YandexSource implements Source {
     })()
       .then((tracks) => {
         this.liked = { at: Date.now(), tracks }
+        this.indexLiked(tracks)
+        writeList('liked', 'yandex', tracks)
+        if (background && listChanged(known, tracks)) notifyLibraryChanged()
         return tracks
       })
       .finally(() => {
@@ -82,10 +125,25 @@ export class YandexSource implements Source {
     return this.likedInFlight
   }
 
+  /** Как и у VK: сохранённые плейлисты сразу, свежие следом. */
   async playlists(): Promise<Playlist[]> {
+    this.require()
+    if (this.lists && Date.now() - this.lists.at < LISTS_TTL_MS) return this.lists.items
+
+    const stored = this.lists ? null : readList<Playlist>('playlists', 'yandex')
+    if (stored) {
+      this.lists = { at: Date.now(), items: stored.items }
+      void this.readPlaylists(true)
+      return stored.items
+    }
+    return this.readPlaylists(false)
+  }
+
+  private async readPlaylists(background: boolean): Promise<Playlist[]> {
     const { api, uid } = this.require()
+    const known = this.lists?.items
     const list = await api.playlists(uid)
-    return list.map((raw) => ({
+    const items = list.map((raw) => ({
       id: `yandex:${uid}:${raw.kind}`,
       service: 'yandex' as const,
       // playlistTracks needs both halves, so the owner travels in the id.
@@ -95,6 +153,11 @@ export class YandexSource implements Source {
       trackCount: raw.trackCount,
       coverUrl: raw.coverUrl
     }))
+
+    this.lists = { at: Date.now(), items }
+    writeList('playlists', 'yandex', items)
+    if (background && listChanged(known, items)) notifyLibraryChanged()
+    return items
   }
 
   async playlistTracks(nativeId: string): Promise<Track[]> {
@@ -181,6 +244,7 @@ export class YandexSource implements Source {
     if (this.liked) {
       const without = this.liked.tracks.filter((item) => item.id !== track.id)
       this.liked.tracks = liked ? [{ ...track, liked: true }, ...without] : without
+      this.indexLiked(this.liked.tracks)
     }
   }
 
@@ -210,8 +274,9 @@ export class YandexSource implements Source {
   }
 
   private toDomain(track: YandexTrack, liked: boolean): Track {
+    const id = trackKey('yandex', track.id)
     return {
-      id: trackKey('yandex', track.id),
+      id,
       service: 'yandex',
       nativeId: track.id,
       title: track.title,
@@ -221,7 +286,8 @@ export class YandexSource implements Source {
       albumId: track.albumId,
       durationMs: track.durationMs,
       coverUrl: track.coverUrl,
-      liked,
+      // Волна и плейлисты про избранное не сообщают — спрашиваем библиотеку.
+      liked: liked || this.likedIndex.has(id) || this.likedIndex.has(matchKey(track)),
       available: track.available
     }
   }

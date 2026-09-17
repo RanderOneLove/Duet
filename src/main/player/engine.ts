@@ -11,7 +11,7 @@ import { controlAudio, loadAudio } from '../windows/audioHost'
 import { resolveStream, setLiked, wave, waveFeedback } from '../sources/registry'
 import { startFollowing, stopFollowing } from '../together/follow'
 import type { SharedState } from '../together/host'
-import { readSession, writeSession } from '../state/session'
+import { flushSession, readSession, writeSession } from '../state/session'
 import { addDownloads, downloadedFile } from '../downloads/manager'
 import { mediaUrl } from '../downloads/protocol'
 import { getSettings, setSettings } from '../state/settings'
@@ -50,8 +50,32 @@ export function createPlayerWire(): (state: PlayerState) => PlayerUpdate {
   }
 }
 
+/**
+ * Провод для мини-плеера. Он показывает ровно один трек, а получал очередь
+ * целиком: при игре из библиотеки это несколько тысяч треков, которые
+ * перекладываются через IPC в окно размером с ладонь и лежат там без дела.
+ * Поэтому очередь здесь усекается до текущего трека — и уходит, как и в
+ * большом проводе, только когда этот трек сменился.
+ */
+export function createMiniWire(): (state: PlayerState) => PlayerUpdate {
+  let sentId: string | null = null
+  return (state) => {
+    const track = state.queue[state.index] ?? null
+    const index = track ? 0 : -1
+    if (track?.id === sentId) return { ...state, queue: undefined, index }
+    sentId = track?.id ?? null
+    return { ...state, queue: track ? [track] : [], index }
+  }
+}
+
 export function getPlayer(): PlayerState {
   return state
+}
+
+/** Дописать сессию на выходе: асинхронная запись до закрытия может не успеть. */
+export function saveSessionNow(): void {
+  if (state.index < 0 || state.queue.length === 0) return
+  flushSession({ queue: state.queue, index: state.index, positionMs: state.positionMs })
 }
 
 export function onPlayerChanged(listener: Listener): () => void {
@@ -116,9 +140,21 @@ export async function command(input: PlayerCommand): Promise<void> {
       // The clicked track must stay under the cursor even if unavailable rows
       // were dropped from in front of it.
       const clicked = input.tracks[input.startIndex]
-      const index = Math.max(0, tracks.findIndex((track) => track.id === clicked?.id))
+      // Перемешивание — это настроение слушателя, а не свойство списка.
+      // Сбрасывая его здесь, плеер гасил тумблер ровно в тот момент, когда им
+      // только что воспользовались: включить перемешивание и нажать трек в
+      // «Вам нравится» означало выключить перемешивание.
+      const wantShuffle = input.shuffle ?? state.shuffle
+      // «Слушать вперемешку» начинается со случайного трека, а не с первого:
+      // иначе список каждый раз открывался бы одной и той же песней.
+      const index =
+        input.shuffle === true
+          ? Math.floor(Math.random() * tracks.length)
+          : Math.max(0, tracks.findIndex((track) => track.id === clicked?.id))
+
       unshuffled = null
       patch({ queue: tracks, index, shuffle: false, waveService: null })
+      if (wantShuffle) patch(shuffleQueue())
       await loadCurrent(true)
       return
     }
@@ -302,6 +338,74 @@ export async function command(input: PlayerCommand): Promise<void> {
   }
 }
 
+/**
+ * Сторож у загрузки.
+ *
+ * Ошибку плеер умел пережить и раньше: ссылка протухла — перезапросить и
+ * продолжить. Но трек может не заиграть и молча: элемент вечно «ждёт данных»,
+ * ошибки нет, а музыки нет тоже. Об этом и жалоба «иногда останавливается само
+ * и не продолжает» — восстанавливаться было нечему.
+ *
+ * Поэтому у каждой загрузки есть срок. Не зазвучало за него — считаем неудачей
+ * и пробуем иначе: сначала мимо скачанного файла (он может быть негодным), а
+ * если и так молчит — дальше по очереди, чтобы тишина не была окончательной.
+ */
+const START_TIMEOUT_MS = 8000
+let startTimer: NodeJS.Timeout | null = null
+
+/**
+ * Скачанные копии, которым мы больше не верим. Файл на диске выглядит готовым
+ * и при этом может не играть — тогда сеть надёжнее собственного архива.
+ */
+const distrustedFiles = new Set<string>()
+
+/** Сколько треков подряд не зазвучало. Обрыв сети не должен промотать очередь. */
+let consecutiveFailures = 0
+const MAX_CONSECUTIVE_FAILURES = 3
+
+function clearStartWatchdog(): void {
+  if (startTimer) clearTimeout(startTimer)
+  startTimer = null
+}
+
+function armStartWatchdog(token: number): void {
+  clearStartWatchdog()
+  startTimer = setTimeout(() => {
+    startTimer = null
+    if (token !== loadToken || hasStartedPlayingThisTrack) return
+    void giveUpOnSilence()
+  }, START_TIMEOUT_MS)
+}
+
+/** Трек молчит дольше положенного — решить, что с этим делать. */
+async function giveUpOnSilence(): Promise<void> {
+  const track = state.queue[state.index]
+  if (!track) return
+
+  // Играли с диска — попробовать то же самое из сети.
+  const fromFile = getSettings().preferDownloaded && !distrustedFiles.has(track.id)
+  if (fromFile && downloadedFile(track.id)) {
+    distrustedFiles.add(track.id)
+    await loadCurrent(true, state.positionMs)
+    return
+  }
+
+  if (retryPlayback()) return
+
+  consecutiveFailures += 1
+  if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+    patch({
+      loading: false,
+      playing: false,
+      error: 'Треки не начинают играть — похоже, пропала сеть'
+    })
+    return
+  }
+
+  patch({ error: `«${track.title}» не начал играть — пропускаем` })
+  await advance(1, false)
+}
+
 /** One automatic retry per track, so a broken link cannot spin forever. */
 let retriedTrackId: string | null = null
 let retriedAt = 0
@@ -315,6 +419,9 @@ function retryPlayback(): boolean {
 
   retriedTrackId = track.id
   retriedAt = now
+  // Повтор случается как раз потому, что ссылка перестала работать: взятую
+  // заранее надо забыть, иначе вторая попытка пойдёт по той же мёртвой.
+  prefetched.delete(track.id)
   void loadCurrent(true, state.positionMs)
   return true
 }
@@ -421,6 +528,8 @@ export function handleAudioEvent(event: AudioEvent): void {
   switch (event.type) {
     case 'playing':
       hasStartedPlayingThisTrack = true
+      clearStartWatchdog()
+      consecutiveFailures = 0
       patch({ playing: true, loading: false, error: null, positionMs: event.positionMs ?? state.positionMs })
       return
     case 'paused':
@@ -583,6 +692,72 @@ function reportWaveTrack(event: 'trackFinished' | 'skip'): void {
   void waveFeedback(track.service, event, track, state.positionMs / 1000)
 }
 
+/**
+ * Запас ссылок на то, что заиграет следующим.
+ *
+ * Ссылку на поток оба сервиса выдают короткоживущей, поэтому она всегда
+ * бралась в момент, когда трек уже нужен, — и это время человек слышит как
+ * паузу: у Яндекса это два последовательных запроса подряд, у VK — поход за
+ * манифестом. Здесь она берётся заранее, пока играет предыдущий трек.
+ */
+const PREFETCH_TTL_MS = 3 * 60 * 1000
+/** Больше держать незачем: очередь идёт вперёд, а ссылки протухают. */
+const PREFETCH_MAX = 12
+
+const prefetched = new Map<string, { url: string; at: number }>()
+let prefetching: string | null = null
+
+function cachedStream(trackId: string): string | null {
+  const hit = prefetched.get(trackId)
+  if (!hit) return null
+  if (Date.now() - hit.at > PREFETCH_TTL_MS) {
+    prefetched.delete(trackId)
+    return null
+  }
+  return hit.url
+}
+
+/**
+ * Приготовить следующий трек: узнать ссылку и отдать её хосту, чтобы тот начал
+ * буферизовать звук вторым элементом. Молча ничего не делает, если незачем.
+ */
+async function prefetchNext(): Promise<void> {
+  const next = state.queue[state.index + 1]
+  if (!next || !next.available) return
+  if (prefetching === next.id) return
+
+  // Скачанный файл ссылки не требует, но подогреть его стоит наравне с сетевым.
+  const local = getSettings().preferDownloaded ? downloadedFile(next.id) : null
+  if (local) {
+    controlAudio({ type: 'preload', url: mediaUrl(local) })
+    return
+  }
+
+  const known = cachedStream(next.id)
+  if (known) {
+    controlAudio({ type: 'preload', url: known })
+    return
+  }
+
+  prefetching = next.id
+  try {
+    const url = await resolveStream(next)
+    prefetched.set(next.id, { url, at: Date.now() })
+    if (prefetched.size > PREFETCH_MAX) {
+      const oldest = [...prefetched.entries()].sort((a, b) => a[1].at - b[1].at)[0]
+      if (oldest) prefetched.delete(oldest[0])
+    }
+    // Очередь могла уйти вперёд, пока мы ходили за ссылкой.
+    if (state.queue[state.index + 1]?.id === next.id) {
+      controlAudio({ type: 'preload', url })
+    }
+  } catch {
+    // Не вышло — узнаем об этом в свой черёд, обычной загрузкой.
+  } finally {
+    if (prefetching === next.id) prefetching = null
+  }
+}
+
 /** Resolve the current track's stream and hand it to the audio host. */
 async function loadCurrent(autoplay: boolean, startAtMs = 0): Promise<void> {
   const track = state.queue[state.index]
@@ -600,13 +775,22 @@ async function loadCurrent(autoplay: boolean, startAtMs = 0): Promise<void> {
     if (settings.autoDownload && settings.autoDownloadScope === 'played') {
       void addDownloads([track], true)
     }
-    const local = settings.preferDownloaded ? downloadedFile(track.id) : null
-    const url = local ? mediaUrl(local) : await resolveStream(track)
+    const local =
+      settings.preferDownloaded && !distrustedFiles.has(track.id)
+        ? downloadedFile(track.id)
+        : null
+    // Ссылка, взятая заранее, избавляет от похода в сеть именно здесь — в
+    // промежутке между треками, который слышно.
+    const url = local ? mediaUrl(local) : cachedStream(track.id) ?? (await resolveStream(track))
     // A newer track was selected while this lookup was in flight.
     if (token !== loadToken) return
     controlAudio({ type: 'setSink', deviceId: getSettings().outputDeviceId })
     if (state.waveService) void waveFeedback(track.service, 'trackStarted', track)
     loadAudio({ url, positionMs: startAtMs, volume: state.volume, muted: state.muted, autoplay })
+    // Загруженный, но не зазвучавший трек — это тишина без ошибки.
+    if (autoplay) armStartWatchdog(token)
+    // Пока играет этот, взять ссылку на следующий.
+    void prefetchNext()
   } catch (error) {
     if (token !== loadToken) return
     patch({
@@ -619,6 +803,7 @@ async function loadCurrent(autoplay: boolean, startAtMs = 0): Promise<void> {
 
 function stop(): void {
   hasStartedPlayingThisTrack = false
+  clearStartWatchdog()
   loadToken++
   controlAudio({ type: 'stop' })
   patch({ playing: false, loading: false, index: -1, positionMs: 0, durationMs: 0 })

@@ -28,6 +28,9 @@ export const IPC = {
   /** main → shell: connections changed (sign-in finished, token expired). */
   sourceConnectionsChanged: 'source:connectionsChanged',
 
+  /** main → shell: открыть полноэкранный плеер (просьба из мини-плеера). */
+  shellOpenPlayer: 'shell:openPlayer',
+
   /** shell → main: catalogue queries, all returning domain objects. */
   libHome: 'lib:home',
   libLiked: 'lib:liked',
@@ -69,6 +72,8 @@ export const IPC = {
   miniHover: 'mini:hover',
   miniToggle: 'mini:toggle',
   miniRestoreMain: 'mini:restoreMain',
+  /** mini → main: развернуть приложение и сразу открыть плеер во весь экран. */
+  miniOpenPlayer: 'mini:openPlayer',
 
   // ---- window / system ----
   displaysGet: 'displays:get',

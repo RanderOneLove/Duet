@@ -11,7 +11,7 @@
  */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  scrollbar-color: var(--scrollbar) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -24,7 +24,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--scrollbar);
   border-radius: 999px;
   /* The border fakes padding, so the thumb reads as a slim pill. */
   border: 3px solid transparent;
@@ -33,7 +33,7 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--fill-strong);
   background-clip: content-box;
 }
 
@@ -113,7 +113,7 @@
   position: relative;
   border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-raised);
   background: linear-gradient(120deg, #2b2340, #1b1c2b);
 }
 
@@ -147,7 +147,7 @@
   width: 176px;
   height: 176px;
   border-radius: var(--r-xl);
-  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-float);
   flex: none;
 }
 
@@ -167,19 +167,21 @@
   font-size: 11px;
   letter-spacing: 0.1em;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--text-muted);
 }
 
 .wave__title {
+  font-family: var(--font-display);
+  letter-spacing: var(--tr-display);
+  line-height: 1.12;
   font-size: 44px;
   line-height: 1.02;
   font-weight: 700;
-  letter-spacing: -0.03em;
   margin: 0;
 }
 
 .wave__sub {
-  color: rgba(255, 255, 255, 0.74);
+  color: var(--text-muted);
   font-size: 13.5px;
   white-space: nowrap;
   overflow: hidden;
@@ -205,22 +207,22 @@
   gap: 10px;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid var(--hairline);
   min-width: 0;
 }
 
 .wave__nextlabel {
+  letter-spacing: var(--tr-caps);
   font-size: 10.5px;
-  letter-spacing: 0.09em;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-faint);
   flex: none;
 }
 
 .wave__nextitem {
   font-size: 12.5px;
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  background: var(--fill-2);
   border-radius: 999px;
   padding: 4px 11px;
   max-width: 190px;

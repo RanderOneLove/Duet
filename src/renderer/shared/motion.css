@@ -1,0 +1,218 @@
+/*
+ * Движение в интерфейсе — всё, что настраивается.
+ *
+ * Здесь нет ни одной строчки про то, *что* анимировать логически: компоненты
+ * просто носят свои классы, а включает и выбирает вид этот лист, читая атрибуты
+ * на корне документа. Поэтому выбор в настройках виден сразу, без перезапуска и
+ * без перерисовки чего бы то ни было.
+ *
+ * Правил три:
+ *   1. Движется только то, что дёшево двигать, — transform, opacity, filter.
+ *   2. Ни одна петля не крутится быстрее одного круга в десяток секунд:
+ *      медленные колебания около пяти секунд утомляют и отвлекают.
+ *   3. Системная настройка «меньше движения» действует, пока уровень оставлен
+ *      на «как в системе»; выбранный руками — решение про это приложение.
+ */
+
+/* ---- общий уровень ------------------------------------------------------- */
+
+/* «Как в системе» без особых пожеланий ведёт себя как «сдержанно». */
+:root[data-motion='system'] {
+  --t-fast: 150ms;
+  --t-base: 220ms;
+}
+
+:root[data-motion='off'] {
+  --t-fast: 1ms;
+  --t-base: 1ms;
+}
+
+:root[data-motion='calm'] {
+  --t-fast: 150ms;
+  --t-base: 220ms;
+}
+
+:root[data-motion='lively'] {
+  --t-fast: 200ms;
+  --t-base: 400ms;
+}
+
+/* Выключено — значит выключено: ни въездов, ни петель. */
+:root[data-motion='off'] .fullplayer,
+:root[data-motion='off'] .pop__panel,
+:root[data-motion='off'] .app__screen,
+:root[data-motion='off'] .wave__glow {
+  animation: none !important;
+}
+
+/* ---- полноэкранный плеер ------------------------------------------------- */
+
+/*
+ * Три способа появиться, и все — «снизу вверх» по смыслу: плеер открывают из
+ * панели внизу окна, туда же он и уходит. «Раскрытие» растёт из обложки, к
+ * которой человек и тянулся, поэтому у него своя точка отсчёта.
+ */
+:root[data-anim-player='sheet'] .fullplayer {
+  animation: player-sheet var(--t-base) var(--ease);
+}
+
+:root[data-anim-player='zoom'] .fullplayer {
+  transform-origin: 50% 65%;
+  animation: player-zoom var(--t-base) var(--ease);
+}
+
+:root[data-anim-player='fade'] .fullplayer {
+  animation: player-fade var(--t-base) var(--ease);
+}
+
+@keyframes player-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.985);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+@keyframes player-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+    filter: blur(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+@keyframes player-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* «Живо» — обложка внутри плеера ещё и приезжает, а не просто оказывается. */
+:root[data-motion='lively']:root:not([data-anim-player='fade']) .fullplayer__art {
+  animation: art-in calc(var(--t-base) + 120ms) var(--ease) 60ms backwards;
+}
+
+@keyframes art-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- «Моя волна» --------------------------------------------------------- */
+
+/*
+ * Пластинка волны подсвечена собственной обложкой — увеличенной и размытой.
+ * Ей и поручено движение: она ни к чему не приковывает взгляд, потому что там
+ * нет ни текста, ни границ, только пятно цвета.
+ */
+:root[data-anim-wave='breathe'] .wave__glow {
+  animation: wave-breathe 18s ease-in-out infinite;
+}
+
+:root[data-anim-wave='drift'] .wave__glow {
+  animation: wave-drift 32s ease-in-out infinite alternate;
+}
+
+@keyframes wave-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.44;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.6;
+  }
+}
+
+@keyframes wave-drift {
+  from {
+    transform: translate3d(-3%, -2%, 0) scale(1.06) rotate(-1.2deg);
+  }
+  to {
+    transform: translate3d(3%, 2%, 0) scale(1.14) rotate(1.2deg);
+  }
+}
+
+/* «Живо» добавляет обложке лёгкий подъём при наведении — она же кнопка. */
+:root[data-motion='lively'] .wave__art {
+  transition: transform var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease);
+}
+
+:root[data-motion='lively'] .wave:hover .wave__art {
+  transform: translateY(-3px) scale(1.015);
+}
+
+/* ---- переход между экранами ---------------------------------------------- */
+
+/*
+ * Экран сменяется целиком, поэтому анимируется один общий слой, а не каждый
+ * список внутри: так переход стоит один кадр, сколько бы строк ни было внутри.
+ */
+:root[data-anim-screens='fade'] .app__screen {
+  animation: screen-fade var(--t-fast) var(--ease);
+}
+
+:root[data-anim-screens='slide'] .app__screen {
+  animation: screen-slide var(--t-base) var(--ease);
+}
+
+@keyframes screen-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes screen-slide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- доступность важнее выбора ------------------------------------------- */
+
+/*
+ * Системная просьба о покое действует, пока её не отменили осознанно. Под
+ * «Как в системе» она главнее всего остального; выбрав уровень руками, человек
+ * говорит именно про это приложение — и тогда главнее его выбор.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-motion='system'] .fullplayer,
+  :root[data-motion='system'] .pop__panel,
+  :root[data-motion='system'] .app__screen {
+    animation: screen-fade 140ms linear !important;
+  }
+
+  :root[data-motion='system'] .wave__glow,
+  :root[data-motion='system'] .wave__art,
+  :root[data-motion='system'] .fullplayer__art {
+    animation: none !important;
+    transform: none !important;
+  }
+}

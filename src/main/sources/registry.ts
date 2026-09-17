@@ -10,6 +10,8 @@ import type {
 import { EMPTY_SEARCH } from '@shared/domain'
 import { SessionExpiredError, type Source, type WaveEvent } from './types'
 import { localPlaylists, localPlaylistTracks } from '../library/playlists'
+import { notifyLibraryChanged } from '../library/changed'
+import { matchKey } from '../library/match'
 import { YandexSource } from './yandex/source'
 import { VkSource } from './vk/source'
 
@@ -32,18 +34,14 @@ type Listener = (connections: Connection[]) => void
 const listeners = new Set<Listener>()
 
 /**
- * Anything that changes what the catalogue would return — a like, for now.
- * The shell re-reads the affected lists instead of guessing locally, because
- * the service decides what "liked" actually means (VK stores a copy with a new
- * id, Yandex flips a flag on the original).
+ * Anything that changes what the catalogue would return — a like, or a library
+ * that finished refreshing in the background. The shell re-reads the affected
+ * lists instead of guessing locally, because the service decides what "liked"
+ * actually means (VK stores a copy with a new id, Yandex flips a flag on the
+ * original). Само событие живёт в отдельном модуле: подавать его нужно и из
+ * источников, а те реестр импортировать не могут.
  */
-type LibraryListener = () => void
-const libraryListeners = new Set<LibraryListener>()
-
-export function onLibraryChanged(listener: LibraryListener): () => void {
-  libraryListeners.add(listener)
-  return () => libraryListeners.delete(listener)
-}
+export { onLibraryChanged } from '../library/changed'
 
 export function onConnectionsChanged(listener: Listener): () => void {
   listeners.add(listener)
@@ -200,11 +198,7 @@ export async function wave(
 function dedupe(tracks: Track[]): Track[] {
   const seen = new Set<string>()
   return tracks.filter((track) => {
-    const key = `${track.artists.join(' ')} ${track.title}`
-      .toLowerCase()
-      .replace(/\(.*?\)|\[.*?]/g, ' ')
-      .replace(/feat\.?|ft\.?|prod\.?/g, ' ')
-      .replace(/[^a-zа-яё0-9]+/gi, '')
+    const key = matchKey(track)
     if (!key || seen.has(key)) return false
     seen.add(key)
     return true
@@ -238,7 +232,7 @@ export async function search(query: string): Promise<SearchResult> {
 
 export async function setLiked(track: Track, liked: boolean): Promise<void> {
   await sources[track.service].setLiked(track, liked)
-  for (const listener of libraryListeners) listener()
+  notifyLibraryChanged()
 }
 
 /** Called by the player at play time; links are short-lived by design. */

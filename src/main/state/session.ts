@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { readFileSync, writeFileSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Track } from '@shared/domain'
 
@@ -40,14 +41,40 @@ export function readSession(): Session | null {
   }
 }
 
+/** Уже идущая запись и то, что в ней: одно и то же писать дважды незачем. */
+let writing = false
+let lastPayload = ''
+
+function payloadOf(session: Session): string {
+  const start = Math.max(0, session.index - MAX_TRACKS / 2)
+  const queue = session.queue.slice(start, start + MAX_TRACKS)
+  return JSON.stringify({ queue, index: session.index - start, positionMs: session.positionMs })
+}
+
+/**
+ * Записать сессию, не задерживая главный поток. Раньше это был синхронный
+ * `writeFileSync` двухсот треков каждые несколько секунд — всё это время
+ * процесс не отвечал ни на команды плеера, ни на запросы каталога.
+ */
 export function writeSession(session: Session): void {
+  const payload = payloadOf(session)
+  if (writing || payload === lastPayload) return
+  lastPayload = payload
+  writing = true
+  void writeFile(FILE(), payload)
+    .catch(() => undefined)
+    .finally(() => {
+      writing = false
+    })
+}
+
+/**
+ * Записать немедленно и синхронно — на выходе из приложения, где обещать
+ * дописать «потом» уже некому.
+ */
+export function flushSession(session: Session): void {
   try {
-    const start = Math.max(0, session.index - MAX_TRACKS / 2)
-    const queue = session.queue.slice(start, start + MAX_TRACKS)
-    writeFileSync(
-      FILE(),
-      JSON.stringify({ queue, index: session.index - start, positionMs: session.positionMs })
-    )
+    writeFileSync(FILE(), payloadOf(session))
   } catch {
     // Losing the session is not worth surfacing to the user.
   }

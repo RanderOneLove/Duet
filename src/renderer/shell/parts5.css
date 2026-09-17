@@ -58,7 +58,7 @@
   height: 8px;
   border-radius: 4px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--fill-3);
 }
 
 .storage__part {
@@ -255,7 +255,7 @@
 .addto input {
   background: var(--fill-soft);
   color: var(--text);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--line);
   border-radius: var(--r-sm);
   padding: 4px 8px;
   font: inherit;
@@ -295,14 +295,38 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  background: var(--surface-2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--material-thick);
+  backdrop-filter: var(--material-blur);
+  -webkit-backdrop-filter: var(--material-blur);
+  border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-float);
+  /*
+   * Панель растёт из кнопки, которая её вызвала, а не из своего центра: так
+   * видно, что чему принадлежит. И появляется она как материал — размытие и
+   * масштаб меняются вместе, — а не просто проявляется из ничего.
+   */
+  transform-origin: top right;
+  animation: pop-in var(--t-base) var(--ease);
 }
 
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Панель уходит туда же, откуда пришла: снизу — значит и растёт снизу. */
 .pop__panel--up {
   bottom: calc(100% + 10px);
+  transform-origin: bottom right;
 }
 .pop__panel--down {
   top: calc(100% + 10px);
@@ -368,7 +392,7 @@
   min-width: 0;
   background: var(--fill-soft);
   color: var(--text);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--line);
   border-radius: var(--r-sm);
   padding: 5px 8px;
   font: inherit;
@@ -382,7 +406,7 @@
   gap: 9px;
   padding: 8px;
   margin-top: 2px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--hairline);
   font-size: 13px;
   text-align: left;
   color: var(--text);
@@ -403,11 +427,11 @@
   margin-top: 1px;
   flex: none;
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: 1px solid var(--outline);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .pop__box--on {
@@ -421,9 +445,121 @@
   max-width: 100%;
   background: var(--fill-soft);
   color: var(--text);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--line);
   border-radius: var(--r-sm);
   padding: 5px 9px;
   font: inherit;
   font-size: 13px;
+}
+
+/* ---- выбор темы ---------------------------------------------------------- */
+
+.themes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.themecard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 10px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  text-align: left;
+}
+
+.themecard:hover {
+  background: var(--surface-hover);
+}
+
+.themecard[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/*
+ * Образец рисуется настоящими цветами темы, а не картинкой про неё: это
+ * маленькое окно приложения — полоса хромировки, две строки списка и точка
+ * акцента.
+ */
+.themecard__stage {
+  position: relative;
+  display: block;
+  height: 62px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin-bottom: 8px;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+.themecard__stage--dark {
+  background: #0b0b0e;
+  --demo-chrome: #151518;
+  --demo-line: rgba(255, 255, 255, 0.22);
+}
+
+.themecard__stage--light {
+  background: #f2f2f7;
+  --demo-chrome: #ffffff;
+  --demo-line: rgba(0, 0, 0, 0.22);
+}
+
+/*
+ * «Как в системе» — обе половины сразу. Раздел строго вертикальный: по
+ * диагонали полоса хромировки и подложка расходились по углу, и стык читался
+ * как дефект отрисовки, а не как замысел.
+ */
+.themecard__stage--system {
+  background: linear-gradient(90deg, #f2f2f7 0 50%, #0b0b0e 50% 100%);
+  --demo-chrome: linear-gradient(90deg, #ffffff 0 50%, #151518 50% 100%);
+  --demo-line: rgba(128, 128, 140, 0.55);
+}
+
+.themecard__bar {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 16px;
+  background: var(--demo-chrome);
+}
+
+.themecard__line {
+  position: absolute;
+  left: 10px;
+  right: 22px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--demo-line);
+  top: 28px;
+}
+
+.themecard__line--short {
+  right: 44px;
+  top: 40px;
+  opacity: 0.6;
+}
+
+.themecard__dot {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.themecard__label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: var(--tr-title);
+}
+
+.themecard__hint {
+  font-size: 11.5px;
+  line-height: 1.35;
 }

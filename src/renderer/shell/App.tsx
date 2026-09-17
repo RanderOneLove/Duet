@@ -26,8 +26,14 @@ import { PlaylistScreen } from './screens/PlaylistScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
 import { DownloadsScreen } from './screens/DownloadsScreen'
 import { useAsync } from './useLibrary'
+import { useAppearance } from '../shared/useAppearance'
 
 export function App(): JSX.Element {
+  // Счётчик перерисовок для `npm run perf`. Считается прямо в теле, а не в
+  // эффекте: отброшенный рендер стоит ровно столько же, сколько принятый.
+  ;(window as unknown as { __duetRenders?: number }).__duetRenders =
+    ((window as unknown as { __duetRenders?: number }).__duetRenders ?? 0) + 1
+
   const [player, setPlayer] = useState<PlayerState>(EMPTY_PLAYER)
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [hotkeys, setHotkeys] = useState<HotkeyStatus>({})
@@ -68,10 +74,14 @@ export function App(): JSX.Element {
       window.shell.onSettings(setSettings),
       window.shell.onHotkeyStatus(setHotkeys),
       window.shell.onConnections(setConnections),
-      window.shell.onDownloads(setDownloads)
+      window.shell.onDownloads(setDownloads),
+      // Просьба из мини-плеера: развернуть плеер во весь экран.
+      window.shell.onOpenPlayer(() => setFullPlayer(true))
     ]
     return () => off.forEach((unsubscribe) => unsubscribe())
   }, [])
+
+  useAppearance(settings)
 
   const connectedCount = connections.filter((connection) => connection.connected).length
 
@@ -243,6 +253,17 @@ export function App(): JSX.Element {
   }, [])
 
   const showConnect = connectedCount === 0 && !skippedConnect
+
+  /** Что сейчас на экране — по этому и понятно, что экран сменился. */
+  const screenKey = [
+    showConnect ? 'connect' : route,
+    openSimilar?.id,
+    openArtist?.id,
+    openAlbum?.id,
+    openPlaylist?.id
+  ]
+    .filter(Boolean)
+    .join('/')
 
   const content = useMemo(() => {
     if (showConnect) {
@@ -507,7 +528,17 @@ export function App(): JSX.Element {
               if (activeAsync?.error) setDismissedError(activeAsync.error)
             }}
           />
-          <div className="app__content">{content}</div>
+          <div className="app__content">
+            {/*
+              Ключ меняется вместе с экраном — этим и держится переход: анимация
+              появления проигрывается на новом узле, а не на обновлённом. Внутри
+              списки виртуализованы, поэтому пересоздание стоит десятки
+              миллисекунд, а не секунды.
+            */}
+            <div className="app__screen" key={screenKey}>
+              {content}
+            </div>
+          </div>
         </main>
       </div>
       <NowPlayingBar

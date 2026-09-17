@@ -78,6 +78,7 @@ import {
 import { createAudioHost, destroyAudioHost } from './windows/audioHost'
 import { destroyMiniPlayer, hideMiniPlayer, resizeMiniPlayer, showMiniPlayer, toggleMiniPlayer } from './windows/miniPlayer'
 import { initDiscordRPC } from './discord'
+import { mark, perfEnabled, runPerf } from './perf'
 
 // A second launch should surface the running app, not start a rival instance
 // that fights over the tray icon and the global shortcuts.
@@ -103,6 +104,7 @@ if (!('isError' in Error)) {
 function start(): void {
   app.setAppUserModelId('com.rednikin.duet')
   app.setName('Duet')
+  mark('start')
 
   const settings = getSettings()
   applyAutoStart(settings)
@@ -118,6 +120,7 @@ function start(): void {
   void loadPlaylists()
 
   const window = createMainWindow({ startHidden })
+  mark('windowCreated')
   createAudioHost()
   createTray()
   registerIpc()
@@ -166,11 +169,15 @@ function start(): void {
   offerJoinCode(joinCodeFrom(process.argv))
 
   void restoreSources().then(async () => {
+    mark('sourcesRestored')
     await restoreSession()
     // Read the library now rather than when a screen first asks for it: the
     // walk takes seconds, and doing it during startup means Home and Liked
     // open on a list that is already in hand.
     await likedTracks().catch(() => undefined)
+    mark('libraryWarm')
+    // Замер идёт по настоящей библиотеке, поэтому только теперь.
+    if (perfEnabled()) void runPerf()
   })
 
   sendToShell(IPC.hotkeyStatus, registerHotkeys(settings))
@@ -285,6 +292,13 @@ function registerIpc(): void {
   ipcMain.on(IPC.miniRestoreMain, () => {
     hideMiniPlayer()
     showMainWindow()
+  })
+  // Двойной щелчок по плите может открывать плеер целиком: окно поднимается, и
+  // следом оболочке уходит просьба развернуть его на весь экран.
+  ipcMain.on(IPC.miniOpenPlayer, () => {
+    hideMiniPlayer()
+    showMainWindow()
+    sendToShell(IPC.shellOpenPlayer, undefined)
   })
 
   // ---- window ----

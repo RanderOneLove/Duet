@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Album, Artist, Playlist, SearchResult, ServiceId, Track } from '@shared/domain'
 import { ServiceBadge } from '../../shared/ServiceLogo'
 import { TrackList } from '../components/TrackList'
@@ -25,6 +25,13 @@ interface Props {
   onOpenArtist: (artist: Artist) => void
 }
 
+/**
+ * Сколько треков показывать сразу. Ровно столько, чтобы под ними в окне
+ * оставалось место на ряды карточек — иначе разделы ниже существуют только
+ * в разметке.
+ */
+const TRACKS_SHOWN = 8
+
 /** Wireframe 2c: tabs, a top result, then tracks, albums, artists, playlists. */
 export function SearchScreen({
   query,
@@ -42,11 +49,24 @@ export function SearchScreen({
   onOpenArtist
 }: Props): JSX.Element {
   const [tab, setTab] = useState<Tab>('all')
+  /**
+   * Показывать ли весь список треков.
+   *
+   * Поиск отдаёт полсотни треков, и раньше они шли сплошняком: альбомы,
+   * исполнители и плейлисты оказывались под ними, и до плейлистов не
+   * доскроллить — раздел был, но его никто не видел. Сначала показываем
+   * горсть, остальное по кнопке.
+   */
+  const [allTracks, setAllTracks] = useState(false)
+
+  // Запрос сменился — снова показываем короткий список.
+  useEffect(() => setAllTracks(false), [query, tab])
 
   const vkCount = result.tracks.filter((track) => track.service === 'vk').length
   const yaCount = result.tracks.filter((track) => track.service === 'yandex').length
 
   const view = useMemo(() => filterByTab(result, tab), [result, tab])
+  const shownTracks = allTracks ? view.tracks : view.tracks.slice(0, TRACKS_SHOWN)
 
   // The strongest single answer to the query, in the order the wireframe ranks
   // them: an artist, then an album, then simply the first track.
@@ -126,11 +146,11 @@ export function SearchScreen({
             <div className="search__tracks">
               <div className="muted search__label">ТРЕКИ</div>
               <TrackList
-                tracks={view.tracks}
+                tracks={shownTracks}
                 loading={loading}
                 activeId={activeId}
                 playing={playing}
-                onPlay={(index) => onPlay(indexInAll(result.tracks, view.tracks[index]))}
+                onPlay={(index) => onPlay(indexInAll(result.tracks, shownTracks[index]))}
                 onToggleLike={onToggleLike}
                 downloadedIds={downloadedIds}
                 onDownload={onDownload}
@@ -138,6 +158,11 @@ export function SearchScreen({
                 emptyTitle="Треков нет"
                 emptyHint="Попробуйте другой запрос или другую вкладку."
               />
+              {!allTracks && view.tracks.length > TRACKS_SHOWN && (
+                <button className="pill pill--ghost search__more" onClick={() => setAllTracks(true)}>
+                  Ещё {view.tracks.length - TRACKS_SHOWN} треков
+                </button>
+              )}
             </div>
           </div>
 

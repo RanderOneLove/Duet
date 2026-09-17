@@ -92,7 +92,16 @@ export type PlayerCommand =
   | { type: 'cycleRepeat' }
   | { type: 'setRepeat'; mode: RepeatMode }
   /** Replace the queue with `tracks` and start at `startIndex`. */
-  | { type: 'playQueue'; tracks: Track[]; startIndex: number }
+  | {
+      type: 'playQueue'
+      tracks: Track[]
+      startIndex: number
+      /**
+       * Включить список вперемешку. Не указано — сохраняется то, что человек
+       * выбрал раньше: перемешивание это его настроение, а не свойство списка.
+       */
+      shuffle?: boolean
+    }
   /** Start the service's endless station. */
   | { type: 'playWave'; service: WaveChoice }
   | { type: 'setOutputDevice'; deviceId: string }

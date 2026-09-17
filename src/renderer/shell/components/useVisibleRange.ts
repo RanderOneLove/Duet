@@ -24,13 +24,27 @@ export interface VisibleRange {
   end: number
 }
 
+/**
+ * Сколько строк рисовать до первого измерения.
+ *
+ * Начинать с «показать всё» было дорого ровно один раз — зато каждый раз, когда
+ * экран открывается: первый кадр рисовал все пять с половиной тысяч строк и
+ * только следующий, после замера, сужал список до видимых. Намерено 2,7 секунды
+ * на открытие «Вам нравится». Этого с запасом хватает на любой экран, а точное
+ * число приходит тем же кадром, что и прокрутка.
+ */
+const FIRST_PAINT = 40
+
 export function useVisibleRange(
   count: number,
   rowHeight: number,
   ref: RefObject<HTMLElement>,
   enabled: boolean
 ): VisibleRange {
-  const [range, setRange] = useState<VisibleRange>({ start: 0, end: count })
+  const [range, setRange] = useState<VisibleRange>(() => ({
+    start: 0,
+    end: enabled ? Math.min(count, FIRST_PAINT) : count
+  }))
 
   useEffect(() => {
     if (!enabled) {
