@@ -1,6 +1,6 @@
 {
   "name": "vk-and-ya-music-player",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Десктоп-плеер для VK Музыки и Яндекс.Музыки с мини-плеером поверх экрана",
   "main": "./out/main/index.js",
   "author": "nikitarednikin2004@gmail.com",
