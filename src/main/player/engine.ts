@@ -164,6 +164,16 @@ export async function command(input: PlayerCommand): Promise<void> {
     if (OWN_CHOICE.has(input.type)) leaveFollowing()
   }
 
+  /*
+   * Сообщение про совместное прослушивание живёт до следующего действия.
+   *
+   * Его прочитали, нажали что-то своё — держать дальше незачем; закрыть его
+   * человеку нечем, а висящая строка выглядит так, будто отказ всё ещё в силе.
+   */
+  if (!state.following && state.followError && !applyingFollowed) {
+    patch({ followError: null })
+  }
+
   switch (input.type) {
     case 'playQueue': {
       const tracks = input.tracks.filter((track) => track.available)
@@ -341,6 +351,20 @@ export async function command(input: PlayerCommand): Promise<void> {
       return
 
     case 'follow': {
+      /*
+       * По своей же ссылке идти некуда.
+       *
+       * Ссылку проверяют, прежде чем отправить, — и попадали в тупик: слушать
+       * вместе с собой нечего, зато перелистывание, пауза и перемотка после
+       * этого отвечают «переключает ведущий», а ведущий — вы сами. Выбраться
+       * можно было только кнопкой «Отключиться», о которой в этот момент никто
+       * не думает.
+       */
+      if (input.code === getSettings().togetherCode) {
+        patch({ followError: 'Это ваша же ссылка — вы и так слушаете то, что в ней' })
+        return
+      }
+
       const joined = await startFollowing(
         input.code,
         applyFollowed,

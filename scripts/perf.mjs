@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { cpSync, mkdirSync, readFileSync, rmSync, existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
 
 /**
@@ -65,6 +66,19 @@ try {
   settings.downloadsPath = process.argv.includes('--broken-downloads')
     ? join(work, 'нет-такой-папки')
     : join(source, 'downloads')
+
+  /*
+   * Своё приглашение, а не скопированное.
+   *
+   * Код совместного прослушивания приезжает вместе с профилем, и замер начинал
+   * публиковать в ту же сессию, что и настоящее приложение. Два источника в
+   * одной сессии перебивают друг друга: у того, кто слушает, трек меняется не
+   * тогда, когда переключил ведущий. Замер не должен трогать чужое — тем более
+   * то, что человек прямо сейчас слушает.
+   */
+  settings.togetherCode = randomBytes(12).toString('base64url')
+  settings.togetherKey = randomBytes(24).toString('base64url')
+
   writeFileSync(file, JSON.stringify(settings, null, 2))
 } catch (error) {
   console.warn('Не вышло указать папку загрузок:', error.message)

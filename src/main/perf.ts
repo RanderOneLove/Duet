@@ -56,6 +56,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'vkdislike') return runVkDislikeProbe()
   if (PROBE === 'vkban') return runVkBanProbe()
   if (PROBE === 'together') return runTogetherProbe()
+  if (PROBE === 'selfjoin') return runSelfJoinProbe()
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
   if (PROBE === 'updbtn') return runUpdateButtonProbe()
@@ -2411,6 +2412,89 @@ async function runUpdateButtonProbe(): Promise<void> {
     const image = await window.webContents.capturePage()
     writeFileSync(join(out, 'update-button.png'), image.toPNG())
 
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Что будет, если пойти по собственной ссылке-приглашению.
+ *
+ * Такое случается само собой: ссылку проверяют, прежде чем отправить. Вопрос
+ * не в том, соединится ли приложение с собой — ретранслятору всё равно, кто
+ * кого слушает, — а в том, во что после этого превращается плеер.
+ */
+async function runSelfJoinProbe(): Promise<void> {
+  const report: Record<string, unknown> = { probe: 'selfjoin' }
+
+  try {
+    const { ensureInvite } = await import('./together/host')
+    setSettings({ listenTogether: true })
+    const { code } = ensureInvite()
+    report.свойКод = code
+
+    const queue = (await likedTracks()).filter((track) => track.available).slice(0, 6)
+    if (queue.length === 0) throw new Error('в избранном нет доступных треков')
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    await wait(1500)
+
+    const первый = getPlayer().queue[getPlayer().index]?.title
+    report.играетДо = первый
+
+    // Идём по собственной ссылке.
+    await command({ type: 'follow', code })
+    await wait(2500)
+    report.следуетЗаСобой = getPlayer().following !== null
+
+    // Кнопки должны остаться живыми: следования не случилось.
+    await command({ type: 'next' })
+    await wait(1800)
+    report.послеОтказа = {
+      следуетЗаСобой: getPlayer().following !== null,
+      трек: getPlayer().queue[getPlayer().index]?.title,
+      переключился: getPlayer().queue[getPlayer().index]?.title !== первый,
+      сообщение: getPlayer().followError
+    }
+
+    // Ничего не нажимаем — просто смотрим, что делает плеер сам.
+    const снимки: string[] = []
+    for (let i = 0; i < 8; i += 1) {
+      const p = getPlayer()
+      снимки.push(
+        `${i}: очередь ${p.queue.length}, курсор ${p.index}, «${p.queue[p.index]?.title ?? '—'}», ` +
+          `${p.playing ? 'играет' : 'пауза'}`
+      )
+      await wait(1500)
+    }
+    report.самПоСебе = снимки
+
+    // Дальше — обычные действия человека, который забыл, что нажал ссылку.
+    await command({ type: 'next' })
+    await wait(1500)
+    report.послеНажатияДальше = {
+      трек: getPlayer().queue[getPlayer().index]?.title,
+      переключился: getPlayer().queue[getPlayer().index]?.title !== первый,
+      сообщение: getPlayer().followError
+    }
+
+    await command({ type: 'playPause' })
+    await wait(1500)
+    report.послеНажатияПаузы = { играет: getPlayer().playing, сообщение: getPlayer().followError }
+
+    await command({ type: 'seek', positionMs: 60_000 })
+    await wait(800)
+    report.послеПеремотки = {
+      позиция: Math.round(getPlayer().positionMs / 1000) + ' с',
+      сообщение: getPlayer().followError
+    }
+
+    void command({ type: 'stopFollowing' })
+    setSettings({ listenTogether: false })
     report.ok = true
   } catch (error) {
     report.error = error instanceof Error ? error.message : String(error)
