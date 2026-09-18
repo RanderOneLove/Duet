@@ -4,114 +4,365 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Duet — слушать вместе</title>
+    <meta name="description" content="Приглашение слушать музыку вместе в Duet — плеере для VK Музыки и Яндекс.Музыки." />
+    <meta property="og:title" content="Duet — слушать вместе" />
+    <meta property="og:description" content="VK Музыка и Яндекс.Музыка в одном плеере для Windows." />
     <style>
+      /*
+       * Шрифты приложения, положенные рядом со страницей.
+       *
+       * Те же файлы и те же поднаборы, что и в самом Duet: страница — это его
+       * лицо снаружи, и встречать гостя чужой типографикой незачем. Из сети их
+       * не тянем по той же причине, по какой не тянет приложение: не приехавший
+       * шрифт — это уже другая вёрстка.
+       */
+      @font-face {
+        font-family: 'Onest';
+        font-weight: 700;
+        font-display: swap;
+        src: url('./fonts/onest-700-cyrillic.woff2') format('woff2');
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+      @font-face {
+        font-family: 'Onest';
+        font-weight: 700;
+        font-display: swap;
+        src: url('./fonts/onest-700-latin.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2212, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: 'Golos Text';
+        font-weight: 400;
+        font-display: swap;
+        src: url('./fonts/golostext-400-cyrillic.woff2') format('woff2');
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+      @font-face {
+        font-family: 'Golos Text';
+        font-weight: 400;
+        font-display: swap;
+        src: url('./fonts/golostext-400-latin.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2212, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: 'Golos Text';
+        font-weight: 600;
+        font-display: swap;
+        src: url('./fonts/golostext-600-cyrillic.woff2') format('woff2');
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+      @font-face {
+        font-family: 'Golos Text';
+        font-weight: 600;
+        font-display: swap;
+        src: url('./fonts/golostext-600-latin.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2212, U+FEFF, U+FFFD;
+      }
+
+      /* Значения — те же, что в приложении: тёмная тема Duet один в один. */
       :root {
         color-scheme: dark;
-        --bg: #121212;
-        --surface: #1e1e1e;
-        --text: #fff;
-        --muted: #a7a7a7;
-        --accent: #4a6cf7;
+        --bg: #0b0b0d;
+        --text: #f4f4f6;
+        --text-muted: rgba(255, 255, 255, 0.66);
+        --text-faint: rgba(255, 255, 255, 0.45);
+        --accent: #0a84ff;
+        --accent-hover: #339dff;
+        --accent-glow: rgba(10, 132, 255, 0.4);
+        --line: rgba(255, 255, 255, 0.12);
+        --fill-2: rgba(255, 255, 255, 0.08);
+        --fill-3: rgba(255, 255, 255, 0.14);
+        --glass: rgba(255, 255, 255, 0.06);
+        --r-lg: 20px;
+        --r-pill: 999px;
       }
+
       * {
         box-sizing: border-box;
       }
+
       body {
         margin: 0;
-        min-height: 100vh;
+        min-height: 100svh;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 24px;
         background: var(--bg);
         color: var(--text);
-        font: 15px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif;
+        font: 400 15px/1.6 'Golos Text', -apple-system, 'Segoe UI', system-ui, sans-serif;
+        overflow: hidden;
       }
+
+      /*
+       * Фон: три пятна, которые медленно расходятся и сходятся.
+       *
+       * Это тот же приём, что у плеера «во всё окно», где по экрану расплывается
+       * обложка. Здесь обложки нет — играет ведь не у нас, — поэтому пятна свои,
+       * из акцента и соседних с ним цветов. Движение намеренно долгое: страница
+       * живёт несколько секунд, и всё, что быстрее, успело бы надоесть.
+       */
+      .bg {
+        position: fixed;
+        inset: -20vmax;
+        z-index: 0;
+        pointer-events: none;
+        filter: blur(90px);
+      }
+
+      .bg i {
+        position: absolute;
+        display: block;
+        border-radius: 50%;
+        opacity: 0.55;
+        will-change: transform;
+      }
+
+      .bg i:nth-child(1) {
+        width: 46vmax;
+        height: 46vmax;
+        left: 6%;
+        top: 4%;
+        background: #0a84ff;
+        animation: drift-a 26s ease-in-out infinite;
+      }
+
+      .bg i:nth-child(2) {
+        width: 38vmax;
+        height: 38vmax;
+        right: 4%;
+        top: 18%;
+        background: #bf5af2;
+        opacity: 0.4;
+        animation: drift-b 32s ease-in-out infinite;
+      }
+
+      .bg i:nth-child(3) {
+        width: 42vmax;
+        height: 42vmax;
+        left: 32%;
+        bottom: 0%;
+        background: #30d158;
+        opacity: 0.26;
+        animation: drift-c 38s ease-in-out infinite;
+      }
+
+      @keyframes drift-a {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+        50% { transform: translate3d(12vmax, 8vmax, 0) scale(1.18); }
+      }
+      @keyframes drift-b {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); }
+        50% { transform: translate3d(-14vmax, 10vmax, 0) scale(0.9); }
+      }
+      @keyframes drift-c {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
+        50% { transform: translate3d(10vmax, -12vmax, 0) scale(1.2); }
+      }
+
+      /* Тёмная вуаль поверх пятен: текст обязан читаться, что бы под ним ни плыло. */
+      .veil {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        background: radial-gradient(120% 90% at 50% 45%, rgba(11, 11, 13, 0.32), rgba(11, 11, 13, 0.82));
+      }
+
       .card {
+        position: relative;
+        z-index: 2;
         width: 100%;
-        max-width: 460px;
-        background: var(--surface);
-        border-radius: 16px;
-        padding: 32px;
-        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+        max-width: 440px;
+        /* Отступ назван, потому что от него считает и разделительная черта. */
+        --pad: 32px;
+        padding: 36px var(--pad) 30px;
         text-align: center;
+        border-radius: var(--r-lg);
+        background: var(--glass);
+        border: 1px solid var(--line);
+        backdrop-filter: blur(40px) saturate(140%);
+        -webkit-backdrop-filter: blur(40px) saturate(140%);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+        animation: rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
       }
+
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(12px) scale(0.985); }
+        to { opacity: 1; transform: none; }
+      }
+
       .mark {
-        width: 56px;
-        height: 40px;
-        margin: 0 auto 18px;
+        width: 62px;
+        height: 43px;
+        margin: 0 auto 20px;
         display: block;
       }
+
       h1 {
-        margin: 0 0 8px;
-        font-size: 24px;
+        margin: 0 0 10px;
+        font-family: 'Onest', 'Golos Text', system-ui, sans-serif;
+        font-size: 26px;
+        font-weight: 700;
+        line-height: 1.15;
         letter-spacing: -0.02em;
       }
+
       p {
-        margin: 0 0 20px;
-        color: var(--muted);
+        margin: 0 0 22px;
+        color: var(--text-muted);
       }
+
+      /*
+       * Кнопки столбиком и одной ширины.
+       *
+       * В ряд они не помещаются: в карточке 376 пикселей на содержимое, а
+       * подписи вместе с весом файла просят больше. Перенос сам по себе не
+       * беда, но от него они вставали лесенкой разной длины; колонка одной
+       * ширины выглядит решением, а не тем, что осталось после переноса.
+       */
+      .row {
+        display: grid;
+        gap: 10px;
+        justify-content: center;
+        grid-template-columns: minmax(0, 260px);
+      }
+
       .pill {
-        display: inline-block;
-        padding: 11px 22px;
-        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 12px 24px;
+        border-radius: var(--r-pill);
         background: var(--accent);
         color: #fff;
         font-weight: 600;
+        font-size: 14.5px;
         text-decoration: none;
-        box-shadow: 0 6px 18px rgba(74, 108, 247, 0.4);
+        box-shadow: 0 8px 24px var(--accent-glow);
+        transition: background-color 0.18s ease, transform 0.09s ease;
       }
+
+      .pill:hover {
+        background: var(--accent-hover);
+      }
+
+      .pill:active {
+        transform: scale(0.97);
+      }
+
       .pill--ghost {
-        background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: var(--fill-2);
+        border: 1px solid var(--line);
         box-shadow: none;
         font-weight: 500;
       }
-      .row {
-        display: flex;
-        gap: 10px;
+
+      .pill--ghost:hover {
+        background: var(--fill-3);
+      }
+
+      .pill svg {
+        flex: none;
+      }
+
+      .row .pill {
         justify-content: center;
-        flex-wrap: wrap;
       }
+
+      /* Вес файла рядом с подписью: понятно, что именно сейчас поедет. */
+      .pill em {
+        font-style: normal;
+        font-weight: 400;
+        opacity: 0.72;
+      }
+
       .note {
-        margin-top: 22px;
+        margin: 24px 0 0;
         font-size: 13px;
-        color: var(--muted);
+        color: var(--text-faint);
+        line-height: 1.55;
       }
+
+      .note b {
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+
       code {
-        font-family: ui-monospace, Menlo, monospace;
-        background: rgba(255, 255, 255, 0.08);
-        padding: 2px 6px;
-        border-radius: 5px;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 12.5px;
+        background: var(--fill-2);
+        border: 1px solid var(--line);
+        padding: 3px 8px;
+        border-radius: 7px;
+        color: var(--text-muted);
       }
+
+      /* Черта во всю карточку: вылезает из отступа ровно настолько, каков он
+         сейчас, — жёсткие −32 торчали за край, когда в узком окне он меньше. */
+      .hr {
+        height: 1px;
+        margin: 24px calc(var(--pad) * -1) 0;
+        background: var(--line);
+      }
+
       [hidden] {
         display: none !important;
+      }
+
+      @media (max-width: 420px) {
+        .card { --pad: 22px; padding: 28px var(--pad) 24px; }
+        h1 { font-size: 23px; }
+        .row { grid-template-columns: minmax(0, 1fr); }
+      }
+
+      /*
+       * Кто выключил анимации в системе, тот выключил их и здесь. Пятна
+       * остаются — они и без движения делают фон, — но стоят на месте.
+       */
+      @media (prefers-reduced-motion: reduce) {
+        .bg i, .card { animation: none !important; }
       }
     </style>
   </head>
   <body>
+    <div class="bg" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="veil" aria-hidden="true"></div>
+
     <main class="card">
+      <!-- Марка Duet: те же два круга и та же смесь на нахлёсте, что в приложении. -->
       <svg class="mark" viewBox="0 0 115 80" fill="none" aria-hidden="true">
-        <circle cx="40" cy="40" r="40" fill="#4a6cf7" />
-        <circle cx="75" cy="40" r="40" fill="#fff" fill-opacity="0.32" />
+        <defs>
+          <clipPath id="left"><circle cx="40" cy="40" r="40" /></clipPath>
+        </defs>
+        <circle cx="40" cy="40" r="40" fill="#0a84ff" />
+        <circle cx="75" cy="40" r="40" fill="#e9e9ed" />
+        <g clip-path="url(#left)"><circle cx="75" cy="40" r="40" fill="#7fa9f5" /></g>
       </svg>
 
       <div id="join" hidden>
-        <h1>Подключаемся к прослушиванию</h1>
+        <h1>Вас зовут слушать вместе</h1>
         <p>Duet должен открыться сам. Если этого не произошло — нажмите кнопку.</p>
         <div class="row">
           <a class="pill" id="open" href="#">Открыть Duet</a>
           <a class="pill pill--ghost" id="download-join" href="#">Скачать Duet</a>
         </div>
-        <p class="note">Код приглашения: <code id="code"></code></p>
+        <div class="hr"></div>
+        <p class="note">
+          Код приглашения: <code id="code"></code><br />
+          Играть будет из вашего аккаунта — по ссылке идёт только то,
+          <b>какой трек и с какой секунды</b>.
+        </p>
       </div>
 
       <div id="plain" hidden>
         <h1>Duet</h1>
         <p>VK Музыка и Яндекс.Музыка в одном плеере для Windows.</p>
         <div class="row">
-          <a class="pill" id="download" href="#">Скачать</a>
+          <a class="pill" id="download" href="#">Скачать Duet</a>
         </div>
+        <div class="hr"></div>
         <p class="note">Ссылка без кода приглашения — открывать нечего.</p>
       </div>
     </main>
@@ -120,13 +371,43 @@
       // The page is served from GitHub Pages, so the repository is right here
       // in the address: no need to hard-code the owner or the project name.
       const [owner, repo] = location.hostname.endsWith('github.io')
-        ? [location.hostname.split('.')[0], location.pathname.split('/').filter(Boolean)[0] || '']
+        ? [location.hostname.split('.')[0], location.pathname.split('/').filter(Boolean)[0] || 'Duet']
         : ['RanderOneLove', 'Duet']
-      const releases = `https://github.com/${owner}/${repo || 'Duet'}/releases/latest`
 
-      for (const id of ['download', 'download-join']) {
-        document.getElementById(id).href = releases
-      }
+      const buttons = ['download', 'download-join'].map((id) => document.getElementById(id))
+      const releases = `https://github.com/${owner}/${repo}/releases/latest`
+      for (const button of buttons) button.href = releases
+
+      /*
+       * Кнопка ведёт прямо на установщик, а не на страницу релизов.
+       *
+       * Прямую ссылку нельзя записать заранее: в имени файла стоит версия, и с
+       * каждым выпуском оно меняется. Поэтому имя спрашивается у GitHub — а
+       * пока ответа нет (или его не будет вовсе: сеть, лимит запросов), кнопка
+       * уже работает и ведёт на страницу релизов. Хуже, чем было, не станет.
+       */
+      const mb = (bytes) => `${Math.round(bytes / 1048576)} МБ`
+
+      fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`, {
+        headers: { Accept: 'application/vnd.github+json' }
+      })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((release) => {
+          const setup = release?.assets?.find((asset) => /-setup\.exe$/i.test(asset.name))
+          if (!setup) return
+          /*
+           * Атрибут `download` здесь не нужен: для чужого домена браузер его
+           * не слушает. Файл всё равно скачивается, а не открывается, потому
+           * что GitHub отдаёт его с `Content-Disposition: attachment`.
+           */
+          for (const button of buttons) {
+            button.href = setup.browser_download_url
+            button.innerHTML = `Скачать ${release.tag_name.replace(/^v/, '')} <em>· ${mb(setup.size)}</em>`
+          }
+        })
+        .catch(() => {
+          // Ссылка на страницу релизов уже стоит — добавить к этому нечего.
+        })
 
       // A code arrives as ?join=CODE or as #CODE, whichever the host used.
       const params = new URLSearchParams(location.search)
