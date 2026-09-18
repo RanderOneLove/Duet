@@ -3,6 +3,7 @@ import { IPC } from '@shared/ipc'
 import type { DisplayInfo, Settings } from '@shared/types'
 import type {
   Connection,
+  Lyrics,
   HomeSection,
   Playlist,
   SearchResult,
@@ -22,7 +23,9 @@ import {
   initPlayer,
   onPlayerChanged,
   restoreSession,
-  createPlayerWire
+  createPlayerWire,
+  reportListeners,
+  saveSessionNow
 } from './player/engine'
 import {
   albumTracks,
@@ -42,9 +45,18 @@ import {
   search,
   setLiked,
   similarTracks,
-  wave
+  wave,
+  wavePreview
 } from './sources/registry'
 import { createTray, destroyTray } from './tray'
+import {
+  checkForUpdates,
+  getUpdateState,
+  installUpdate,
+  onUpdateChanged,
+  setupUpdates,
+  stopUpdates
+} from './updates'
 import {
   addDownloads,
   getDownloads,
@@ -56,7 +68,7 @@ import {
 } from './downloads/manager'
 import { registerMediaScheme, serveMediaScheme } from './downloads/protocol'
 import { claimJoinScheme, joinCodeFrom, offerJoinCode, onJoinRequest } from './together/join'
-import { ensureInvite, publish } from './together/host'
+import { ensureInvite, listenerCount, publish } from './together/host'
 import {
   addToPlaylist,
   createPlaylist,
@@ -126,6 +138,7 @@ function start(): void {
   registerIpc()
   initPlayer(settings.volume, settings.muted)
   initDiscordRPC()
+  setupUpdates()
 
   // Hiding to the tray is exactly when the mini player earns its keep.
   const showsWhenAway = (): boolean => getSettings().miniShowWhen !== 'never'
@@ -158,6 +171,7 @@ function start(): void {
     sendToShell(IPC.playerState, toShell(state))
     // Ведомым нужно знать, что здесь играет, — если публикация включена.
     void publish(state)
+    reportListeners(listenerCount())
     // Volume survives restarts; the rest of the state is deliberately not kept.
     persistVolume(state)
   })
@@ -165,6 +179,7 @@ function start(): void {
   onLibraryChanged(() => sendToShell(IPC.libChanged, undefined))
   onPlaylistsChanged(() => sendToShell(IPC.libChanged, undefined))
   onDownloadsChanged((state) => sendToShell(IPC.downloadsChanged, state))
+  onUpdateChanged((state) => sendToShell(IPC.updatesChanged, state))
 
   offerJoinCode(joinCodeFrom(process.argv))
 
@@ -241,9 +256,10 @@ function registerIpc(): void {
     removeFromPlaylist(id, trackId)
   )
   ipcMain.handle(IPC.libSimilar, (_event, track: Track): Promise<Track[]> => similarTracks(track))
-  ipcMain.handle(IPC.libLyrics, (_event, track: Track): Promise<string | null> => lyrics(track))
+  ipcMain.handle(IPC.libLyrics, (_event, track: Track): Promise<Lyrics | null> => lyrics(track))
   ipcMain.handle(IPC.libSearch, (_event, query: string): Promise<SearchResult> => search(query))
   ipcMain.handle(IPC.libWave, (_event, choice: WaveChoice): Promise<Track[]> => wave(choice))
+  ipcMain.handle(IPC.libWavePreview, (_event, choice: WaveChoice): Track[] => wavePreview(choice))
   ipcMain.handle(IPC.libSetLiked, async (_event, track: Track, liked: boolean) => {
     await setLiked(track, liked)
   })
@@ -274,6 +290,9 @@ function registerIpc(): void {
   ipcMain.handle(IPC.settingsSet, (_event, patch: Partial<Settings>): Settings => setSettings(patch))
   ipcMain.handle(IPC.hotkeyStatus, () => getHotkeyStatus())
   ipcMain.handle(IPC.appInfo, () => ({ name: app.getName(), version: app.getVersion() }))
+  ipcMain.handle(IPC.updatesGet, () => getUpdateState())
+  ipcMain.handle(IPC.updatesCheck, () => checkForUpdates(true))
+  ipcMain.handle(IPC.updatesInstall, () => installUpdate())
   ipcMain.handle(IPC.displaysGet, (): DisplayInfo[] => {
     const primary = screen.getPrimaryDisplay()
     return screen.getAllDisplays().map((display, index) => ({
@@ -345,7 +364,10 @@ function hotkeysChanged(a: Settings, b: Settings): boolean {
 
 app.on('before-quit', () => {
   markQuitting()
+  // Обычная запись сессии асинхронная и может не успеть до закрытия.
+  saveSessionNow()
   unregisterHotkeys()
+  stopUpdates()
   destroyMiniPlayer()
   destroyAudioHost()
   destroyTray()

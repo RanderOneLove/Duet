@@ -1,4 +1,4 @@
-import type { Account, Album, Playlist, SearchResult, ServiceId, Track } from '@shared/domain'
+import type { Account, Album, Lyrics, Playlist, SearchResult, ServiceId, Track } from '@shared/domain'
 
 /**
  * One music service, behind an interface the screens never look past. Both
@@ -34,15 +34,32 @@ export interface Source {
    */
   wave(afterNativeId?: string): Promise<Track[]>
   /**
+   * Последняя выданная станцией порция — без обращения к сервису.
+   *
+   * Станция устроена так, что любой запрос её двигает: спросил треки — она
+   * считает их выданными. Поэтому показывать «что дальше» на Главной запросом
+   * нельзя: экран съедал бы очередь у плеера. Здесь лежит то, что уже
+   * спрашивали, и показ обходится этим.
+   */
+  lastWave(): Track[]
+  /**
    * Report how a radio track went. Yandex's station will not advance without
    * this; VK's mix moves on its own and ignores it.
    */
   waveFeedback(event: WaveEvent, track?: Track, playedSeconds?: number): Promise<void>
   setLiked(track: Track, liked: boolean): Promise<void>
+  /**
+   * Сказать сервису «не нравится»: трек уходит из рекомендаций.
+   *
+   * Умеет не всякий сервис — у VK такого метода просто нет, — поэтому здесь и
+   * признак, и действие. Кнопку, которая ничего не делает, показывать нельзя.
+   */
+  canDislike(): boolean
+  dislike(track: Track): Promise<void>
   /** Tracks the service considers close to this one; empty when it has none. */
   similarTracks(track: Track): Promise<Track[]>
   /** The words, or null when the service has none for this track. */
-  lyrics(track: Track): Promise<string | null>
+  lyrics(track: Track): Promise<Lyrics | null>
 
   /**
    * A playable url for the track. Both services hand out short-lived links, so

@@ -1,4 +1,4 @@
-import type { Account, Playlist, SearchResult, Track } from '@shared/domain'
+import type { Account, Lyrics, Playlist, SearchResult, Track } from '@shared/domain'
 import { trackKey } from '@shared/domain'
 import { SessionExpiredError, type Source } from '../types'
 import { clearSession, getAuthCookies, isSignedIn, signIn } from './bridge'
@@ -7,6 +7,7 @@ import { VKWebClient } from '@toil/vk-audio/client'
 import { forgetLists, readList, writeList } from '../../library/cache'
 import { listChanged, notifyLibraryChanged } from '../../library/changed'
 import { matchKey } from '../../library/match'
+import { getSettings, setSettings } from '../../state/settings'
 
 
 /** Items per request, and a ceiling on how many requests one listing may make. */
@@ -18,6 +19,11 @@ const PAGE_CONCURRENCY = 4
 const LIKED_TTL_MS = 5 * 60 * 1000
 /** Плейлисты меняются реже треков, поэтому и держатся дольше. */
 const LISTS_TTL_MS = 10 * 60 * 1000
+/**
+ * Сколько отвергнутых треков помнить. Список нужен, чтобы вычёркивать их из
+ * волны, а она не заглядывает на годы назад — расти ему без края незачем.
+ */
+const DISLIKED_KEPT = 2000
 
 export class VkSource implements Source {
   readonly id = 'vk' as const
@@ -256,7 +262,17 @@ export class VkSource implements Source {
     const params = new URLSearchParams({ mix_id: mix.id, count: '30' })
     const items = await this.call('audio.getStreamMixAudios', params)
     if (!Array.isArray(items)) throw new Error('VK не отдал треки волны')
-    return items.map((item: any) => this.mapRawAudio(item, false))
+    // Отвергнутое вычёркивается здесь: VK о нашем списке не знает и продолжает
+    // его предлагать.
+    const disliked = new Set(getSettings().vkDisliked)
+    this.waveBatch = items
+      .map((item: any) => this.mapRawAudio(item, false))
+      .filter((track) => !disliked.has(track.nativeId))
+    return this.waveBatch
+  }
+
+  lastWave(): Track[] {
+    return this.waveBatch
   }
 
   /**
@@ -314,14 +330,16 @@ export class VkSource implements Source {
     return items.map((item: any) => this.mapRawAudio(item, false))
   }
 
-  async lyrics(track: Track): Promise<string | null> {
+  async lyrics(track: Track): Promise<Lyrics | null> {
     if (!this.client) throw new SessionExpiredError('vk')
     const [ownerId, audioId] = track.nativeId.split('_')
     try {
       const data = await this.call('audio.getLyrics', new URLSearchParams({ audio_id: `${ownerId}_${audioId}` }))
       const lines = data?.lyrics?.text
       if (!Array.isArray(lines) || lines.length === 0) return null
-      return lines.join(String.fromCharCode(10)).trim() || null
+      const text = lines.join(String.fromCharCode(10)).trim()
+      // У VK меток времени нет — только текст целиком.
+      return text ? { text, lines: [] } : null
     } catch {
       return null
     }
@@ -329,6 +347,43 @@ export class VkSource implements Source {
 
   async waveFeedback(): Promise<void> {
     // The VK mix advances server-side; there is nothing to report to.
+  }
+
+  /**
+   * «Не нравится» у VK делаем сами.
+   *
+   * Метода для этого у сервиса нет: проверены audio.dislike, audio.setDislike,
+   * audio.addDislike, audio.dislikeAudio, audio.dislikeRecommendation,
+   * audio.hide, audio.hideAudio, audio.hideRecommendation,
+   * audio.getDislikedAudios, audio.removeFromRecommendations,
+   * audio.setBlacklist, audio.addToBlacklist, audio.notInterested,
+   * audio.markAsUninteresting и оба имени для отзыва о микшированной волне —
+   * все отвечают отказом. Отвечает только newsfeed.ignoreItem, но она прячет
+   * запись из ленты новостей, а не трек из рекомендаций.
+   *
+   * Кнопки от этого не было, а нужна она ровно за тем же: больше не слышать
+   * этот трек. Список отвергнутого Duet держит у себя и вычёркивает его из
+   * волны сам — на стороне VK рекомендации останутся прежними, зато обещание
+   * кнопки выполняется.
+   */
+  canDislike(): boolean {
+    return true
+  }
+
+  async dislike(track: Track): Promise<void> {
+    const disliked = getSettings().vkDisliked
+    if (!disliked.includes(track.nativeId)) {
+      setSettings({ vkDisliked: [track.nativeId, ...disliked].slice(0, DISLIKED_KEPT) })
+    }
+
+    // Нелюбимое не должно остаться в избранном — это противоречило бы само себе.
+    if (track.liked || this.likedTwin(track)) {
+      try {
+        await this.setLiked(track, false)
+      } catch {
+        // Отметка уже сделана; не снявшийся лайк её не отменяет.
+      }
+    }
   }
 
   async setLiked(track: Track, liked: boolean): Promise<void> {
@@ -401,6 +456,8 @@ export class VkSource implements Source {
   private likedInFlight: Promise<Track[]> | null = null
   /** Плейлисты — тот же приём, только список короткий. */
   private lists: { at: number; items: Playlist[] } | null = null
+  /** Последняя порция волны — для показа, без нового запроса к миксу. */
+  private waveBatch: Track[] = []
 
   /**
    * Избранное, разложенное для узнавания. По имени — потому что добавленный

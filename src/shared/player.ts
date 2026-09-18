@@ -44,6 +44,10 @@ export interface PlayerState {
   following: string | null
   /** Ведомый видит это, когда у ведущего играет недоступный ему трек. */
   followError: string | null
+  /** Умеет ли сервис играющего трека «не нравится». */
+  canDislike: boolean
+  /** Сколько человек слушает вместе с вами — 0, когда вы никого не ведёте. */
+  listeners: number
   /** Set when the current track failed to load, cleared on the next track. */
   error: string | null
   /** Wall clock at which positionMs was sampled, for smooth interpolation. */
@@ -67,6 +71,8 @@ export const EMPTY_PLAYER: PlayerState = {
   sleepEndsAt: null,
   following: null,
   followError: null,
+  canDislike: false,
+  listeners: 0,
   error: null,
   sampledAt: 0
 }
@@ -118,4 +124,9 @@ export type PlayerCommand =
   | { type: 'clearQueue' }
   /** Like or unlike whatever is playing, on its own service. */
   | { type: 'toggleLike' }
+  /**
+   * «Не нравится»: сказать сервису и сразу перейти к следующему. Слушать
+   * дальше то, что только что отвергли, — не то, чего от этой кнопки ждут.
+   */
+  | { type: 'dislike' }
   | { type: 'enqueueNext'; tracks: Track[] }

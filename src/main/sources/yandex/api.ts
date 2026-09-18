@@ -1,4 +1,5 @@
 import { createHash, createHmac } from 'node:crypto'
+import type { Lyrics, LyricLine } from '@shared/domain'
 import { SessionExpiredError } from '../types'
 
 /**
@@ -219,12 +220,27 @@ export class YandexApi {
    * unsigned request — the signature is an HMAC of the track and the moment
    * asked for, the same one the mobile client sends.
    */
-  async lyrics(trackId: string): Promise<string | null> {
+  async lyrics(trackId: string): Promise<Lyrics | null> {
+    // Сначала размеченный текст: у него есть метки времени, и по ним строку
+    // можно подсветить в такт. Если такого нет — берём простой.
+    const lrc = await this.lyricsIn(trackId, 'LRC')
+    if (lrc) {
+      const lines = parseLrc(lrc)
+      if (lines.length > 0) {
+        return { text: lines.map((line) => line.text).join(String.fromCharCode(10)), lines }
+      }
+    }
+
+    const plain = await this.lyricsIn(trackId, 'TEXT')
+    return plain ? { text: plain, lines: [] } : null
+  }
+
+  private async lyricsIn(trackId: string, format: 'TEXT' | 'LRC'): Promise<string | null> {
     const stamp = Math.floor(Date.now() / 1000)
     const sign = createHmac('sha256', LYRICS_SALT).update(`${trackId}${stamp}`).digest('base64')
     try {
       const data = await this.get<Record<string, any>>(
-        `/tracks/${trackId}/lyrics?format=TEXT&timeStamp=${stamp}&sign=${encodeURIComponent(sign)}`
+        `/tracks/${trackId}/lyrics?format=${format}&timeStamp=${stamp}&sign=${encodeURIComponent(sign)}`
       )
       if (!data?.downloadUrl) return null
       const response = await fetch(String(data.downloadUrl))
@@ -235,6 +251,15 @@ export class YandexApi {
       // No lyrics for this track is the ordinary case, not a failure.
       return null
     }
+  }
+
+  /**
+   * «Не нравится»: трек попадает в список нелюбимого, и станция перестаёт его
+   * предлагать. Это отдельный список, а не обратная сторона сердечка.
+   */
+  async dislike(uid: string, trackId: string): Promise<void> {
+    const body = new URLSearchParams({ 'track-ids': trackId })
+    await this.post(`/users/${uid}/dislikes/tracks/add-multiple`, body)
   }
 
   async setLiked(uid: string, trackId: string, liked: boolean): Promise<void> {
@@ -357,4 +382,23 @@ function coverFrom(raw: any): string | null {
 
 function asArray(value: unknown): any[] {
   return Array.isArray(value) ? value : []
+}
+
+/**
+ * Разбор LRC: строки вида `[01:23.45] текст`.
+ *
+ * Метка может стоять не у каждой строки, и пустые строки в песне — обычное
+ * дело; и то и другое просто пропускается.
+ */
+function parseLrc(raw: string): LyricLine[] {
+  const lines: LyricLine[] = []
+  for (const row of raw.split(/\r?\n/)) {
+    const match = /^\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$/.exec(row.trim())
+    if (!match) continue
+    const text = match[3]!.trim()
+    if (!text) continue
+    const atMs = (Number(match[1]) * 60 + Number(match[2])) * 1000
+    lines.push({ atMs: Math.round(atMs), text })
+  }
+  return lines
 }

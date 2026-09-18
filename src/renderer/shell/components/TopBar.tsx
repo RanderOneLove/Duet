@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
+import type { ServiceFilter } from '../useServiceFilter'
 import { Close, Maximize, Minimize, Search, TrayDown } from '../../shared/Icons'
+import { Segmented } from './Segmented'
 
 interface Props {
   query: string
   error: string | null
+  /** Какой сервис показывать — фильтр общий на всё окно. */
+  filter: ServiceFilter
+  onFilter: (filter: ServiceFilter) => void
   onSearch: (query: string) => void
   onToggleMini: () => void
   onDismissError?: () => void
@@ -11,10 +16,24 @@ interface Props {
 }
 
 /**
- * Top bar: one search box across both services, plus the window controls —
- * the window is frameless, so it has no native ones.
+ * Титульная строка вайрфрейма v2: поиск, фильтр сервиса и кнопки окна.
+ *
+ * Фильтр переехал сюда из экранов. Он и раньше означал одно и то же на Главной
+ * и в «Вам нравится», но жил в каждом экране своей жизнью: переключив его в
+ * одном месте, человек находил другой в другом. Наверху он один на всё окно.
+ *
+ * Окно у нас без системной рамки, поэтому кнопки управления — свои.
  */
-export function TopBar({ query, error, onSearch, onToggleMini, onDismissError, onRetry }: Props): JSX.Element {
+export function TopBar({
+  query,
+  error,
+  filter,
+  onFilter,
+  onSearch,
+  onToggleMini,
+  onDismissError,
+  onRetry
+}: Props): JSX.Element {
   const [text, setText] = useState(query)
 
   // Keep the box in step when navigation changes the query underneath it.
@@ -29,13 +48,15 @@ export function TopBar({ query, error, onSearch, onToggleMini, onDismissError, o
           onSearch(text)
         }}
       >
-        <Search size={13} />
+        <Search size={14} />
         <input
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder="Поиск в VK и Яндекс.Музыке"
+          placeholder="Искать в VK и Яндекс.Музыке"
           spellCheck={false}
         />
+        {/* Подсказка про горячую клавишу, как в макете. */}
+        <kbd className="topbar__kbd">Ctrl K</kbd>
       </form>
 
       <div className="topbar__spacer" />
@@ -45,7 +66,7 @@ export function TopBar({ query, error, onSearch, onToggleMini, onDismissError, o
           <span className="topbar__error-text truncate">{error}</span>
           {onRetry && (
             <button className="pill pill--outline pill--sm" onClick={onRetry}>
-              Retry
+              Ещё раз
             </button>
           )}
           {onDismissError && (
@@ -57,7 +78,16 @@ export function TopBar({ query, error, onSearch, onToggleMini, onDismissError, o
       )}
 
       <div className="topbar__actions nodrag">
-        <button className="pill pill--ghost pill--sm" onClick={onToggleMini}>
+        <Segmented
+          value={filter}
+          onChange={onFilter}
+          options={[
+            { id: 'all', label: 'Все' },
+            { id: 'vk', label: 'VK' },
+            { id: 'yandex', label: 'Яндекс' }
+          ]}
+        />
+        <button className="gbtn" onClick={onToggleMini}>
           Мини-плеер
         </button>
       </div>

@@ -26,9 +26,10 @@ import {
 } from '../../shared/Icons'
 import { Cover } from '../components/Cover'
 import { QueueList } from '../components/QueueList'
+import { Lyrics } from '../components/Lyrics'
 import { Segmented } from '../components/Segmented'
-import { StateBlock } from '../components/StateBlock'
 import { PlayerExtras, PlaylistPicker } from '../components/PlayerExtras'
+import { AmbientPlayer } from './AmbientPlayer'
 
 interface Props {
   state: PlayerState
@@ -56,8 +57,34 @@ export function PlayerScreen({
   const track = currentTrack(state)
   const [tab, setTab] = useState<'queue' | 'lyrics'>('queue')
 
+  /*
+   * Escape закрывает плеер. Он накрывает всё окно, и единственным выходом до
+   * сих пор была маленькая кнопка в углу — а из экрана, который занял собой
+   * всё, всегда должен быть привычный выход.
+   */
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  // «Во всё окно» — совсем другой экран, а не тот же с другими отступами:
+  // там нет ни очереди сбоку, ни панели действий, зато слова песни в центре.
+  if (settings.playerLayout === 'ambient') {
+    return (
+      <AmbientPlayer
+        state={state}
+        onClose={onClose}
+        onSimilar={onSimilar}
+        onOpenQueue={() => setTab('queue')}
+      />
+    )
+  }
+
   return (
-    <div className="fullplayer">
+    <div className={`fullplayer fullplayer--${settings.playerLayout}`}>
       {/* The current cover, blurred, carries the screen's colour. */}
       {track?.coverUrl && (
         <div className="fullplayer__glow" style={{ backgroundImage: `url("${track.coverUrl}")` }} />
@@ -226,7 +253,11 @@ export function PlayerScreen({
             />
           </div>
 
-          {tab === 'queue' ? <QueueList state={state} /> : <Lyrics track={track} />}
+          {tab === 'queue' ? <QueueList state={state} /> : <Lyrics
+              track={track}
+              positionMs={position}
+              onSeek={(at) => window.shell.command({ type: 'seek', positionMs: at })}
+            />}
 
           <div className="queue__footer">
             <div className="muted queue__note">Одна очередь на оба сервиса — переключение вкладок её не сбрасывает.</div>
@@ -283,45 +314,4 @@ function Artists({
   )
 }
 
-/**
- * The words, fetched from whichever service the track came from. Plenty of
- * tracks simply have none, which is an answer rather than a failure.
- */
-function Lyrics({ track }: { track: Track | null }): JSX.Element {
-  const [text, setText] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (!track) {
-      setText(null)
-      return
-    }
-    let current = true
-    setLoading(true)
-    void window.shell
-      .lyrics(track)
-      .then((value) => {
-        if (current) setText(value)
-      })
-      .finally(() => {
-        if (current) setLoading(false)
-      })
-    return () => {
-      current = false
-    }
-  }, [track?.id])
-
-  if (!track) return <StateBlock kind="empty" title="Ничего не играет" hint="Включите трек." />
-  if (loading) return <StateBlock kind="loading" title="Ищем текст…" />
-  if (!text) {
-    return (
-      <StateBlock
-        kind="empty"
-        title="Текста нет"
-        hint={`${track.service === 'vk' ? 'VK' : 'Яндекс'} не знает слов этого трека.`}
-      />
-    )
-  }
-
-  return <div className="lyrics">{text}</div>
-}

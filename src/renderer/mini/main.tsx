@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client'
+import '../shared/fonts.css'
 import '../shared/tokens.css'
 import '../shell/parts2.css'
 import './mini.css'

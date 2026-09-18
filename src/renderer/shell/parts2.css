@@ -254,3 +254,68 @@
 .v-pill__progress .likebtn {
   margin-left: 2px;
 }
+
+/* ---- виды главного экрана ------------------------------------------------ */
+
+/*
+ * «Обложка во весь экран»: волна занимает первый экран целиком, а списки
+ * поднимаются скроллом — как в макете 1b.
+ */
+.home--cover .wave {
+  min-height: calc(100vh - var(--topbar-h) - var(--dock-h) - 40px);
+  display: flex;
+  align-items: flex-end;
+}
+
+.home--cover .wave__inner {
+  width: 100%;
+}
+
+.home--cover .wave__art {
+  width: 220px;
+  height: 220px;
+}
+
+.home--cover .wave__title {
+  font-size: 68px;
+}
+
+/*
+ * «Списком»: волна сжата в строку, и сразу под ней идут треки. Для больших
+ * библиотек, где hero занимает место, а слушают всё равно из списка.
+ */
+.wave--compact .wave__art {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-md);
+}
+
+.wave--compact .wave__inner {
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+}
+
+.wave--compact .wave__title {
+  font-size: 18px;
+}
+
+.wave--compact .wave__kicker,
+.wave--compact .wave__next {
+  display: none;
+}
+
+.wave--compact .wave__body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.wave--compact .wave__sub {
+  flex: 1;
+  min-width: 0;
+}
+
+.wave--compact .wave__actions {
+  margin: 0;
+}

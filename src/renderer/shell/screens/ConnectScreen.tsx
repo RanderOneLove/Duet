@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { SERVICE_META, type Connection, type ServiceId } from '@shared/domain'
 import { ServiceLogo } from '../../shared/ServiceLogo'
+import { Check } from '../../shared/Icons'
 
 interface Props {
   connections: Connection[]
@@ -9,9 +10,12 @@ interface Props {
 }
 
 /**
- * Wireframe 2i. Each service is connected by signing in on its own site in a
- * real browser window — the app never sees a password, and there is no token
- * or cookie for the user to paste.
+ * Первый экран приложения (вайрфрейм 1l).
+ *
+ * Главное здесь — снять опасение, а не собрать логины: вход идёт на настоящих
+ * страницах сервисов внутри приложения, и об этом сказано прямо, до того как
+ * человек нажмёт «Войти». Подключённый сервис не предлагает кнопку заново —
+ * там галочка: список читается как состояние, а не как анкета.
  */
 export function ConnectScreen({ connections, onConnect, onSkip }: Props): JSX.Element {
   const [busy, setBusy] = useState<ServiceId | null>(null)
@@ -28,10 +32,14 @@ export function ConnectScreen({ connections, onConnect, onSkip }: Props): JSX.El
 
   return (
     <div className="connect">
-      <div className="connect__kicker muted">ПЕРВЫЙ ЗАПУСК</div>
-      <h1 className="connect__title">Подключите музыку</h1>
+      <div className="connect__kicker muted">ПОДКЛЮЧЕНИЕ · ПЕРВЫЙ ЗАПУСК</div>
+      <h1 className="connect__title">
+        Два сервиса —<br />
+        один плеер
+      </h1>
       <p className="muted connect__lead">
-        Добавьте один или оба сервиса — второй можно подключить позже в настройках.
+        Вход происходит на настоящих страницах VK и Яндекса внутри приложения. Логин и
+        пароль Duet не видит — только сессию, которую выдал сервис.
       </p>
 
       <div className="connect__cards">
@@ -44,25 +52,34 @@ export function ConnectScreen({ connections, onConnect, onSkip }: Props): JSX.El
               <div className="connectcard__name">{SERVICE_META[connection.service].label}</div>
               <div className="muted connectcard__hint">
                 {connection.connected
-                  ? (connection.account?.displayName ?? 'Подключено')
-                  : 'Вход на сайте сервиса — пароль остаётся у него'}
+                  ? `подключено · ${connection.account?.displayName ?? 'вы'}`
+                  : connection.service === 'yandex'
+                    ? 'токен хранится зашифрованным'
+                    : 'сессия хранится в отдельном разделе'}
               </div>
               {connection.error && <div className="connectcard__error">{connection.error}</div>}
             </div>
-            <button
-              className={connection.connected ? 'pill pill--ghost pill--sm' : 'pill pill--sm'}
-              disabled={busy !== null}
-              onClick={() => void run(connection.service)}
-            >
-              {busy === connection.service
-                ? 'Открываем вход…'
-                : connection.connected
-                  ? 'Переподключить'
-                  : 'Подключить'}
-            </button>
+
+            {connection.connected ? (
+              <span className="connectcard__done" title="Подключено">
+                <Check size={16} />
+              </span>
+            ) : (
+              <button
+                className="pill pill--sm"
+                disabled={busy !== null}
+                onClick={() => void run(connection.service)}
+              >
+                {busy === connection.service ? 'Открываем вход…' : 'Войти'}
+              </button>
+            )}
           </div>
         ))}
       </div>
+
+      <p className="muted connect__note">
+        Можно начать с одного сервиса — второй добавится в настройках.
+      </p>
 
       <button className="connect__skip muted" onClick={onSkip}>
         {anyConnected ? 'Перейти к музыке' : 'Пропустить пока'}

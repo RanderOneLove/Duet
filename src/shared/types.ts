@@ -85,11 +85,73 @@ export type ScreenAnimation = 'none' | 'fade' | 'slide'
 /** Что делает двойной щелчок по мини-плееру. */
 export type MiniDoubleClick = 'expand' | 'openPlayer' | 'nothing'
 
+/**
+ * Насколько плотно идут строки в списках. Высота строки — 40 / 52 / 64,
+ * и её знает не только вёрстка: на ней держится виртуализация списка.
+ */
+export type Density = 'compact' | 'normal' | 'roomy'
+
+/** Высота строки для каждой плотности — одна на CSS и на расчёт видимых строк. */
+export const ROW_HEIGHT: Record<Density, number> = {
+  compact: 40,
+  normal: 52,
+  roomy: 64
+}
+
+/** Каким показывать главный экран. */
+export type HomeLayout = 'calm' | 'cover' | 'list'
+
+/** Каким показывать полноэкранный плеер. */
+export type PlayerLayout = 'split' | 'center' | 'ambient'
+
+/** Блоки Главной, которые можно переставлять и прятать. */
+export type HomeBlockId = 'wave' | 'playlists' | 'liked' | 'downloads'
+
+export interface HomeBlock {
+  id: HomeBlockId
+  shown: boolean
+}
+
+/**
+ * Цвета акцента из вайрфрейма 2b. Первый — синий, как в приложении сейчас;
+ * восьмым идёт свой цвет, который человек выбирает палитрой.
+ */
+export const ACCENTS: string[] = [
+  '#0a84ff',
+  '#30d158',
+  '#ff375f',
+  '#ff6b35',
+  '#bf5af2',
+  '#ffd60a',
+  '#64d2ff'
+]
+
+export const DEFAULT_HOME_BLOCKS: HomeBlock[] = [
+  { id: 'wave', shown: true },
+  { id: 'playlists', shown: true },
+  { id: 'liked', shown: true },
+  { id: 'downloads', shown: false }
+]
+
 export interface Settings {
   /** Светлое или тёмное оформление, либо вслед за системой. */
   theme: ThemeChoice
   /** Общий уровень движения в интерфейсе. */
   motion: MotionLevel
+  /** Цвет акцента — из палитры или свой, в виде #rrggbb. */
+  accent: string
+  /** Брать акцент с обложки играющего трека. */
+  accentFromCover: boolean
+  /** Подкрашивать фон полноэкранного плеера обложкой. */
+  playerTintFromCover: boolean
+  /** Высота строк в списках. */
+  density: Density
+  /** Каким показывать главный экран. */
+  homeLayout: HomeLayout
+  /** Каким показывать полноэкранный плеер. */
+  playerLayout: PlayerLayout
+  /** Порядок и видимость блоков Главной. */
+  homeBlocks: HomeBlock[]
   /** Чем появляется полноэкранный плеер. */
   motionPlayer: PlayerAnimation
   /** Что происходит с обложкой в «Моей волне». */
@@ -121,8 +183,25 @@ export interface Settings {
   outputDeviceId: string
   /** The last few searches, newest first. */
   recentSearches: string[]
+  /**
+   * Треки VK, отмеченные «не нравится».
+   *
+   * У VK нет метода, которым такую отметку можно было бы передать на сервер, —
+   * список живёт здесь и применяется на нашей стороне: отвергнутое не приходит
+   * из волны. Хранятся номера вида `owner_id_audio_id`, новые впереди.
+   */
+  vkDisliked: string[]
   /** Put the machine to sleep when the sleep timer runs out. */
   sleepSuspendsPc: boolean
+  /**
+   * Смотреть, не вышла ли новая версия, и скачивать её заранее.
+   *
+   * Включено: обновление ставится при выходе из приложения, так что человек
+   * закрывает одну версию, а открывает уже следующую. Выключено — приложение
+   * в сеть за этим не ходит вовсе, но кнопка «Проверить» всё равно работает:
+   * выключатель про то, чтобы не делали без спроса, а не про то, чтобы нельзя.
+   */
+  autoUpdate: boolean
   /**
    * Publish what is playing, so someone who follows the invite hears the same
    * thing. Off by default: this sends track names to a server, and that should
@@ -171,6 +250,13 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   motion: 'system',
+  accent: ACCENTS[0]!,
+  accentFromCover: false,
+  playerTintFromCover: true,
+  density: 'normal',
+  homeLayout: 'calm',
+  playerLayout: 'split',
+  homeBlocks: DEFAULT_HOME_BLOCKS,
   motionPlayer: 'sheet',
   motionWave: 'breathe',
   motionScreens: 'fade',
@@ -185,7 +271,9 @@ export const DEFAULT_SETTINGS: Settings = {
   waveCursors: {},
   outputDeviceId: '',
   recentSearches: [],
+  vkDisliked: [],
   sleepSuspendsPc: false,
+  autoUpdate: true,
   listenTogether: false,
   relayUrl: 'https://rander.pro/duet',
   joinPageUrl: 'https://randeronelove.github.io/Duet/',

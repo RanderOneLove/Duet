@@ -1,5 +1,6 @@
 import type {
   Connection,
+  Lyrics,
   HomeSection,
   Playlist,
   SearchResult,
@@ -46,6 +47,11 @@ export { onLibraryChanged } from '../library/changed'
 export function onConnectionsChanged(listener: Listener): () => void {
   listeners.add(listener)
   return () => listeners.delete(listener)
+}
+
+/** Подключён ли сервис прямо сейчас. */
+export function isServiceConnected(service: ServiceId): boolean {
+  return sources[service].isConnected()
 }
 
 export function getConnections(): Connection[] {
@@ -152,7 +158,7 @@ export async function similarTracks(track: Track): Promise<Track[]> {
 }
 
 /** The words for a track, from the service it came from. */
-export async function lyrics(track: Track): Promise<string | null> {
+export async function lyrics(track: Track): Promise<Lyrics | null> {
   const source = sources[track.service]
   if (!source.isConnected()) return null
   return source.lyrics(track)
@@ -219,6 +225,23 @@ async function oneWave(service: ServiceId, afterNativeId?: string): Promise<Trac
   }
 }
 
+/**
+ * Что станция выдала в прошлый раз — для показа на Главной.
+ *
+ * Отдельно от `wave` именно потому, что ничего не запрашивает: экран, который
+ * тянет треки, чтобы их показать, отбирает их у плеера и сбивает станции
+ * отчётность о прослушанном.
+ */
+export function wavePreview(choice: WaveChoice): Track[] {
+  if (choice !== 'both') {
+    const source = sources[choice]
+    return source.isConnected() ? source.lastWave() : []
+  }
+  return dedupe(
+    interleave(order.filter((id) => sources[id].isConnected()).map((id) => sources[id].lastWave()))
+  )
+}
+
 export async function search(query: string): Promise<SearchResult> {
   if (!query.trim()) return EMPTY_SEARCH
   const results = await eachConnected((source) => source.search(query))
@@ -228,6 +251,17 @@ export async function search(query: string): Promise<SearchResult> {
     artists: results.flatMap((result) => result.artists),
     playlists: results.flatMap((result) => result.playlists)
   }
+}
+
+/** Умеет ли сервис этого трека «не нравится». */
+export function canDislike(service: ServiceId): boolean {
+  const source = sources[service]
+  return source.isConnected() && source.canDislike()
+}
+
+export async function dislike(track: Track): Promise<void> {
+  await sources[track.service].dislike(track)
+  notifyLibraryChanged()
 }
 
 export async function setLiked(track: Track, liked: boolean): Promise<void> {

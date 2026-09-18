@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e8e6e1;font-family:'Golos Text',system-ui,sans-serif}
+a{color:#c14a24;text-decoration:none}a:hover{color:#8f3517}
+.dv-turn{padding:44px 48px 36px;border-bottom:1px solid rgba(0,0,0,.09);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 22px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px}
+.dv-tname{font:600 13px/1.2 'Golos Text',system-ui,sans-serif;color:#1a1a1a}
+.dv-opts{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px}
+.dv-olabel{display:flex;align-items:baseline;gap:9px;font:400 11.5px/1.4 'Golos Text',system-ui,sans-serif;color:rgba(0,0,0,.55);max-width:1440px}
+.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.09);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);overflow:hidden;position:relative}
+.dv-opt:target .dv-oid{background:#c14a24;color:#fff}
+.dark .dv-oid{background:rgba(255,255,255,.16);color:#fff}
+.light .dv-oid{background:rgba(0,0,0,.1);color:#17171a}
+.dv-next{margin:26px 0 0;font:12px/1.6 'Golos Text',system-ui,sans-serif;color:rgba(0,0,0,.5)}
+
+.scr{width:1440px;height:900px;display:flex;position:relative;overflow:hidden;font-size:14px;line-height:1.45}
+.scr--sm{width:1440px;height:620px}
+.dark{background:#0b0b0d;color:#f4f4f6}
+.light{background:#f1efec;color:#17171a}
+.dsp{font-family:'Onest',system-ui,sans-serif;letter-spacing:-.025em;font-weight:700;margin:0}
+.ph{background:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 7px,rgba(255,255,255,.025) 7px 14px);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.42);font:500 10px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-align:center;flex:none}
+.light .ph{background:repeating-linear-gradient(135deg,rgba(0,0,0,.07) 0 7px,rgba(0,0,0,.025) 7px 14px);color:rgba(0,0,0,.42)}
+.note{font:500 10px/1.4 ui-monospace,Menlo,monospace;color:#ff7a55;border:1px dashed rgba(255,122,85,.5);border-radius:7px;padding:4px 7px;background:rgba(255,122,85,.09);max-width:215px}
+.light .note{color:#c14a24;border-color:rgba(193,74,36,.4);background:rgba(193,74,36,.07)}
+.nabs{position:absolute;z-index:5}
+.rail{width:72px;flex:none;display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 0 14px}
+.ri{width:46px;height:46px;border-radius:15px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.45)}
+.light .ri{color:rgba(0,0,0,.45)}
+.ri--on{background:rgba(255,255,255,.11);color:#fff}
+.light .ri--on{background:rgba(0,0,0,.07);color:#17171a}
+.glass{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08)}
+.light .glass{background:rgba(255,255,255,.78);border-color:rgba(0,0,0,.07)}
+.mut{color:rgba(255,255,255,.66)}
+.light .mut{color:rgba(0,0,0,.64)}
+.sec{font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.14em;color:rgba(255,255,255,.68)}
+.light .sec{color:rgba(0,0,0,.62)}
+.trow{display:flex;align-items:center;gap:14px;padding:8px 12px;border-radius:15px}
+.trow--on{background:rgba(255,255,255,.07)}
+.light .trow--on{background:rgba(0,0,0,.05)}
+.badge{width:22px;height:14px;object-fit:contain;opacity:.85;flex:none}
+.acc{display:inline-flex;align-items:center;gap:9px;border-radius:999px;padding:13px 26px;font-weight:600;font-size:15px;background:#f2653c;color:#fff;border:0}
+.gbtn{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 15px;font-size:12.5px;font-weight:500;background:rgba(255,255,255,.08);color:inherit;border:0}
+.light .gbtn{background:rgba(0,0,0,.06)}
+.seg{display:inline-flex;border-radius:13px;padding:3px;background:rgba(255,255,255,.07);font-size:12.5px;font-weight:500;gap:2px}
+.light .seg{background:rgba(0,0,0,.05)}
+.seg i{font-style:normal;padding:6px 15px;border-radius:10px;background:rgba(255,255,255,.15);font-weight:600}
+.light .seg i{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.seg s{text-decoration:none;padding:6px 15px;border-radius:10px;color:rgba(255,255,255,.55)}
+.light .seg s{color:rgba(0,0,0,.5)}
+.tog{width:42px;height:26px;border-radius:999px;background:#0a84ff;padding:0 3px;display:flex;align-items:center;justify-content:flex-end;flex:none}
+.tog--off{background:rgba(255,255,255,.16);justify-content:flex-start}
+.light .tog--off{background:rgba(0,0,0,.14)}
+.tog em{width:20px;height:20px;border-radius:50%;background:#fff;display:block;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.accb{background:#0a84ff;box-shadow:0 4px 16px rgba(10,132,255,.35)}
+.sw{width:28px;height:28px;border-radius:50%;box-shadow:0 0 0 2px transparent;flex:none}
+.sw--on{box-shadow:0 0 0 2px #fff,0 0 0 4px rgba(255,255,255,.25)}
+.chip{font-size:12.5px;border-radius:999px;padding:6px 13px;background:rgba(255,255,255,.08);white-space:nowrap}
+.notestrip{display:flex;flex-wrap:wrap;gap:10px;padding:14px 18px;background:#fbfaf9;border-top:1px solid rgba(0,0,0,.08)}
+.notestrip .note{color:#c14a24;border-color:rgba(193,74,36,.4);background:rgba(193,74,36,.07);max-width:300px}
+.ctitle{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.light .chip{background:rgba(0,0,0,.06)}
+</style></helmet>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><span class="dv-tid">2</span><span class="dv-tname">По правкам: синий по умолчанию + выбор цвета, вернул лайк / «не нравится» / устройство вывода / таймер сна, выбор главного экрана, исправленный мини-плеер с раскрытием</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a">
+<div class="dv-olabel"><span class="dv-oid">2a</span>Главная «Спокойная» — это <a class="dv-oid" href="#1a">1a</a> с полной панелью плеера: ♥ и «не нравится» слева, справа — очередь, текст, устройство вывода, таймер сна, громкость. Акцент — синий.</div>
+<div class="dv-card"><div class="scr dark">
+  <div class="rail">
+    <div style="margin-bottom:12px"><svg width="30" height="21" viewBox="0 0 115 80" fill="none"><defs><clipPath id="v1"><circle cx="40" cy="40" r="40"/></clipPath></defs><circle cx="40" cy="40" r="40" fill="#0A84FF"/><circle cx="75" cy="40" r="40" fill="#E9E9ED"/><g clip-path="url(#v1)"><circle cx="75" cy="40" r="40" fill="#7FBEFF"/></g></svg></div>
+    <div class="ri ri--on"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 21 11h-2.6v8.8h-4.6v-5.4h-3.6v5.4H5.6V11H3z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h2.4v16H4zm4.4 0h2.4v16H8.4zM14 4.6l2.3-.6 3.7 14.4-2.3.6z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 0 1 1 1v8.6l3-3 1.4 1.4L12 16.4l-5.4-5.4L8 9.6l3 3V4a1 1 0 0 1 1-1ZM5 18h14v2H5z"/></svg></div>
+    <div style="flex:1"></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4Zm0-2a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4Z"/><path d="M13.9 2a.6.6 0 0 1 .59.48l.32 1.66c.5.18.97.45 1.39.79l1.6-.55a.6.6 0 0 1 .71.27l1.9 3.3a.6.6 0 0 1-.12.75l-1.28 1.1a6.6 6.6 0 0 1 0 1.6l1.28 1.1a.6.6 0 0 1 .12.75l-1.9 3.3a.6.6 0 0 1-.71.27l-1.6-.55c-.42.34-.89.6-1.39.79l-.32 1.66a.6.6 0 0 1-.59.48h-3.8a.6.6 0 0 1-.59-.48l-.32-1.66a6.6 6.6 0 0 1-1.39-.79l-1.6.55a.6.6 0 0 1-.71-.27l-1.9-3.3a.6.6 0 0 1 .12-.75l1.28-1.1a6.6 6.6 0 0 1 0-1.6l-1.28-1.1a.6.6 0 0 1-.12-.75l1.9-3.3a.6.6 0 0 1 .71-.27l1.6.55c.42-.34.89-.6 1.39-.79l.32-1.66A.6.6 0 0 1 10.1 2Z"/></svg></div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding-right:16px">
+    <div style="height:56px;flex:none;display:flex;align-items:center;gap:14px">
+      <div class="glass" style="height:36px;width:380px;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 16px;color:rgba(255,255,255,.66);font-size:13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg><span style="flex:1">Искать в VK и Яндекс.Музыке</span><span style="font:600 10.5px ui-monospace,Menlo,monospace;opacity:.7">⌘K</span></div>
+      <div style="flex:1"></div>
+      <div class="seg"><i>Все</i><s>VK</s><s>Яндекс</s></div>
+      <span class="gbtn">Мини-плеер</span>
+    </div>
+
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:26px;padding-bottom:6px;overflow:hidden">
+      <div style="position:relative;border-radius:30px;overflow:hidden;background:linear-gradient(115deg,#1d2b3f,#131419 70%);flex:none">
+        <div style="display:flex;gap:28px;padding:24px;align-items:center">
+          <div class="ph" style="width:176px;height:176px;border-radius:24px">обложка<br>волны</div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:11px">
+            <div style="display:flex;align-items:center;gap:10px"><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="sec">БЕСКОНЕЧНОЕ РАДИО</span></div>
+            <h1 class="dsp" style="font-size:50px;line-height:.98">Моя волна</h1>
+            <div style="font-size:14.5px;color:rgba(255,255,255,.72)">Сейчас: <b style="font-weight:600;color:#fff">BRAVE</b> · Oohyo</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+              <button class="acc accb"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg>Пауза</button>
+              <div class="seg"><i>Яндекс</i><s>VK</s><s>Обе</s></div>
+              <span class="gbtn" style="color:#59aeff"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg>Нравится</span>
+              <span class="gbtn">Не нравится</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px;margin-top:6px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span class="sec" style="flex:none">ДАЛЕЕ</span><span class="chip">философская жизнь</span><span class="chip">Rich Me</span><span class="chip">Молодым</span><span class="chip">lovely</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:12px"><h2 class="dsp" style="font-size:22px">Плейлисты сервисов</h2><span class="mut" style="font-size:12.5px">оба сервиса · 9</span><div style="flex:1"></div><span class="gbtn">Все</span></div>
+        <div style="display:flex;gap:16px">
+          <div style="width:150px"><div class="ph" style="width:150px;height:150px;border-radius:18px">cover</div><div style="display:flex;align-items:center;gap:7px;margin-top:9px"><span class="ctitle">Discovery</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div><div class="mut" style="font-size:12px">100 треков</div></div>
+          <div style="width:150px"><div class="ph" style="width:150px;height:150px;border-radius:18px">cover</div><div style="display:flex;align-items:center;gap:7px;margin-top:9px"><span class="ctitle">For you</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div><div class="mut" style="font-size:12px">100 треков</div></div>
+          <div style="width:150px"><div class="ph" style="width:150px;height:150px;border-radius:18px">cover</div><div style="display:flex;align-items:center;gap:7px;margin-top:9px"><span class="ctitle">Понравилось</span><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div><div class="mut" style="font-size:12px">26 треков</div></div>
+          <div style="width:150px"><div class="ph" style="width:150px;height:150px;border-radius:18px">cover</div><div style="display:flex;align-items:center;gap:7px;margin-top:9px"><span class="ctitle">New</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div><div class="mut" style="font-size:12px">100 треков</div></div>
+          <div style="width:150px"><div class="ph" style="width:150px;height:150px;border-radius:18px">cover</div><div style="display:flex;align-items:center;gap:7px;margin-top:9px"><span class="ctitle">Daily 1</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div><div class="mut" style="font-size:12px">50 треков</div></div>
+          <div style="width:150px;opacity:.5"><div class="ph" style="width:150px;height:150px;border-radius:18px">cover</div><div style="margin-top:9px"><span class="ctitle">Daily 2</span></div><div class="mut" style="font-size:12px">50 треков</div></div>
+        </div>
+      </div>
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px"><h2 class="dsp" style="font-size:22px">Вам нравится</h2><span class="mut" style="font-size:12.5px">5 508</span><div style="flex:1"></div><span class="gbtn">Перемешать</span></div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div class="trow trow--on"><span style="width:22px;display:flex;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#0a84ff"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span><div class="ph" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">BRAVE</div><div class="mut" style="font-size:12.5px">Oohyo · Far From the Madding City</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12.5px;width:40px;text-align:right">4:27</span></div>
+          <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">2</span><div class="ph" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">Я не в твоём вкусе</div><div class="mut" style="font-size:12.5px">LAMVER</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12.5px;width:40px;text-align:right">2:51</span></div>
+          
+        </div>
+      </div>
+    </div>
+
+    <div class="glass" style="height:84px;flex:none;border-radius:24px;margin-bottom:14px;display:flex;align-items:center;gap:16px;padding:0 18px">
+      <div class="ph" style="width:56px;height:56px;border-radius:15px"></div>
+      <div style="width:176px;min-width:0"><div style="font-size:13.5px;font-weight:600">BRAVE</div><div class="mut" style="font-size:12.5px;display:flex;align-items:center;gap:7px">Oohyo<img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div></div>
+      <div style="display:flex;align-items:center;gap:12px;flex:none">
+        <span style="width:34px;height:34px;border-radius:50%;background:rgba(10,132,255,.18);display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="#0a84ff"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg></span>
+        <span style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,.66)"><path d="M12 3.7 10.6 5C5.4 9.7 2 12.7 2 16.4A4.6 4.6 0 0 0 6.6 21c1.6 0 3.1-.7 4.1-1.9l1.3-1.3 1.3 1.3A5.4 5.4 0 0 0 17.4 21 4.6 4.6 0 0 0 22 16.4c0-3.7-3.4-6.7-8.6-11.4z"/></svg></span>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0">
+        <div style="display:flex;align-items:center;gap:22px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,.55)"><path d="M14.8 5.2 17 7.4h-1.9c-1 0-1.9.5-2.5 1.3l-4 5.6c-.4.6-1.1.9-1.8.9H4v-2h2.8c.3 0 .6-.1.8-.4l4-5.6c.9-1.3 2.4-2 4-2H17l-2.2-2.2zM4 6.8h2.8c1.1 0 2.1.5 2.8 1.4l.5.7-1.2 1.7-.8-1.2a1.5 1.5 0 0 0-1.3-.6H4zm10 6.5 1.4 1.4-.6.6h2.2l-2.2 2.2 1.4 1.4L20 16 16.2 12.2z"/></svg>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+          <span style="width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,.55)"><path d="M7 5h9.6l-1.8-1.8L16.2 1.8 20.4 6l-4.2 4.2-1.4-1.4L16.6 7H7a2 2 0 0 0-2 2v3H3V9a4 4 0 0 1 4-4Zm10 14H7.4l1.8 1.8-1.4 1.4L3.6 18l4.2-4.2 1.4 1.4L7.4 17H17a2 2 0 0 0 2-2v-3h2v3a4 4 0 0 1-4 4Z"/></svg>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;width:80%"><span class="mut" style="font-size:11px;font-variant-numeric:tabular-nums">1:04</span><div style="flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.16)"><i style="display:block;width:24%;height:100%;border-radius:2px;background:#0a84ff"></i></div><span class="mut" style="font-size:11px;font-variant-numeric:tabular-nums">4:27</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex:none">
+        <span class="gbtn" style="background:rgba(255,255,255,.14)"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h12v2H3zm0 4h12v2H3zm0 4h8v2H3zm14-4h2v4h4v2h-4v4h-2v-4h-4v-2h4z"/></svg>Очередь 25</span>
+        <span class="gbtn">Текст</span>
+        <span class="gbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m5 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4m0 6a5 5 0 1 0 0 10 5 5 0 0 0 0-10m0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6"/></svg>Realtek · колонки</span>
+        <span class="gbtn" style="color:#59aeff;background:rgba(10,132,255,.16)"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M9 2h6v2H9zm2 5h2v6l4 2-.9 1.8L11 14zM12 4a9 9 0 1 0 0 18 9 9 0 0 0 0-18m0 2a7 7 0 1 1 0 14 7 7 0 0 1 0-14"/></svg>Сон 29:41</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,.55)"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4zM15.4 8.6a4.6 4.6 0 0 1 0 6.8l1.3 1.4a6.5 6.5 0 0 0 0-9.6z"/></svg>
+        <div style="width:72px;height:4px;border-radius:2px;background:rgba(255,255,255,.16)"><i style="display:block;width:62%;height:100%;border-radius:2px;background:#fff"></i></div>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,.55)"><path d="M4 10V4h6v2H6v4zm10-6h6v6h-2V6h-4zm6 10v6h-6v-2h4v-4zM4 14h2v4h4v2H4z"/></svg>
+      </div>
+    </div>
+  </div>
+</div><div class="notestrip">
+<div class="note">панель плеера: ♥ и «не нравится» слева от транспорта — «не нравится» активно только для волны</div>
+<div class="note">устройство вывода и таймер сна — кнопки в панели, а не только в настройках; таймер показывает остаток</div>
+<div class="note">акцент синий по умолчанию (как в текущем приложении) и меняется в настройках — см. <a class="dv-oid" href="#2b">2b</a></div>
+</div></div></div>
+
+<div class="dv-opt" id="2b">
+<div class="dv-olabel"><span class="dv-oid">2b</span>Настройки · Оформление: выбор главного экрана из трёх, цвет акцента палитрой + свой цвет, плотность и тумблеры с ровным кружком.</div>
+<div class="dv-card"><div class="scr dark">
+  <div class="rail">
+    <div style="margin-bottom:12px"><svg width="30" height="21" viewBox="0 0 115 80" fill="none"><defs><clipPath id="v2"><circle cx="40" cy="40" r="40"/></clipPath></defs><circle cx="40" cy="40" r="40" fill="#0A84FF"/><circle cx="75" cy="40" r="40" fill="#E9E9ED"/><g clip-path="url(#v2)"><circle cx="75" cy="40" r="40" fill="#7FBEFF"/></g></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 21 11h-2.6v8.8h-4.6v-5.4h-3.6v5.4H5.6V11H3z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h2.4v16H4zm4.4 0h2.4v16H8.4zM14 4.6l2.3-.6 3.7 14.4-2.3.6z"/></svg></div>
+    <div style="flex:1"></div>
+    <div class="ri ri--on"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4Zm0-2a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4Z"/><path d="M13.9 2a.6.6 0 0 1 .59.48l.32 1.66c.5.18.97.45 1.39.79l1.6-.55a.6.6 0 0 1 .71.27l1.9 3.3a.6.6 0 0 1-.12.75l-1.28 1.1a6.6 6.6 0 0 1 0 1.6l1.28 1.1a.6.6 0 0 1 .12.75l-1.9 3.3a.6.6 0 0 1-.71.27l-1.6-.55c-.42.34-.89.6-1.39.79l-.32 1.66a.6.6 0 0 1-.59.48h-3.8a.6.6 0 0 1-.59-.48l-.32-1.66a6.6 6.6 0 0 1-1.39-.79l-1.6.55a.6.6 0 0 1-.71-.27l-1.9-3.3a.6.6 0 0 1 .12-.75l1.28-1.1a6.6 6.6 0 0 1 0-1.6l-1.28-1.1a.6.6 0 0 1-.12-.75l1.9-3.3a.6.6 0 0 1 .71-.27l1.6.55c.42-.34.89-.6 1.39-.79l.32-1.66A.6.6 0 0 1 10.1 2Z"/></svg></div>
+  </div>
+  <div style="width:230px;flex:none;padding:24px 12px 24px 0;display:flex;flex-direction:column;gap:3px">
+    <h1 class="dsp" style="font-size:24px;padding:0 12px 16px">Настройки</h1>
+    <div style="padding:9px 14px;border-radius:14px;background:rgba(255,255,255,.09);font-size:13.5px;font-weight:600">Оформление</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">Мини-плеер</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">Воспроизведение</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">Загрузки</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">Сервисы</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">Горячие клавиши</div>
+  </div>
+  <div style="flex:1;min-width:0;padding:24px 28px 24px 0;display:flex;flex-direction:column;gap:24px;overflow:hidden">
+    <div>
+      <span class="sec">ГЛАВНЫЙ ЭКРАН · ВЫБЕРИТЕ ВИД</span>
+      <div style="display:flex;gap:16px;margin-top:12px">
+        <div style="width:230px;border-radius:20px;padding:12px;background:rgba(255,255,255,.05);border:1.5px solid #0a84ff">
+          <div style="height:128px;border-radius:14px;background:#111216;padding:8px;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;gap:6px;flex:none"><div class="ph" style="width:44px;height:44px;border-radius:8px"></div><div style="flex:1;display:flex;flex-direction:column;gap:4px;justify-content:center"><div style="height:10px;width:70%;border-radius:3px;background:rgba(255,255,255,.28)"></div><div style="height:6px;width:40%;border-radius:3px;background:rgba(255,255,255,.14)"></div></div></div>
+            <div style="display:flex;gap:5px"><div class="ph" style="width:30px;height:30px;border-radius:6px"></div><div class="ph" style="width:30px;height:30px;border-radius:6px"></div><div class="ph" style="width:30px;height:30px;border-radius:6px"></div><div class="ph" style="width:30px;height:30px;border-radius:6px"></div></div>
+            <div style="display:flex;flex-direction:column;gap:4px"><div style="height:7px;border-radius:3px;background:rgba(255,255,255,.14)"></div><div style="height:7px;border-radius:3px;background:rgba(255,255,255,.14)"></div><div style="height:7px;width:70%;border-radius:3px;background:rgba(255,255,255,.14)"></div></div>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-top:10px">Спокойная</div><div class="mut" style="font-size:11.5px">волна карточкой, потом списки</div>
+        </div>
+        <div style="width:230px;border-radius:20px;padding:12px;background:rgba(255,255,255,.05);border:1.5px solid transparent">
+          <div style="height:128px;border-radius:14px;background:linear-gradient(150deg,#2b2033,#14141a);padding:8px;display:flex;flex-direction:column;justify-content:space-between">
+            <div style="display:flex;gap:8px;align-items:center"><div class="ph" style="width:52px;height:52px;border-radius:10px"></div><div style="flex:1;display:flex;flex-direction:column;gap:5px"><div style="height:14px;width:80%;border-radius:4px;background:rgba(255,255,255,.34)"></div><div style="height:7px;width:45%;border-radius:3px;background:rgba(255,255,255,.16)"></div></div></div>
+            <div style="height:38px;border-radius:10px 10px 0 0;background:rgba(255,255,255,.08);margin:0 -8px -8px;display:flex;align-items:center;justify-content:center"><div style="width:28px;height:3px;border-radius:2px;background:rgba(255,255,255,.3)"></div></div>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-top:10px">Обложка во весь экран</div><div class="mut" style="font-size:11.5px">как <a class="dv-oid" href="#1b">1b</a>, списки поднимаются скроллом</div>
+        </div>
+        <div style="width:230px;border-radius:20px;padding:12px;background:rgba(255,255,255,.05);border:1.5px solid transparent">
+          <div style="height:128px;border-radius:14px;background:#111216;padding:8px;display:flex;flex-direction:column;gap:5px">
+            <div style="height:9px;width:44%;border-radius:3px;background:rgba(255,255,255,.26)"></div>
+            <div style="display:flex;gap:6px;align-items:center"><div class="ph" style="width:18px;height:18px;border-radius:4px"></div><div style="flex:1;height:7px;border-radius:3px;background:rgba(255,255,255,.14)"></div></div>
+            <div style="display:flex;gap:6px;align-items:center"><div class="ph" style="width:18px;height:18px;border-radius:4px"></div><div style="flex:1;height:7px;border-radius:3px;background:rgba(255,255,255,.14)"></div></div>
+            <div style="display:flex;gap:6px;align-items:center"><div class="ph" style="width:18px;height:18px;border-radius:4px"></div><div style="flex:1;height:7px;border-radius:3px;background:rgba(255,255,255,.14)"></div></div>
+            <div style="display:flex;gap:6px;align-items:center"><div class="ph" style="width:18px;height:18px;border-radius:4px"></div><div style="flex:1;height:7px;border-radius:3px;background:rgba(255,255,255,.14)"></div></div>
+            <div style="display:flex;gap:6px;align-items:center"><div class="ph" style="width:18px;height:18px;border-radius:4px"></div><div style="flex:1;height:7px;border-radius:3px;background:rgba(255,255,255,.14)"></div></div>
+          </div>
+          <div style="font-size:13px;font-weight:600;margin-top:10px">Списком</div><div class="mut" style="font-size:11.5px">без hero — сразу треки, см. <a class="dv-oid" href="#2d">2d</a></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:24px">
+      <div style="flex:1;min-width:0">
+        <span class="sec">ЦВЕТ АКЦЕНТА</span>
+        <div class="glass" style="border-radius:22px;margin-top:12px;padding:18px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <span class="sw sw--on" style="background:#0a84ff"></span>
+            <span class="sw" style="background:#30d158"></span>
+            <span class="sw" style="background:#ff375f"></span>
+            <span class="sw" style="background:#f2653c"></span>
+            <span class="sw" style="background:#bf5af2"></span>
+            <span class="sw" style="background:#ffd60a"></span>
+            <span class="sw" style="background:#64d2ff"></span>
+            <span class="gbtn" style="margin-left:6px">Свой цвет…</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px"><span class="mut" style="flex:1;font-size:12.5px">Брать цвет с обложки текущего трека</span><span class="tog tog--off"><em></em></span></div>
+          <div style="display:flex;align-items:center;gap:12px"><span class="mut" style="flex:1;font-size:12.5px">Подкрашивать фон плеера обложкой</span><span class="tog"><em></em></span></div>
+        </div>
+      </div>
+      <div style="width:290px;flex:none">
+        <span class="sec">СВОЙ ЦВЕТ</span>
+        <div class="glass" style="border-radius:22px;margin-top:12px;padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="height:120px;border-radius:14px;background:linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,#0a84ff);position:relative"><span style="position:absolute;left:72%;top:28%;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)"></span></div>
+          <div style="height:12px;border-radius:6px;background:linear-gradient(to right,#ff375f,#ffd60a,#30d158,#64d2ff,#0a84ff,#bf5af2,#ff375f);position:relative"><span style="position:absolute;left:62%;top:-3px;width:8px;height:18px;border-radius:4px;background:#fff"></span></div>
+          <div style="display:flex;align-items:center;gap:10px"><span class="sw" style="background:#0a84ff;width:26px;height:26px"></span><span style="font:600 12.5px ui-monospace,Menlo,monospace;letter-spacing:.04em">#0A84FF</span><div style="flex:1"></div><span class="gbtn">Сбросить</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <span class="sec">ТЕМА, ПЛОТНОСТЬ, ДВИЖЕНИЕ</span>
+      <div class="glass" style="border-radius:22px;margin-top:12px;padding:4px 18px">
+        <div style="display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.08)"><span style="flex:1;font-size:13.5px">Тема</span><div class="seg"><s>Светлая</s><i>Тёмная</i><s>Как в Windows</s></div></div>
+        <div style="display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.08)"><span style="flex:1;font-size:13.5px">Плотность списков</span><div class="seg"><s>Плотно</s><i>Обычно</i><s>Свободно</s></div></div>
+        <div style="display:flex;align-items:center;gap:16px;padding:14px 0"><span style="flex:1;font-size:13.5px">Движение</span><div class="seg"><s>Меньше</s><i>Тихое</i><s>Полное</s></div></div>
+      </div>
+    </div>
+  </div>
+</div><div class="notestrip">
+<div class="note">кружок тумблера теперь по центру: align-items:center, ход 20 px, 180 ms</div>
+<div class="note">выбор главного экрана — три макета вместо одного «правильного»; смена применяется сразу с кросс-фейдом 200 ms</div>
+<div class="note">палитра: 7 системных цветов + свой цвет через палитру (H/S/V + hex); акцент меняется во всём окне и в мини-плеере</div>
+</div></div></div>
+
+<div class="dv-opt" id="2c">
+<div class="dv-olabel"><span class="dv-oid">2c</span>Мини-плеер, исправленный: у пилюли — текст трека и транспорт у правого края, у карточки обложка ровно по центру, и у каждого вида показано раскрытое состояние при наведении (♥ / «не нравится», перемотка, громкость).</div>
+<div class="dv-card"><div class="scr dark" style="height:1010px;display:block;background:#15151a">
+  <div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.02) 0 12px,transparent 12px 24px)"></div>
+  <div style="position:absolute;left:44px;right:44px;top:40px;display:flex;flex-direction:column;gap:34px;z-index:3">
+
+    <div style="display:flex;gap:40px;align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span class="sec">ПОЛОСА · ПОКОЙ · 420×64</span>
+        <div class="glass" style="width:420px;height:64px;border-radius:20px;display:flex;align-items:center;gap:12px;padding:0 14px">
+          <div class="ph" style="width:40px;height:40px;border-radius:11px"></div>
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">BRAVE</div><div class="mut" style="font-size:11.5px;display:flex;gap:6px;align-items:center">Oohyo<img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div></div>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+          <span style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span class="sec">ПОЛОСА · ПРИ НАВЕДЕНИИ · 420×104</span>
+        <div class="glass" style="width:420px;height:104px;border-radius:22px;display:flex;flex-direction:column;justify-content:center;gap:9px;padding:0 14px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="ph" style="width:40px;height:40px;border-radius:11px"></div>
+            <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">BRAVE</div><div class="mut" style="font-size:11.5px;display:flex;gap:6px;align-items:center">Oohyo<img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div></div>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#0a84ff"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,.66)"><path d="M12 3.7 10.6 5C5.4 9.7 2 12.7 2 16.4A4.6 4.6 0 0 0 6.6 21c1.6 0 3.1-.7 4.1-1.9l1.3-1.3 1.3 1.3A5.4 5.4 0 0 0 17.4 21 4.6 4.6 0 0 0 22 16.4c0-3.7-3.4-6.7-8.6-11.4z"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+            <span style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="mut" style="font-size:10.5px;font-variant-numeric:tabular-nums">1:04</span>
+            <div style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.18);position:relative"><i style="display:block;width:24%;height:100%;border-radius:3px;background:#0a84ff"></i><span style="position:absolute;left:24%;top:-3px;width:11px;height:11px;border-radius:50%;background:#fff;margin-left:-5px"></span></div>
+            <span class="mut" style="font-size:10.5px;font-variant-numeric:tabular-nums">4:27</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(255,255,255,.66)"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/></svg>
+            <div style="width:62px;height:5px;border-radius:3px;background:rgba(255,255,255,.18)"><i style="display:block;width:62%;height:100%;border-radius:3px;background:#fff"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:40px;align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span class="sec">ПИЛЮЛЯ · ПОКОЙ · 300×58</span>
+        <div class="glass" style="width:300px;height:58px;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 12px 0 8px">
+          <div class="ph" style="width:42px;height:42px;border-radius:50%"></div>
+          <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BRAVE</div><div class="mut" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Oohyo</div></div>
+          <div style="display:flex;align-items:center;gap:12px;flex:none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span class="sec">ПИЛЮЛЯ · ПРИ НАВЕДЕНИИ · 340×88</span>
+        <div class="glass" style="width:340px;height:88px;border-radius:30px;display:flex;align-items:center;gap:12px;padding:0 14px 0 10px">
+          <div class="ph" style="width:56px;height:56px;border-radius:50%"></div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BRAVE</div><div class="mut" style="font-size:11px">Oohyo</div></div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#0a84ff"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(255,255,255,.66)"><path d="M12 3.7 10.6 5C5.4 9.7 2 12.7 2 16.4A4.6 4.6 0 0 0 6.6 21c1.6 0 3.1-.7 4.1-1.9l1.3-1.3 1.3 1.3A5.4 5.4 0 0 0 17.4 21 4.6 4.6 0 0 0 22 16.4c0-3.7-3.4-6.7-8.6-11.4z"/></svg>
+              <div style="display:flex;align-items:center;gap:11px;flex:none">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px">
+              <div style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.18);position:relative"><i style="display:block;width:24%;height:100%;border-radius:3px;background:#0a84ff"></i><span style="position:absolute;left:24%;top:-3px;width:11px;height:11px;border-radius:50%;background:#fff;margin-left:-5px"></span></div>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="rgba(255,255,255,.66)"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/></svg>
+              <div style="width:52px;height:5px;border-radius:3px;background:rgba(255,255,255,.18)"><i style="display:block;width:62%;height:100%;border-radius:3px;background:#fff"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:40px;align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span class="sec">КАРТОЧКА · ПОКОЙ · 264</span>
+        <div class="glass" style="width:264px;border-radius:26px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:14px">
+          <div class="ph" style="width:232px;height:232px;border-radius:18px;margin:0 auto">обложка</div>
+          <div style="width:232px"><div style="font-size:14px;font-weight:600;text-align:center">BRAVE</div><div class="mut" style="font-size:12px;display:flex;align-items:center;gap:6px;justify-content:center">Oohyo<img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div></div>
+          <div style="display:flex;align-items:center;gap:18px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+            <span style="width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span class="sec">КАРТОЧКА · ПРИ НАВЕДЕНИИ</span>
+        <div class="glass" style="width:264px;border-radius:26px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div class="ph" style="width:232px;height:232px;border-radius:18px;margin:0 auto">обложка</div>
+          <div style="width:232px"><div style="font-size:14px;font-weight:600;text-align:center">BRAVE</div><div class="mut" style="font-size:12px;text-align:center">Oohyo · Far From the Madding City</div></div>
+          <div style="width:232px;display:flex;flex-direction:column;gap:6px">
+            <div style="height:5px;border-radius:3px;background:rgba(255,255,255,.18);position:relative"><i style="display:block;width:24%;height:100%;border-radius:3px;background:#0a84ff"></i><span style="position:absolute;left:24%;top:-3px;width:11px;height:11px;border-radius:50%;background:#fff;margin-left:-5px"></span></div>
+            <div style="display:flex;justify-content:space-between"><span class="mut" style="font-size:10.5px;font-variant-numeric:tabular-nums">1:04</span><span class="mut" style="font-size:10.5px;font-variant-numeric:tabular-nums">4:27</span></div>
+          </div>
+          <div style="width:232px;display:flex;align-items:center;justify-content:space-between">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#0a84ff"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg>
+            <div style="display:flex;align-items:center;gap:16px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+              <span style="width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+            </div>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,.66)"><path d="M12 3.7 10.6 5C5.4 9.7 2 12.7 2 16.4A4.6 4.6 0 0 0 6.6 21c1.6 0 3.1-.7 4.1-1.9l1.3-1.3 1.3 1.3A5.4 5.4 0 0 0 17.4 21 4.6 4.6 0 0 0 22 16.4c0-3.7-3.4-6.7-8.6-11.4z"/></svg>
+          </div>
+          <div style="width:232px;display:flex;align-items:center;gap:9px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(255,255,255,.66)"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/></svg>
+            <div style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.18)"><i style="display:block;width:62%;height:100%;border-radius:3px;background:#fff"></i></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <span class="sec">ОБЛОЖКА · ПОКОЙ / ПРИ НАВЕДЕНИИ · 216</span>
+        <div style="display:flex;gap:16px">
+          <div class="ph" style="width:216px;height:216px;border-radius:24px;position:relative;align-items:flex-end">
+            <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 14px;background:linear-gradient(transparent,rgba(0,0,0,.78));border-radius:0 0 24px 24px;text-align:left">
+              <div style="font:600 13px 'Golos Text',system-ui,sans-serif;color:#fff;letter-spacing:0">BRAVE</div>
+              <div style="font:400 11.5px 'Golos Text',system-ui,sans-serif;color:rgba(255,255,255,.75);letter-spacing:0">Oohyo</div>
+            </div>
+          </div>
+          <div class="ph" style="width:216px;height:216px;border-radius:24px;position:relative">
+            <div style="position:absolute;inset:0;background:rgba(0,0,0,.5);border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:14px">
+              <div style="display:flex;align-items:center;gap:14px">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="#0a84ff"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+                <span style="width:44px;height:44px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,.75)"><path d="M12 3.7 10.6 5C5.4 9.7 2 12.7 2 16.4A4.6 4.6 0 0 0 6.6 21c1.6 0 3.1-.7 4.1-1.9l1.3-1.3 1.3 1.3A5.4 5.4 0 0 0 17.4 21 4.6 4.6 0 0 0 22 16.4c0-3.7-3.4-6.7-8.6-11.4z"/></svg>
+              </div>
+              <div style="width:170px;display:flex;flex-direction:column;gap:5px">
+                <div style="height:5px;border-radius:3px;background:rgba(255,255,255,.3);position:relative"><i style="display:block;width:24%;height:100%;border-radius:3px;background:#fff"></i><span style="position:absolute;left:24%;top:-3px;width:11px;height:11px;border-radius:50%;background:#fff;margin-left:-5px"></span></div>
+                <div style="display:flex;justify-content:space-between;font:500 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.8)"><span>1:04</span><span>4:27</span></div>
+              </div>
+              <div style="width:170px;display:flex;align-items:center;gap:8px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="rgba(255,255,255,.8)"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/></svg>
+                <div style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.3)"><i style="display:block;width:62%;height:100%;border-radius:3px;background:#fff"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><div class="notestrip">
+<div class="note">раскрытие: высота/ширина плиты меняются пружиной 260 ms, содержимое появляется фейдом 140 ms с задержкой 60 ms</div>
+<div class="note">у всех видов при наведении доступны ♥, «не нравится», перемотка и громкость — ползунки с ручкой 11 px, тянутся мышью</div>
+<div class="note">уход мыши: задержка 400 ms перед сворачиванием, чтобы не схлопывалось под курсором</div>
+</div></div></div>
+
+<div class="dv-opt" id="2d">
+<div class="dv-olabel"><span class="dv-oid">2d</span>Главная «Списком» — третий вариант для выбора в <a class="dv-oid" href="#2b">2b</a>: без hero, волна — строкой сверху, дальше сразу треки. Для больших библиотек.</div>
+<div class="dv-card"><div class="scr dark scr--sm">
+  <div class="rail">
+    <div style="margin-bottom:12px"><svg width="30" height="21" viewBox="0 0 115 80" fill="none"><defs><clipPath id="v3"><circle cx="40" cy="40" r="40"/></clipPath></defs><circle cx="40" cy="40" r="40" fill="#0A84FF"/><circle cx="75" cy="40" r="40" fill="#E9E9ED"/><g clip-path="url(#v3)"><circle cx="75" cy="40" r="40" fill="#7FBEFF"/></g></svg></div>
+    <div class="ri ri--on"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 21 11h-2.6v8.8h-4.6v-5.4h-3.6v5.4H5.6V11H3z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h2.4v16H4zm4.4 0h2.4v16H8.4zM14 4.6l2.3-.6 3.7 14.4-2.3.6z"/></svg></div>
+  </div>
+  <div style="flex:1;min-width:0;padding:18px 24px 0 0;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+    <div class="glass" style="border-radius:20px;padding:12px 16px;display:flex;align-items:center;gap:14px;flex:none">
+      <div class="ph" style="width:52px;height:52px;border-radius:13px"></div>
+      <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:600">Моя волна</span><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12px">· BRAVE · Oohyo</span></div><div style="height:4px;border-radius:2px;background:rgba(255,255,255,.16);margin-top:8px"><i style="display:block;width:24%;height:100%;border-radius:2px;background:#0a84ff"></i></div></div>
+      <div class="seg"><i>Яндекс</i><s>VK</s><s>Обе</s></div>
+      <button class="acc accb" style="padding:10px 20px;font-size:14px"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg>Пауза</button>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:12px;flex:none"><h2 class="dsp" style="font-size:20px">Вам нравится</h2><span class="mut" style="font-size:12.5px">5 508 · оба сервиса</span><div style="flex:1"></div><div class="seg"><i>Все</i><s>VK</s><s>Яндекс</s></div><span class="gbtn">Перемешать</span></div>
+    <div style="display:flex;flex-direction:column;gap:1px">
+      <div class="trow trow--on" style="padding:6px 12px"><span style="width:22px;display:flex;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="#0a84ff"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span><div class="ph" style="width:36px;height:36px;border-radius:9px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">BRAVE</div></div><span class="mut" style="width:180px;font-size:12px">Oohyo</span><span class="mut" style="width:180px;font-size:12px">Far From the Madding City</span><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12px;width:40px;text-align:right">4:27</span></div>
+      <div class="trow" style="padding:6px 12px"><span class="mut" style="width:22px;text-align:center;font-size:12px">2</span><div class="ph" style="width:36px;height:36px;border-radius:9px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px">Я не в твоём вкусе</div></div><span class="mut" style="width:180px;font-size:12px">LAMVER</span><span class="mut" style="width:180px;font-size:12px">Синглы</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12px;width:40px;text-align:right">2:51</span></div>
+      <div class="trow" style="padding:6px 12px"><span class="mut" style="width:22px;text-align:center;font-size:12px">3</span><div class="ph" style="width:36px;height:36px;border-radius:9px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px">плт</div></div><span class="mut" style="width:180px;font-size:12px">кайдан</span><span class="mut" style="width:180px;font-size:12px">—</span><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12px;width:40px;text-align:right">2:14</span></div>
+      <div class="trow" style="padding:6px 12px"><span class="mut" style="width:22px;text-align:center;font-size:12px">4</span><div class="ph" style="width:36px;height:36px;border-radius:9px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px">больно</div></div><span class="mut" style="width:180px;font-size:12px">балкон ожиданий</span><span class="mut" style="width:180px;font-size:12px">—</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12px;width:40px;text-align:right">3:02</span></div>
+      <div class="trow" style="padding:6px 12px"><span class="mut" style="width:22px;text-align:center;font-size:12px">5</span><div class="ph" style="width:36px;height:36px;border-radius:9px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px">философская жизнь</div></div><span class="mut" style="width:180px;font-size:12px">liberum</span><span class="mut" style="width:180px;font-size:12px">—</span><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12px;width:40px;text-align:right">2:47</span></div>
+      <div class="trow" style="padding:6px 12px"><span class="mut" style="width:22px;text-align:center;font-size:12px">6</span><div class="ph" style="width:36px;height:36px;border-radius:9px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px">Бесконечно лето</div></div><span class="mut" style="width:180px;font-size:12px">BOGDASHA</span><span class="mut" style="width:180px;font-size:12px">—</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12px;width:40px;text-align:right">2:38</span></div>
+    </div>
+  </div>
+</div><div class="notestrip">
+<div class="note">плотный режим: строка 48 px, альбом и исполнитель — отдельными колонками, как в «Вам нравится»</div>
+</div></div></div>
+
+</div>
+<p class="dv-next">Попробуйте дальше: «главной оставляем <a class="dv-oid" href="#2a">2a</a>» · «в плеере <a class="dv-oid" href="#1f">1f</a> тоже верни лайк и таймер сна» · «покажи палитру из <a class="dv-oid" href="#2b">2b</a> в светлой теме»</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><span class="dv-tid">1</span><span class="dv-tname">Duet · новая структура — icon rail + панель по требованию, движение «тихое, как в iOS»</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><span class="dv-oid">1a</span>Главная · rail + спокойный hero. Rail 72px со скрытыми подписями, поиск — в титульной строке (⌘K), внизу одна стеклянная панель с кнопкой «Очередь». Dark.</div>
+<div class="dv-card"><div class="scr dark">
+
+  <div class="rail">
+    <div style="width:34px;height:24px;margin-bottom:12px;display:flex;align-items:center;justify-content:center"><svg width="30" height="21" viewBox="0 0 115 80" fill="none"><defs><clipPath id="w1"><circle cx="40" cy="40" r="40"/></clipPath></defs><circle cx="40" cy="40" r="40" fill="#F2653C"/><circle cx="75" cy="40" r="40" fill="#E9E9ED"/><g clip-path="url(#w1)"><circle cx="75" cy="40" r="40" fill="#F6A184"/></g></svg></div>
+    <div class="ri ri--on"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 21 11h-2.6v8.8h-4.6v-5.4h-3.6v5.4H5.6V11H3z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h2.4v16H4zm4.4 0h2.4v16H8.4zM14 4.6l2.3-.6 3.7 14.4-2.3.6z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 0 1 1 1v8.6l3-3 1.4 1.4L12 16.4l-5.4-5.4L8 9.6l3 3V4a1 1 0 0 1 1-1ZM5 18h14v2H5z"/></svg></div>
+    <div style="flex:1"></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4Zm0-2a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4Z"/><path d="M13.9 2a.6.6 0 0 1 .59.48l.32 1.66c.5.18.97.45 1.39.79l1.6-.55a.6.6 0 0 1 .71.27l1.9 3.3a.6.6 0 0 1-.12.75l-1.28 1.1a6.6 6.6 0 0 1 0 1.6l1.28 1.1a.6.6 0 0 1 .12.75l-1.9 3.3a.6.6 0 0 1-.71.27l-1.6-.55c-.42.34-.89.6-1.39.79l-.32 1.66a.6.6 0 0 1-.59.48h-3.8a.6.6 0 0 1-.59-.48l-.32-1.66a6.6 6.6 0 0 1-1.39-.79l-1.6.55a.6.6 0 0 1-.71-.27l-1.9-3.3a.6.6 0 0 1 .12-.75l1.28-1.1a6.6 6.6 0 0 1 0-1.6l-1.28-1.1a.6.6 0 0 1-.12-.75l1.9-3.3a.6.6 0 0 1 .71-.27l1.6.55c.42-.34.89-.6 1.39-.79l.32-1.66A.6.6 0 0 1 10.1 2Z"/></svg></div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:0 16px 0 0">
+    <div style="height:56px;flex:none;display:flex;align-items:center;gap:14px">
+      <div class="glass" style="height:36px;width:380px;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 16px;color:rgba(255,255,255,.55);font-size:13px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg>
+        <span style="flex:1">Искать в VK и Яндекс.Музыке</span><span style="font:600 10.5px ui-monospace,Menlo,monospace;opacity:.6">⌘K</span>
+      </div>
+      <div style="flex:1"></div>
+      <span class="mut" style="font-size:12.5px">Все · VK · Яндекс</span>
+      <div class="seg"><i>Все</i><s>VK</s><s>Яндекс</s></div>
+      <div style="display:flex;gap:2px;color:rgba(255,255,255,.4);margin-left:8px">
+        <span style="width:36px;height:30px;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M5 11h14v2H5z"/></svg></span>
+        <span style="width:36px;height:30px;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M5 5h14v14H5zm2 2v10h10V7z"/></svg></span>
+        <span style="width:36px;height:30px;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="m6.4 5 12.6 12.6-1.4 1.4L5 6.4zM19 6.4 6.4 19 5 17.6 17.6 5z"/></svg></span>
+      </div>
+    </div>
+
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:26px;padding-bottom:6px;overflow:hidden">
+
+      <div style="position:relative;border-radius:30px;overflow:hidden;background:linear-gradient(115deg,#2a1f2e,#141319 70%);flex:none">
+        <div style="display:flex;gap:28px;padding:24px;align-items:center">
+          <div class="ph" style="width:148px;height:148px;border-radius:22px">обложка<br>волны</div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px"><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="sec">БЕСКОНЕЧНОЕ РАДИО</span></div>
+            <h1 class="dsp" style="font-size:44px;line-height:.98">Моя волна</h1>
+            <div style="font-size:14.5px;color:rgba(255,255,255,.7)">Сейчас: <b style="font-weight:600;color:#fff">BRAVE</b> · Oohyo</div>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:6px">
+              <button class="acc"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg>Пауза</button>
+              <div class="seg"><i>Яндекс</i><s>VK</s><s>Обе</s></div>
+              <span class="gbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg>Нравится</span>
+              <span class="gbtn">Не нравится</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px;margin-top:10px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)">
+              <span class="sec" style="flex:none">ДАЛЕЕ</span><span class="chip">философская жизнь</span><span class="chip">Rich Me</span><span class="chip">Молодым</span><span class="chip">lovely</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none">
+        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:14px"><h2 class="dsp" style="font-size:22px">Плейлисты сервисов</h2><span class="mut" style="font-size:12.5px">оба сервиса · 9</span><div style="flex:1"></div><span class="gbtn">Все</span></div>
+        <div style="display:flex;gap:16px">
+          <div style="width:128px"><div class="ph" style="width:128px;height:128px;border-radius:16px">cover</div><div style="display:flex;align-items:center;gap:7px;margin-top:10px"><span class="ctitle">Discovery</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div><div class="mut" style="font-size:12px">100 треков</div></div>
+          <div style="width:128px"><div class="ph" style="width:128px;height:128px;border-radius:16px">cover</div><div style="display:flex;align-items:center;gap:7px;margin-top:10px"><span class="ctitle">For you</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div><div class="mut" style="font-size:12px">100 треков</div></div>
+          <div style="width:128px"><div class="ph" style="width:128px;height:128px;border-radius:16px">cover</div><div style="display:flex;align-items:center;gap:7px;margin-top:10px"><span class="ctitle">Понравилось</span><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div><div class="mut" style="font-size:12px">26 треков</div></div>
+          <div style="width:128px"><div class="ph" style="width:128px;height:128px;border-radius:16px">cover</div><div style="display:flex;align-items:center;gap:7px;margin-top:10px"><span class="ctitle">New</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div><div class="mut" style="font-size:12px">100 треков</div></div>
+          <div style="width:128px"><div class="ph" style="width:128px;height:128px;border-radius:16px">cover</div><div style="display:flex;align-items:center;gap:7px;margin-top:10px"><span class="ctitle">Daily 1</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div><div class="mut" style="font-size:12px">50 треков</div></div>
+          <div style="width:128px;opacity:.5"><div class="ph" style="width:128px;height:128px;border-radius:16px">cover</div><div style="margin-top:10px;font-weight:600;font-size:13.5px">Daily 2</div><div class="mut" style="font-size:12px">50 треков</div></div>
+        </div>
+      </div>
+
+      <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px"><h2 class="dsp" style="font-size:22px">Вам нравится</h2><span class="mut" style="font-size:12.5px">5 508</span><div style="flex:1"></div><span class="gbtn">Перемешать</span><span class="gbtn">Открыть</span></div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div class="trow trow--on"><span style="width:22px;display:flex;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#f2653c"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span><div class="ph" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">BRAVE</div><div class="mut" style="font-size:12.5px">Oohyo · Far From the Madding City</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12.5px;width:40px;text-align:right">4:27</span></div>
+          <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">2</span><div class="ph" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">Я не в твоём вкусе</div><div class="mut" style="font-size:12.5px">LAMVER</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12.5px;width:40px;text-align:right">2:51</span></div>
+          
+          
+        </div>
+      </div>
+    </div>
+
+    <div class="glass" style="height:76px;flex:none;border-radius:24px;margin-bottom:16px;display:flex;align-items:center;gap:18px;padding:0 20px">
+      <div class="ph" style="width:52px;height:52px;border-radius:14px"></div>
+      <div style="width:200px;min-width:0"><div style="font-size:13.5px;font-weight:600">BRAVE</div><div class="mut" style="font-size:12.5px;display:flex;align-items:center;gap:7px">Oohyo<img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0">
+        <div style="display:flex;align-items:center;gap:22px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M14.8 5.2 17 7.4h-1.9c-1 0-1.9.5-2.5 1.3l-4 5.6c-.4.6-1.1.9-1.8.9H4v-2h2.8c.3 0 .6-.1.8-.4l4-5.6c.9-1.3 2.4-2 4-2H17l-2.2-2.2zM4 6.8h2.8c1.1 0 2.1.5 2.8 1.4l.5.7-1.2 1.7-.8-1.2a1.5 1.5 0 0 0-1.3-.6H4zm10 6.5 1.4 1.4-.6.6h2.2l-2.2 2.2 1.4 1.4L20 16 16.2 12.2z"/></svg>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+          <span style="width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M7 5h9.6l-1.8-1.8L16.2 1.8 20.4 6l-4.2 4.2-1.4-1.4L16.6 7H7a2 2 0 0 0-2 2v3H3V9a4 4 0 0 1 4-4Zm10 14H7.4l1.8 1.8-1.4 1.4L3.6 18l4.2-4.2 1.4 1.4L7.4 17H17a2 2 0 0 0 2-2v-3h2v3a4 4 0 0 1-4 4Z"/></svg>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;width:78%"><span class="mut" style="font-size:11px">0:02</span><div style="flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.16)"><i style="display:block;width:2%;height:100%;border-radius:2px;background:#f2653c"></i></div><span class="mut" style="font-size:11px">4:27</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="gbtn" style="background:rgba(255,255,255,.14)"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h12v2H3zm0 4h12v2H3zm0 4h8v2H3zm14-4h2v4h4v2h-4v4h-2v-4h-4v-2h4z"/></svg>Очередь 25</span>
+        <span class="gbtn">Текст</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4zM15.4 8.6a4.6 4.6 0 0 1 0 6.8l1.3 1.4a6.5 6.5 0 0 0 0-9.6z"/></svg>
+        <div style="width:72px;height:4px;border-radius:2px;background:rgba(255,255,255,.16)"><i style="display:block;width:62%;height:100%;border-radius:2px;background:#fff"></i></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M4 10V4h6v2H6v4zm10-6h6v6h-2V6h-4zm6 10v6h-6v-2h4v-4zM4 14h2v4h4v2H4z"/></svg>
+      </div>
+    </div>
+  </div></div><div class="notestrip">
+
+  <div class="note">обложка «дышит»: scale 1→1.015, 8 s, ease-in-out; блик по градиенту синхронно</div>
+  <div class="note">hover строки: номер → ▶ (fade 120 ms), фон 6 % — без сдвига текста</div>
+  <div class="note">«Очередь» выдвигает панель справа: 320 px, spring 320 ms, контент сжимается</div></div></div></div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><span class="dv-oid">1b</span>Главная · full-bleed волна. Первый экран — целиком станция на размытой обложке; остальное живёт в «листе», который поднимается скроллом. Rail плавает поверх.</div>
+<div class="dv-card"><div class="scr dark" style="display:block;background:linear-gradient(160deg,#3a2430,#191722 55%,#0d0d10)">
+  <div style="position:absolute;inset:0;background:radial-gradient(60% 55% at 62% 34%,rgba(242,101,60,.35),transparent 70%)"></div>
+
+  <div class="rail glass" style="position:absolute;left:18px;top:50%;transform:translateY(-50%);height:396px;border-radius:26px;gap:6px;padding:14px 0;z-index:4">
+    <div class="ri ri--on"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 21 11h-2.6v8.8h-4.6v-5.4h-3.6v5.4H5.6V11H3z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h2.4v16H4zm4.4 0h2.4v16H8.4zM14 4.6l2.3-.6 3.7 14.4-2.3.6z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 0 1 1 1v8.6l3-3 1.4 1.4L12 16.4l-5.4-5.4L8 9.6l3 3V4a1 1 0 0 1 1-1ZM5 18h14v2H5z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4Z"/><path d="M13.9 2a.6.6 0 0 1 .59.48l.32 1.66c.5.18.97.45 1.39.79l1.6-.55a.6.6 0 0 1 .71.27l1.9 3.3a.6.6 0 0 1-.12.75l-1.28 1.1a6.6 6.6 0 0 1 0 1.6l1.28 1.1a.6.6 0 0 1 .12.75l-1.9 3.3a.6.6 0 0 1-.71.27l-1.6-.55c-.42.34-.89.6-1.39.79l-.32 1.66a.6.6 0 0 1-.59.48h-3.8a.6.6 0 0 1-.59-.48l-.32-1.66a6.6 6.6 0 0 1-1.39-.79l-1.6.55a.6.6 0 0 1-.71-.27l-1.9-3.3a.6.6 0 0 1 .12-.75l1.28-1.1a6.6 6.6 0 0 1 0-1.6l-1.28-1.1a.6.6 0 0 1-.12-.75l1.9-3.3a.6.6 0 0 1 .71-.27l1.6.55c.42-.34.89-.6 1.39-.79l.32-1.66A.6.6 0 0 1 10.1 2Z"/></svg></div>
+  </div>
+
+  <div style="position:absolute;left:0;right:0;top:0;height:56px;display:flex;align-items:center;justify-content:center;gap:14px;z-index:4">
+    <div class="glass" style="height:36px;width:360px;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 16px;color:rgba(255,255,255,.6);font-size:13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg><span style="flex:1">Искать везде</span><span style="font:600 10.5px ui-monospace,Menlo,monospace;opacity:.6">⌘K</span></div>
+  </div>
+
+  <div style="position:absolute;left:118px;right:60px;top:96px;display:flex;gap:44px;align-items:center;z-index:3">
+    <div class="ph" style="width:340px;height:340px;border-radius:34px;box-shadow:0 40px 80px rgba(0,0,0,.5)">обложка<br>текущего трека</div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="sec">БЕСКОНЕЧНОЕ РАДИО · ЯНДЕКС</span></div>
+      <h1 class="dsp" style="font-size:96px;line-height:.92">Моя<br>волна</h1>
+      <div style="font-size:16px;color:rgba(255,255,255,.75);margin-top:16px">BRAVE · Oohyo</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:22px">
+        <button class="acc" style="padding:15px 30px;font-size:16px"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg>Пауза</button>
+        <div class="seg"><i>Яндекс</i><s>VK</s><s>Обе</s></div>
+        <span class="gbtn">Нравится</span><span class="gbtn">Дальше</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass" style="position:absolute;left:96px;right:0;bottom:0;height:224px;border-radius:34px 34px 0 0;padding:20px 28px;z-index:3">
+    <div style="width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.25);margin:0 auto 16px"></div>
+    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:14px"><h2 class="dsp" style="font-size:20px">Вам нравится</h2><span class="mut" style="font-size:12.5px">5 508 · оба сервиса</span><div style="flex:1"></div><h2 class="dsp" style="font-size:20px;opacity:.45">Плейлисты сервисов</h2></div>
+    <div style="display:flex;gap:28px">
+      <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+        <div class="trow" style="padding:7px 10px"><div class="ph" style="width:40px;height:40px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">BRAVE</div><div class="mut" style="font-size:12px">Oohyo</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div>
+        <div class="trow" style="padding:7px 10px"><div class="ph" style="width:40px;height:40px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500">Я не в твоём вкусе</div><div class="mut" style="font-size:12px">LAMVER</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div>
+      </div>
+      <div style="display:flex;gap:14px">
+        <div class="ph" style="width:118px;height:118px;border-radius:18px">Discovery</div>
+        <div class="ph" style="width:118px;height:118px;border-radius:18px">For you</div>
+        <div class="ph" style="width:118px;height:118px;border-radius:18px">New</div>
+        <div class="ph" style="width:118px;height:118px;border-radius:18px;opacity:.5">Daily 1</div>
+      </div>
+    </div>
+  </div></div><div class="notestrip">
+
+  <div class="note">фон = обложка, blur 80 px, saturate 160 %; при смене трека кросс-фейд 600 ms</div>
+  <div class="note">лист поднимается скроллом: hero уезжает на -60 px и теряет 40 % прозрачности</div></div></div></div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><span class="dv-oid">1c</span>Главная · та же структура, что <a class="dv-oid" href="#1a">1a</a>, в светлой теме — проверка контраста и «бумажной» плотности.</div>
+<div class="dv-card"><div class="scr light scr--sm">
+  <div class="rail">
+    <div style="margin-bottom:12px"><svg width="30" height="21" viewBox="0 0 115 80" fill="none"><defs><clipPath id="w2"><circle cx="40" cy="40" r="40"/></clipPath></defs><circle cx="40" cy="40" r="40" fill="#F2653C"/><circle cx="75" cy="40" r="40" fill="#17171A"/><g clip-path="url(#w2)"><circle cx="75" cy="40" r="40" fill="#C14A24"/></g></svg></div>
+    <div class="ri ri--on"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 21 11h-2.6v8.8h-4.6v-5.4h-3.6v5.4H5.6V11H3z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h2.4v16H4zm4.4 0h2.4v16H8.4zM14 4.6l2.3-.6 3.7 14.4-2.3.6z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg></div>
+    <div style="flex:1"></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4Z"/></svg></div>
+  </div>
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding-right:16px">
+    <div style="height:56px;display:flex;align-items:center;gap:14px">
+      <div class="glass" style="height:36px;width:380px;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 16px;font-size:13px;color:rgba(0,0,0,.5)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg><span style="flex:1">Искать в VK и Яндекс.Музыке</span><span style="font:600 10.5px ui-monospace,Menlo,monospace">⌘K</span></div>
+      <div style="flex:1"></div><div class="seg"><i>Все</i><s>VK</s><s>Яндекс</s></div>
+    </div>
+    <div style="border-radius:30px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.07),0 18px 40px rgba(0,0,0,.07);display:flex;gap:26px;padding:24px;align-items:center">
+      <div class="ph" style="width:168px;height:168px;border-radius:24px">обложка волны</div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px"><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="sec">БЕСКОНЕЧНОЕ РАДИО</span></div>
+        <h1 class="dsp" style="font-size:46px;line-height:1">Моя волна</h1>
+        <div class="mut" style="font-size:14px">Сейчас: <b style="color:#17171a">BRAVE</b> · Oohyo</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:4px"><button class="acc"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg>Пауза</button><div class="seg"><i>Яндекс</i><s>VK</s><s>Обе</s></div><span class="gbtn">Нравится</span></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:12px;margin:22px 0 10px"><h2 class="dsp" style="font-size:20px">Вам нравится</h2><span class="mut" style="font-size:12.5px">5 508</span></div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div class="trow trow--on"><span style="width:22px;display:flex;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#c14a24"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span><div class="ph" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1"><div style="font-size:14px;font-weight:600">BRAVE</div><div class="mut" style="font-size:12.5px">Oohyo</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12.5px">4:27</span></div>
+      <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">2</span><div class="ph" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1"><div style="font-size:14px;font-weight:500">Я не в твоём вкусе</div><div class="mut" style="font-size:12.5px">LAMVER</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12.5px">2:51</span></div>
+      <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">3</span><div class="ph" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1"><div style="font-size:14px;font-weight:500">плт</div><div class="mut" style="font-size:12.5px">кайдан</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12.5px">2:14</span></div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="glass" style="height:72px;border-radius:22px;margin-bottom:16px;display:flex;align-items:center;gap:16px;padding:0 18px">
+      <div class="ph" style="width:48px;height:48px;border-radius:13px"></div>
+      <div style="width:180px"><div style="font-size:13.5px;font-weight:600">BRAVE</div><div class="mut" style="font-size:12px">Oohyo</div></div>
+      <div style="flex:1;display:flex;justify-content:center;gap:22px;align-items:center">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="#17171a"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+        <span style="width:40px;height:40px;border-radius:50%;background:#17171a;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="#17171a"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+      </div>
+      <span class="gbtn">Очередь 25</span><span class="gbtn">Текст</span>
+    </div>
+  </div></div><div class="notestrip">
+  <div class="note">светлая тема: панели — белая бумага, тени 7 %, акцент только на активном</div></div></div></div>
+
+<div class="dv-opt" id="1d">
+<div class="dv-olabel"><span class="dv-oid">1d</span>Плеер · обложка в центре, элементы проявляются. В покое — только обложка и название; управление приходит на движение мыши и уходит через 3 с.</div>
+<div class="dv-card"><div class="scr dark" style="display:block;background:linear-gradient(180deg,#1f1c28,#0c0c0f 60%)">
+  <div style="position:absolute;inset:0;background:radial-gradient(50% 45% at 50% 42%,rgba(242,101,60,.22),transparent 72%)"></div>
+  <div style="position:absolute;left:0;right:0;top:20px;display:flex;align-items:center;padding:0 22px;z-index:4">
+    <span class="gbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.5 5.4 8.9 6.8 7.5 12 12.7l5.2-5.2 1.4 1.4z"/></svg>Свернуть</span>
+    <div style="flex:1;text-align:center"><div class="sec">ИГРАЕТ ИЗ ОЧЕРЕДИ · 25 ТРЕКОВ</div></div>
+    <span class="gbtn">Очередь</span>
+  </div>
+  <div style="position:absolute;left:0;right:0;top:96px;display:flex;flex-direction:column;align-items:center;gap:30px;z-index:3">
+    <div class="ph" style="width:400px;height:400px;border-radius:36px;box-shadow:0 50px 90px rgba(0,0,0,.55)">обложка 400×400</div>
+    <div style="text-align:center">
+      <h1 class="dsp" style="font-size:40px">BRAVE</h1>
+      <div style="display:flex;align-items:center;justify-content:center;gap:9px;margin-top:8px;font-size:15px;color:rgba(255,255,255,.7)">Oohyo · Far From the Madding City<img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div>
+    </div>
+    <div style="width:520px;display:flex;flex-direction:column;gap:8px;opacity:.95">
+      <div style="height:5px;border-radius:3px;background:rgba(255,255,255,.2)"><i style="display:block;width:24%;height:100%;border-radius:3px;background:#fff"></i></div>
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;color:rgba(255,255,255,.55)"><span>1:04</span><span>−3:23</span></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:34px">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M14.8 5.2 17 7.4h-1.9c-1 0-1.9.5-2.5 1.3l-4 5.6c-.4.6-1.1.9-1.8.9H4v-2h2.8c.3 0 .6-.1.8-.4l4-5.6c.9-1.3 2.4-2 4-2H17l-2.2-2.2zM4 6.8h2.8c1.1 0 2.1.5 2.8 1.4l.5.7-1.2 1.7-.8-1.2a1.5 1.5 0 0 0-1.3-.6H4zm10 6.5 1.4 1.4-.6.6h2.2l-2.2 2.2 1.4 1.4L20 16 16.2 12.2z"/></svg>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+      <span style="width:72px;height:72px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M7 5h9.6l-1.8-1.8L16.2 1.8 20.4 6l-4.2 4.2-1.4-1.4L16.6 7H7a2 2 0 0 0-2 2v3H3V9a4 4 0 0 1 4-4Zm10 14H7.4l1.8 1.8-1.4 1.4L3.6 18l4.2-4.2 1.4 1.4L7.4 17H17a2 2 0 0 0 2-2v-3h2v3a4 4 0 0 1-4 4Z"/></svg>
+    </div>
+    <div style="display:flex;gap:12px;opacity:.5">
+      <span class="gbtn">В избранном · Яндекс</span><span class="gbtn">Похожее</span><span class="gbtn">Скачать</span><span class="gbtn">Текст</span>
+    </div>
+  </div></div><div class="notestrip">
+  <div class="note">покой: opacity 0 у транспорта и кнопок; курсор/клавиша → 1 за 200 ms, скрытие через 3 с за 400 ms</div>
+  <div class="note">обложка «дышит» 1→1.01 (10 s) и чуть теплеет фон на битах — без вспышек</div></div></div></div>
+
+<div class="dv-opt" id="1e">
+<div class="dv-olabel"><span class="dv-oid">1e</span>Плеер · обложка слева, панель справа. Панель вызывается кнопкой «Очередь» и переключается на «Текст»; drag-n-drop очереди на месте.</div>
+<div class="dv-card"><div class="scr dark" style="background:linear-gradient(120deg,#231d2b,#0d0d11 65%)">
+  <div style="flex:1;min-width:0;display:flex;align-items:center;gap:44px;padding:0 0 0 72px;position:relative;z-index:3">
+    <div class="ph" style="width:360px;height:360px;border-radius:32px;box-shadow:0 40px 80px rgba(0,0,0,.5)">обложка</div>
+    <div style="flex:1;min-width:0;padding-right:40px">
+      <span class="sec">ИГРАЕТ ИЗ ОЧЕРЕДИ</span>
+      <h1 class="dsp" style="font-size:52px;line-height:1.02;margin-top:12px">BRAVE</h1>
+      <div style="display:flex;align-items:center;gap:9px;margin-top:10px;font-size:16px;color:rgba(255,255,255,.7)">Oohyo<img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut">· Far From the Madding City</span></div>
+      <div style="margin-top:34px;display:flex;flex-direction:column;gap:8px;max-width:520px">
+        <div style="height:5px;border-radius:3px;background:rgba(255,255,255,.2)"><i style="display:block;width:24%;height:100%;border-radius:3px;background:#f2653c"></i></div>
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:rgba(255,255,255,.55)"><span>1:04</span><span>4:27</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:28px;margin-top:26px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M14.8 5.2 17 7.4h-1.9c-1 0-1.9.5-2.5 1.3l-4 5.6c-.4.6-1.1.9-1.8.9H4v-2h2.8c.3 0 .6-.1.8-.4l4-5.6c.9-1.3 2.4-2 4-2H17l-2.2-2.2z"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+        <span style="width:64px;height:64px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="rgba(255,255,255,.5)"><path d="M7 5h9.6l-1.8-1.8L16.2 1.8 20.4 6l-4.2 4.2-1.4-1.4L16.6 7H7a2 2 0 0 0-2 2v3H3V9a4 4 0 0 1 4-4Z"/></svg>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:26px"><span class="gbtn" style="color:#f2653c">В избранном · Яндекс</span><span class="gbtn">Похожее</span><span class="gbtn">Скачать</span></div>
+    </div>
+  </div>
+
+  <div class="glass" style="width:340px;flex:none;margin:16px 16px 16px 0;border-radius:28px;padding:18px;display:flex;flex-direction:column;gap:14px;position:relative;z-index:3">
+    <div class="seg" style="align-self:flex-start"><i>Очередь 25</i><s>Текст</s></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px;overflow:hidden">
+      <div class="trow trow--on" style="padding:7px 9px;gap:11px"><span class="mut" style="font-size:11px">⋮⋮</span><div class="ph" style="width:38px;height:38px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">BRAVE</div><div class="mut" style="font-size:11.5px">Oohyo</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div>
+      <div class="trow" style="padding:7px 9px;gap:11px"><span class="mut" style="font-size:11px">⋮⋮</span><div class="ph" style="width:38px;height:38px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">Я не в твоём вкусе</div><div class="mut" style="font-size:11.5px">LAMVER</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div>
+      <div class="trow" style="padding:7px 9px;gap:11px"><span class="mut" style="font-size:11px">⋮⋮</span><div class="ph" style="width:38px;height:38px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">плт</div><div class="mut" style="font-size:11.5px">кайдан</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div>
+      <div class="trow" style="padding:7px 9px;gap:11px"><span class="mut" style="font-size:11px">⋮⋮</span><div class="ph" style="width:38px;height:38px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">больно</div><div class="mut" style="font-size:11.5px">балкон ожиданий</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div>
+      <div style="height:2px;border-radius:2px;background:#f2653c;margin:3px 9px"></div>
+      <div class="trow" style="padding:7px 9px;gap:11px;opacity:.45"><span class="mut" style="font-size:11px">⋮⋮</span><div class="ph" style="width:38px;height:38px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">философская жизнь</div><div class="mut" style="font-size:11.5px">liberum</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div>
+      <div class="trow" style="padding:7px 9px;gap:11px"><span class="mut" style="font-size:11px">⋮⋮</span><div class="ph" style="width:38px;height:38px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">Бесконечно лето</div><div class="mut" style="font-size:11.5px">BOGDASHA</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div>
+    </div>
+    <div style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px"><span class="mut" style="font-size:11.5px;flex:1">Одна очередь на оба сервиса</span><span class="gbtn">Очистить</span></div>
+  </div></div><div class="notestrip">
+  <div class="note">панель приезжает по «Очередь»: x +340→0, spring (0.32,0.72,0,1), 320 ms</div>
+  <div class="note">строка при перетаскивании: opacity .45 + линия-цель акцентом</div></div></div></div>
+
+<div class="dv-opt" id="1f">
+<div class="dv-olabel"><span class="dv-oid">1f</span>Плеер · ambient: размытая обложка занимает всё окно, текст песни идёт строкой по центру, транспорт — стеклянная плита внизу.</div>
+<div class="dv-card"><div class="scr dark" style="display:block;background:linear-gradient(145deg,#40283a,#1b1a27 45%,#0b0b0e)">
+  <div style="position:absolute;inset:0;background:radial-gradient(45% 40% at 30% 30%,rgba(242,101,60,.4),transparent 70%),radial-gradient(40% 40% at 75% 70%,rgba(80,120,255,.25),transparent 70%)"></div>
+  <div style="position:absolute;left:0;right:0;top:22px;display:flex;justify-content:center;gap:10px;z-index:4"><span class="sec">МОЯ ВОЛНА · ЯНДЕКС</span></div>
+  <div style="position:absolute;left:60px;top:150px;display:flex;flex-direction:column;gap:26px;z-index:3">
+    <div class="ph" style="width:260px;height:260px;border-radius:28px;box-shadow:0 40px 70px rgba(0,0,0,.5)">обложка</div>
+    <div><h1 class="dsp" style="font-size:36px">BRAVE</h1><div style="display:flex;align-items:center;gap:9px;margin-top:6px;color:rgba(255,255,255,.7)">Oohyo<img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div></div>
+  </div>
+  <div style="position:absolute;left:400px;right:60px;top:170px;display:flex;flex-direction:column;gap:18px;z-index:3">
+    <div style="font:500 22px/1.5 'Onest',system-ui,sans-serif;color:rgba(255,255,255,.35)">строка текста песни — прошедшая</div>
+    <div style="font:700 34px/1.35 'Onest',system-ui,sans-serif;letter-spacing:-.02em">текущая строка — подсвечена и чуть крупнее</div>
+    <div style="font:500 22px/1.5 'Onest',system-ui,sans-serif;color:rgba(255,255,255,.35)">следующая строка</div>
+    <div style="font:500 22px/1.5 'Onest',system-ui,sans-serif;color:rgba(255,255,255,.2)">и ещё одна</div>
+    <div class="mut" style="font:500 11px ui-monospace,Menlo,monospace;letter-spacing:.1em;margin-top:8px">ТЕКСТ ЕСТЬ ТОЛЬКО У ЯНДЕКСА — У VK ЗДЕСЬ «ПОХОЖИЕ ТРЕКИ»</div>
+  </div>
+  <div class="glass" style="position:absolute;left:60px;right:60px;bottom:28px;height:92px;border-radius:28px;display:flex;align-items:center;gap:24px;padding:0 26px;z-index:4">
+    <div style="display:flex;align-items:center;gap:26px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,.55)"><path d="M14.8 5.2 17 7.4h-1.9c-1 0-1.9.5-2.5 1.3l-4 5.6c-.4.6-1.1.9-1.8.9H4v-2h2.8c.3 0 .6-.1.8-.4l4-5.6c.9-1.3 2.4-2 4-2H17l-2.2-2.2z"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+      <span style="width:54px;height:54px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,.55)"><path d="M7 5h9.6l-1.8-1.8L16.2 1.8 20.4 6l-4.2 4.2-1.4-1.4L16.6 7H7a2 2 0 0 0-2 2v3H3V9a4 4 0 0 1 4-4Z"/></svg>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;gap:12px"><span class="mut" style="font-size:11.5px">1:04</span><div style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.22)"><i style="display:block;width:24%;height:100%;border-radius:3px;background:#fff"></i></div><span class="mut" style="font-size:11.5px">4:27</span></div>
+    <span class="gbtn">Очередь 25</span><span class="gbtn">Похожее</span>
+  </div></div><div class="notestrip">
+  <div class="note">фон — две «лавовые» сферы из цветов обложки, дрейф 24 s; строка текста уезжает на 8 px с fade</div></div></div></div>
+
+<div class="dv-opt" id="1g">
+<div class="dv-olabel"><span class="dv-oid">1g</span>Мини-плеер · четыре вида поверх окон, все с раскрытием по наведению. Слева направо: полоса, пилюля, карточка, обложка.</div>
+<div class="dv-card"><div class="scr dark scr--sm" style="display:block;background:#15151a">
+  <div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.02) 0 12px,transparent 12px 24px)"></div>
+  <div style="position:absolute;left:48px;top:56px;display:flex;gap:44px;align-items:flex-start;z-index:3">
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <span class="sec">ПОЛОСА · 380×64</span>
+      <div class="glass" style="width:380px;height:64px;border-radius:20px;display:flex;align-items:center;gap:12px;padding:0 14px">
+        <div class="ph" style="width:40px;height:40px;border-radius:11px"></div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">BRAVE</div><div class="mut" style="font-size:11.5px;display:flex;gap:6px;align-items:center">Oohyo<img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div></div>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+        <span style="width:32px;height:32px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+      </div>
+      <span class="sec">ПИЛЮЛЯ · 176×56</span>
+      <div class="glass" style="width:176px;height:56px;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 8px 0 8px">
+        <div class="ph" style="width:40px;height:40px;border-radius:50%"></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <span class="sec">КАРТОЧКА · 264×320</span>
+      <div class="glass" style="width:264px;border-radius:26px;padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div class="ph" style="width:232px;height:232px;border-radius:18px">обложка</div>
+        <div><div style="font-size:14px;font-weight:600">BRAVE</div><div class="mut" style="font-size:12px;display:flex;align-items:center;gap:6px">Oohyo<img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div></div>
+        <div style="height:4px;border-radius:2px;background:rgba(255,255,255,.18)"><i style="display:block;width:24%;height:100%;border-radius:2px;background:#f2653c"></i></div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#f2653c"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg>
+          <div style="display:flex;align-items:center;gap:16px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+            <span style="width:38px;height:38px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(255,255,255,.55)"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <span class="sec">ОБЛОЖКА · 208×208 (в покое)</span>
+      <div class="ph" style="width:208px;height:208px;border-radius:24px;position:relative;align-items:flex-end;justify-content:flex-start">
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 14px;background:linear-gradient(transparent,rgba(0,0,0,.75));border-radius:0 0 24px 24px;text-align:left">
+          <div style="font:600 13px 'Golos Text',system-ui,sans-serif;color:#fff;letter-spacing:0">BRAVE</div>
+          <div style="font:400 11.5px 'Golos Text',system-ui,sans-serif;color:rgba(255,255,255,.7);letter-spacing:0">Oohyo</div>
+        </div>
+      </div>
+      <span class="sec">ОБЛОЖКА · при наведении</span>
+      <div class="ph" style="width:208px;height:208px;border-radius:24px;position:relative">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.45);border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+          <div style="display:flex;align-items:center;gap:18px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L8 13.9V18a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v4.1l8.45-5.43A1 1 0 0 1 18 5.5Z"/></svg>
+            <span style="width:44px;height:44px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="#0b0b0d"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M6 5.5v13a1 1 0 0 0 1.55.83L16 13.9V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.1L7.55 4.67A1 1 0 0 0 6 5.5Z"/></svg>
+          </div>
+          <div style="width:150px;height:4px;border-radius:2px;background:rgba(255,255,255,.3)"><i style="display:block;width:24%;height:100%;border-radius:2px;background:#fff"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;width:250px">
+      <span class="sec">НАСТРОЙКИ ВИДА</span>
+      <div class="glass" style="border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:12px"><span style="flex:1;font-size:13px">Раскрывать по наведению</span><span class="tog"><em></em></span></div>
+        <div style="display:flex;align-items:center;gap:12px"><span style="flex:1;font-size:13px">Закрепить положение</span><span class="tog tog--off"><em></em></span></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:13px">Прозрачность</span><div style="height:4px;border-radius:2px;background:rgba(255,255,255,.18)"><i style="display:block;width:72%;height:100%;border-radius:2px;background:#f2653c"></i></div></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:13px">Двойной щелчок</span><div class="seg" style="font-size:12px"><i>Плеер</i><s>Раскрыть</s></div></div>
+      </div>
+      <div class="note" style="max-width:250px">появление: fade + scale .96→1, 220 ms; раскрытие по наведению — задержка 120 ms, чтобы не дёргалось при проходе мыши</div>
+    </div>
+  </div>
+</div></div></div>
+
+<div class="dv-opt" id="1h">
+<div class="dv-olabel"><span class="dv-oid">1h</span>Поиск · один запрос на два сервиса. Поле выезжает в центр, фильтр сервиса — сегментом, «лучший результат» крупной картой.</div>
+<div class="dv-card"><div class="scr dark">
+  <div class="rail">
+    <div style="margin-bottom:12px"><svg width="30" height="21" viewBox="0 0 115 80" fill="none"><defs><clipPath id="w3"><circle cx="40" cy="40" r="40"/></clipPath></defs><circle cx="40" cy="40" r="40" fill="#F2653C"/><circle cx="75" cy="40" r="40" fill="#E9E9ED"/><g clip-path="url(#w3)"><circle cx="75" cy="40" r="40" fill="#F6A184"/></g></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 21 11h-2.6v8.8h-4.6v-5.4h-3.6v5.4H5.6V11H3z"/></svg></div>
+    <div class="ri ri--on"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h2.4v16H4zm4.4 0h2.4v16H8.4zM14 4.6l2.3-.6 3.7 14.4-2.3.6z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 0 1 1 1v8.6l3-3 1.4 1.4L12 16.4l-5.4-5.4L8 9.6l3 3V4a1 1 0 0 1 1-1ZM5 18h14v2H5z"/></svg></div>
+    <div style="flex:1"></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4Z"/></svg></div>
+  </div>
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding-right:20px">
+    <div style="height:80px;display:flex;align-items:center;gap:16px">
+      <div class="glass" style="flex:1;max-width:620px;height:48px;border-radius:999px;display:flex;align-items:center;gap:12px;padding:0 20px;border-color:rgba(242,101,60,.5)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#f2653c"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg>
+        <span style="flex:1;font-size:15px">oohyo</span><span class="mut" style="font-size:12px">14 результатов</span>
+      </div>
+      <div class="seg"><i>Все</i><s>VK</s><s>Яндекс</s></div>
+      <div style="flex:1"></div><span class="gbtn">Мини-плеер</span>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:20px"><span class="chip" style="background:rgba(255,255,255,.14);font-weight:600">Всё</span><span class="chip">Треки</span><span class="chip">Альбомы</span><span class="chip">Исполнители</span><span class="chip">Плейлисты</span></div>
+    <div style="flex:1;min-height:0;display:flex;gap:26px">
+      <div style="width:320px;flex:none;display:flex;flex-direction:column;gap:16px">
+        <span class="sec">ЛУЧШИЙ РЕЗУЛЬТАТ</span>
+        <div style="border-radius:26px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div class="ph" style="width:100%;height:240px;border-radius:20px">фото исполнителя</div>
+          <div><h2 class="dsp" style="font-size:26px">Oohyo</h2><div class="mut" style="font-size:12.5px;display:flex;align-items:center;gap:7px;margin-top:4px">Исполнитель · 42 трека<img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div></div>
+          <div style="display:flex;gap:10px"><button class="acc" style="padding:10px 20px;font-size:14px">Слушать</button><span class="gbtn">Похожее</span></div>
+        </div>
+        <span class="sec">НЕДАВНИЕ ЗАПРОСЫ</span>
+        <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip">lamver</span><span class="chip">кайдан</span><span class="chip">balcony</span><span class="chip">bogdasha</span></div>
+      </div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:22px">
+        <div>
+          <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px"><span class="sec">ТРЕКИ</span><div style="flex:1"></div><span class="gbtn">Показать все 40</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <div class="trow trow--on"><span style="width:22px;display:flex;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#f2653c"><path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l10.3-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14Z"/></svg></span><div class="ph" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">BRAVE</div><div class="mut" style="font-size:12.5px">Oohyo</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12.5px;width:40px;text-align:right">4:27</span></div>
+            <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">2</span><div class="ph" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">Far From the Madding City</div><div class="mut" style="font-size:12.5px">Oohyo</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12.5px;width:40px;text-align:right">3:41</span></div>
+            <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">3</span><div class="ph" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">Pizza</div><div class="mut" style="font-size:12.5px">Oohyo</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12.5px;width:40px;text-align:right">3:12</span></div>
+            <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">4</span><div class="ph" style="width:44px;height:44px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">Honey Tea</div><div class="mut" style="font-size:12.5px">Oohyo</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12.5px;width:40px;text-align:right">4:02</span></div>
+          </div>
+        </div>
+        <div>
+          <span class="sec">АЛЬБОМЫ</span>
+          <div style="display:flex;gap:16px;margin-top:10px">
+            <div style="width:128px"><div class="ph" style="width:128px;height:128px;border-radius:16px">cover</div><div style="font-size:13px;font-weight:600;margin-top:9px">Far From…</div><div class="mut" style="font-size:11.5px">2019 · Яндекс</div></div>
+            <div style="width:128px"><div class="ph" style="width:128px;height:128px;border-radius:16px">cover</div><div style="font-size:13px;font-weight:600;margin-top:9px">Girl Sense</div><div class="mut" style="font-size:11.5px">2016 · VK</div></div>
+            <div style="width:128px"><div class="ph" style="width:128px;height:128px;border-radius:16px">cover</div><div style="font-size:13px;font-weight:600;margin-top:9px">Adult</div><div class="mut" style="font-size:11.5px">2015 · оба</div></div>
+            <div style="width:128px"><div class="ph" style="width:128px;height:128px;border-radius:16px">cover</div><div style="font-size:13px;font-weight:600;margin-top:9px">Pizza</div><div class="mut" style="font-size:11.5px">2014 · Яндекс</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div><div class="notestrip">
+  <div class="note">ввод: результаты не «мигают» — старые остаются и заменяются кросс-фейдом 160 ms</div>
+  <div class="note">дубликаты между сервисами схлопываются в одну строку с двумя значками</div></div></div></div>
+
+<div class="dv-opt" id="1i">
+<div class="dv-olabel"><span class="dv-oid">1i</span>Настройки · то, что вы просили настраивать: порядок и видимость блоков Главной, плотность списков, вид мини-плеера. Две панели, живой предпросмотр.</div>
+<div class="dv-card"><div class="scr dark">
+  <div class="rail">
+    <div style="margin-bottom:12px"><svg width="30" height="21" viewBox="0 0 115 80" fill="none"><defs><clipPath id="w4"><circle cx="40" cy="40" r="40"/></clipPath></defs><circle cx="40" cy="40" r="40" fill="#F2653C"/><circle cx="75" cy="40" r="40" fill="#E9E9ED"/><g clip-path="url(#w4)"><circle cx="75" cy="40" r="40" fill="#F6A184"/></g></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 21 11h-2.6v8.8h-4.6v-5.4h-3.6v5.4H5.6V11H3z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h2.4v16H4zm4.4 0h2.4v16H8.4zM14 4.6l2.3-.6 3.7 14.4-2.3.6z"/></svg></div>
+    <div style="flex:1"></div>
+    <div class="ri ri--on"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4Zm0-2a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4Z"/><path d="M13.9 2a.6.6 0 0 1 .59.48l.32 1.66c.5.18.97.45 1.39.79l1.6-.55a.6.6 0 0 1 .71.27l1.9 3.3a.6.6 0 0 1-.12.75l-1.28 1.1a6.6 6.6 0 0 1 0 1.6l1.28 1.1a.6.6 0 0 1 .12.75l-1.9 3.3a.6.6 0 0 1-.71.27l-1.6-.55c-.42.34-.89.6-1.39.79l-.32 1.66a.6.6 0 0 1-.59.48h-3.8a.6.6 0 0 1-.59-.48l-.32-1.66a6.6 6.6 0 0 1-1.39-.79l-1.6.55a.6.6 0 0 1-.71-.27l-1.9-3.3a.6.6 0 0 1 .12-.75l1.28-1.1a6.6 6.6 0 0 1 0-1.6l-1.28-1.1a.6.6 0 0 1-.12-.75l1.9-3.3a.6.6 0 0 1 .71-.27l1.6.55c.42-.34.89-.6 1.39-.79l.32-1.66A.6.6 0 0 1 10.1 2Z"/></svg></div>
+  </div>
+  <div style="width:236px;flex:none;padding:24px 12px 24px 0;display:flex;flex-direction:column;gap:3px">
+    <h1 class="dsp" style="font-size:24px;padding:0 12px 16px">Настройки</h1>
+    <div style="padding:9px 14px;border-radius:14px;background:rgba(255,255,255,.09);font-size:13.5px;font-weight:600">Оформление</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">Главная</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">Мини-плеер</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">Воспроизведение</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">Загрузки</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">Сервисы</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">Горячие клавиши</div>
+    <div class="mut" style="padding:9px 14px;font-size:13.5px">О программе</div>
+  </div>
+  <div style="flex:1;min-width:0;padding:24px 28px 24px 0;display:flex;gap:26px;min-height:0">
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:26px">
+      <div>
+        <span class="sec">ТЕМА И ПЛОТНОСТЬ</span>
+        <div class="glass" style="border-radius:22px;margin-top:12px;padding:6px 18px">
+          <div style="display:flex;align-items:center;gap:16px;padding:15px 0;border-bottom:1px solid rgba(255,255,255,.08)"><div style="flex:1"><div style="font-size:13.5px">Тема</div><div class="mut" style="font-size:11.5px">меняется сразу и в мини-плеере</div></div><div class="seg"><s>Светлая</s><i>Тёмная</i><s>Как в Windows</s></div></div>
+          <div style="display:flex;align-items:center;gap:16px;padding:15px 0;border-bottom:1px solid rgba(255,255,255,.08)"><div style="flex:1"><div style="font-size:13.5px">Плотность списков</div><div class="mut" style="font-size:11.5px">высота строки 40 / 52 / 64 px</div></div><div class="seg"><s>Плотно</s><i>Обычно</i><s>Свободно</s></div></div>
+          <div style="display:flex;align-items:center;gap:16px;padding:15px 0"><div style="flex:1"><div style="font-size:13.5px">Движение</div><div class="mut" style="font-size:11.5px">по умолчанию — вслед за системой</div></div><div class="seg"><s>Меньше</s><i>Тихое</i><s>Полное</s></div></div>
+        </div>
+      </div>
+      <div>
+        <span class="sec">БЛОКИ ГЛАВНОЙ · ПЕРЕТАЩИТЕ, ЧТОБЫ ПОМЕНЯТЬ ПОРЯДОК</span>
+        <div class="glass" style="border-radius:22px;margin-top:12px;padding:8px">
+          <div style="display:flex;align-items:center;gap:14px;padding:12px 12px;border-radius:14px;background:rgba(255,255,255,.05)"><span class="mut" style="font-size:12px">⋮⋮</span><span style="flex:1;font-size:13.5px">Моя волна</span><span class="mut" style="font-size:11.5px">hero</span><span class="tog"><em></em></span></div>
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:14px"><span class="mut" style="font-size:12px">⋮⋮</span><span style="flex:1;font-size:13.5px">Вам нравится — первые треки</span><span class="mut" style="font-size:11.5px">список</span><span class="tog"><em></em></span></div>
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:14px"><span class="mut" style="font-size:12px">⋮⋮</span><span style="flex:1;font-size:13.5px">Плейлисты сервисов</span><span class="mut" style="font-size:11.5px">карусель</span><span class="tog"><em></em></span></div>
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:14px;opacity:.5"><span class="mut" style="font-size:12px">⋮⋮</span><span style="flex:1;font-size:13.5px">Недавно слушали</span><span class="mut" style="font-size:11.5px">скрыто</span><span class="tog tog--off"><em></em></span></div>
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:14px;opacity:.5"><span class="mut" style="font-size:12px">⋮⋮</span><span style="flex:1;font-size:13.5px">Скачанное</span><span class="mut" style="font-size:11.5px">скрыто</span><span class="tog tog--off"><em></em></span></div>
+        </div>
+      </div>
+      <div>
+        <span class="sec">МИНИ-ПЛЕЕР</span>
+        <div style="display:flex;gap:14px;margin-top:12px">
+          <div style="width:150px;border-radius:18px;padding:12px;background:rgba(255,255,255,.05);border:1.5px solid #f2653c"><div class="ph" style="height:66px;border-radius:12px">полоса</div><div style="font-size:12.5px;font-weight:600;margin-top:10px">Полоса</div><div class="mut" style="font-size:11px">незаметная</div></div>
+          <div style="width:150px;border-radius:18px;padding:12px;background:rgba(255,255,255,.05);border:1.5px solid transparent"><div class="ph" style="height:66px;border-radius:12px">пилюля</div><div style="font-size:12.5px;font-weight:600;margin-top:10px">Пилюля</div><div class="mut" style="font-size:11px">самая мелкая</div></div>
+          <div style="width:150px;border-radius:18px;padding:12px;background:rgba(255,255,255,.05);border:1.5px solid transparent"><div class="ph" style="height:66px;border-radius:12px">карточка</div><div style="font-size:12.5px;font-weight:600;margin-top:10px">Карточка</div><div class="mut" style="font-size:11px">с перемоткой</div></div>
+          <div style="width:150px;border-radius:18px;padding:12px;background:rgba(255,255,255,.05);border:1.5px solid transparent"><div class="ph" style="height:66px;border-radius:12px">обложка</div><div style="font-size:12.5px;font-weight:600;margin-top:10px">Обложка</div><div class="mut" style="font-size:11px">одна картинка</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="width:300px;flex:none;display:flex;flex-direction:column;gap:12px">
+      <span class="sec">ПРЕДПРОСМОТР</span>
+      <div class="glass" style="border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px">
+        <div class="trow trow--on" style="padding:7px 9px"><div class="ph" style="width:38px;height:38px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">BRAVE</div><div class="mut" style="font-size:11.5px">Oohyo</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div>
+        <div class="trow" style="padding:7px 9px"><div class="ph" style="width:38px;height:38px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">Я не в твоём вкусе</div><div class="mut" style="font-size:11.5px">LAMVER</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div>
+        <div class="mut" style="font-size:11.5px">Так будут выглядеть списки при выбранной плотности.</div>
+      </div>
+      <div class="note" style="max-width:300px">переключение плотности анимирует высоту строк 200 ms — видно, что меняешь, без перезагрузки экрана</div>
+    </div>
+  </div>
+</div></div></div>
+
+<div class="dv-opt" id="1j">
+<div class="dv-olabel"><span class="dv-oid">1j</span>Моя коллекция и плейлист. Сетка своих и сервисных плейлистов; у своих — значки обоих сервисов, потому что там треки лежат вместе.</div>
+<div class="dv-card"><div class="scr dark scr--sm" style="display:flex">
+  <div class="rail"><div style="margin-bottom:12px"><svg width="30" height="21" viewBox="0 0 115 80" fill="none"><defs><clipPath id="w5"><circle cx="40" cy="40" r="40"/></clipPath></defs><circle cx="40" cy="40" r="40" fill="#F2653C"/><circle cx="75" cy="40" r="40" fill="#E9E9ED"/><g clip-path="url(#w5)"><circle cx="75" cy="40" r="40" fill="#F6A184"/></g></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 21 11h-2.6v8.8h-4.6v-5.4h-3.6v5.4H5.6V11H3z"/></svg></div>
+    <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3a7.5 7.5 0 1 1-4.6 13.4l-2.2 2.2-1.4-1.4 2.2-2.2A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg></div>
+    <div class="ri ri--on"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h2.4v16H4zm4.4 0h2.4v16H8.4zM14 4.6l2.3-.6 3.7 14.4-2.3.6z"/></svg></div>
+  </div>
+  <div style="width:620px;flex:none;padding:22px 0 0;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:baseline;gap:14px"><h1 class="dsp" style="font-size:30px">Моя коллекция</h1><div style="flex:1"></div><span class="gbtn">Новый плейлист</span></div>
+    <div class="seg" style="align-self:flex-start"><i>Свои</i><s>VK</s><s>Яндекс</s></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-right:24px">
+      <div><div class="ph" style="height:170px;border-radius:20px">cover</div><div style="display:flex;align-items:center;gap:6px;margin-top:9px"><span style="font-size:13.5px;font-weight:600">Вечер</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div><div class="mut" style="font-size:12px">48 треков · свой</div></div>
+      <div><div class="ph" style="height:170px;border-radius:20px">cover</div><div style="display:flex;align-items:center;gap:6px;margin-top:9px"><span style="font-size:13.5px;font-weight:600">Дорога</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div><div class="mut" style="font-size:12px">31 трек · свой</div></div>
+      <div><div class="ph" style="height:170px;border-radius:20px">cover</div><div style="display:flex;align-items:center;gap:6px;margin-top:9px"><span style="font-size:13.5px;font-weight:600">Discovery</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div><div class="mut" style="font-size:12px">100 треков</div></div>
+    </div>
+    <div class="note" style="max-width:420px">свои плейлисты — единственное место, где VK и Яндекс лежат вместе: значок показывает, чей трек</div>
+  </div>
+  <div style="flex:1;min-width:0;padding:22px 24px 0 8px;border-left:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:18px">
+    <span class="sec">ПЛЕЙЛИСТ · ОТКРЫТ</span>
+    <div style="display:flex;gap:20px;align-items:flex-end">
+      <div class="ph" style="width:132px;height:132px;border-radius:22px">cover</div>
+      <div><span class="sec">СВОЙ ПЛЕЙЛИСТ</span><h1 class="dsp" style="font-size:36px;margin-top:8px">Вечер</h1><div class="mut" style="font-size:12.5px;margin-top:6px">48 треков · 3 ч 12 мин · оба сервиса</div>
+        <div style="display:flex;gap:10px;margin-top:14px"><button class="acc" style="padding:10px 22px;font-size:14px"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l10.3-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14Z"/></svg>Слушать</button><span class="gbtn">Перемешать</span><span class="gbtn">Скачать всё</span></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">1</span><div class="ph" style="width:42px;height:42px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500">Бесконечно лето</div><div class="mut" style="font-size:12px">BOGDASHA</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12px">2:38</span></div>
+      <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">2</span><div class="ph" style="width:42px;height:42px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500">отражение</div><div class="mut" style="font-size:12px">redocx</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12px">3:05</span></div>
+      <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">3</span><div class="ph" style="width:42px;height:42px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500">Останусь</div><div class="mut" style="font-size:12px">Рюма</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12px">2:44</span></div>
+      <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">4</span><div class="ph" style="width:42px;height:42px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500">Моё имя</div><div class="mut" style="font-size:12px">timblat</div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12px">3:18</span></div>
+    </div>
+  </div>
+</div></div></div>
+
+<div class="dv-opt" id="1k">
+<div class="dv-olabel"><span class="dv-oid">1k</span>Вам нравится и Загрузки. Крупная шапка со счётчиком по сервисам; в загрузках — место на диске и очередь скачивания.</div>
+<div class="dv-card"><div class="scr dark scr--sm" style="display:flex">
+  <div style="flex:1;min-width:0;padding:26px 20px 26px 28px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;gap:22px;align-items:flex-end">
+      <div style="width:148px;height:148px;border-radius:26px;background:linear-gradient(135deg,#f2653c,#7a2d3f);display:flex;align-items:center;justify-content:center;flex:none"><svg width="52" height="52" viewBox="0 0 24 24" fill="rgba(255,255,255,.9)"><path d="M12 20.3 10.6 19C5.4 14.3 2 11.3 2 7.6A4.6 4.6 0 0 1 6.6 3c1.6 0 3.1.7 4.1 1.9L12 6.2l1.3-1.3A5.4 5.4 0 0 1 17.4 3 4.6 4.6 0 0 1 22 7.6c0 3.7-3.4 6.7-8.6 11.4z"/></svg></div>
+      <div><span class="sec">ИЗБРАННОЕ ОБОИХ СЕРВИСОВ</span><h1 class="dsp" style="font-size:46px;margin-top:8px">Вам нравится</h1><div class="mut" style="font-size:13px;margin-top:6px">5 508 треков · VK 3 459 · Яндекс 2 049</div>
+        <div style="display:flex;gap:10px;margin-top:16px;align-items:center"><button class="acc" style="padding:11px 24px;font-size:14px">Слушать</button><span class="gbtn">Перемешать</span><div class="seg"><i>Все</i><s>VK</s><s>Яндекс</s></div></div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div class="trow trow--on"><span style="width:22px;display:flex;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#f2653c"><path d="M7 4h3.2v16H7zm6.8 0H17v16h-3.2z"/></svg></span><div class="ph" style="width:42px;height:42px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">BRAVE</div><div class="mut" style="font-size:12px">Oohyo</div></div><span class="mut" style="font-size:12px;width:150px">Far From the Madding City</span><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12px">4:27</span></div>
+      <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">2</span><div class="ph" style="width:42px;height:42px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500">Я не в твоём вкусе</div><div class="mut" style="font-size:12px">LAMVER</div></div><span class="mut" style="font-size:12px;width:150px">Синглы</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12px">2:51</span></div>
+      <div class="trow"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">3</span><div class="ph" style="width:42px;height:42px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500">вампир</div><div class="mut" style="font-size:12px">DEXIE 999, pleaseme</div></div><span class="mut" style="font-size:12px;width:150px">—</span><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"><span class="mut" style="font-size:12px">2:09</span></div>
+      <div class="trow" style="opacity:.45"><span class="mut" style="width:22px;text-align:center;font-size:12.5px">4</span><div class="ph" style="width:42px;height:42px;border-radius:11px"></div><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:500">Помад</div><div class="mut" style="font-size:12px">Keendy, KENTUKKI · недоступен</div></div><span class="mut" style="font-size:12px;width:150px">—</span><img class="badge" src="src/renderer/assets/vk.png" alt="VK"><span class="mut" style="font-size:12px">3:11</span></div>
+    </div>
+  </div>
+  <div style="width:400px;flex:none;padding:26px 28px 26px 0;display:flex;flex-direction:column;gap:16px">
+    <h1 class="dsp" style="font-size:26px">Загрузки</h1>
+    <div class="glass" style="border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:13.5px;font-weight:600">7,4 ГБ из 20 ГБ</span><span class="mut" style="font-size:11.5px;margin-left:auto">812 треков</span></div>
+      <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.14)"><i style="display:block;width:37%;height:100%;border-radius:3px;background:#f2653c"></i></div>
+      <div style="display:flex;align-items:center;gap:12px"><span class="mut" style="flex:1;font-size:12.5px">Скачивать автоматически из «Мне нравится»</span><span class="tog"><em></em></span></div>
+      <div style="display:flex;align-items:center;gap:12px"><span class="mut" style="flex:1;font-size:12.5px">Папка: D:\Music\Duet</span><span class="gbtn">Изменить</span></div>
+    </div>
+    <span class="sec">СЕЙЧАС КАЧАЕТСЯ</span>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div class="trow" style="padding:8px 10px"><div class="ph" style="width:38px;height:38px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">философская жизнь</div><div style="height:3px;border-radius:2px;background:rgba(255,255,255,.14);margin-top:6px"><i style="display:block;width:64%;height:100%;border-radius:2px;background:#f2653c"></i></div></div><img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс"></div>
+      <div class="trow" style="padding:8px 10px"><div class="ph" style="width:38px;height:38px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">Бесконечно лето</div><div class="mut" style="font-size:11.5px">в очереди</div></div><img class="badge" src="src/renderer/assets/vk.png" alt="VK"></div>
+      <div class="trow" style="padding:8px 10px"><div class="ph" style="width:38px;height:38px;border-radius:10px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">Останусь</div><div class="mut" style="font-size:11.5px">готово · играет без сети</div></div><svg width="14" height="14" viewBox="0 0 24 24" fill="#f2653c"><path d="M9.6 16.2 5.4 12l-1.4 1.4 5.6 5.6L20.4 8.2 19 6.8z"/></svg></div>
+    </div>
+  </div>
+</div></div></div>
+
+<div class="dv-opt" id="1l">
+<div class="dv-olabel"><span class="dv-oid">1l</span>Слушать вместе и подключение сервисов — первые два экрана, которые видит человек, и то, чем хвастаются.</div>
+<div class="dv-card"><div class="scr dark scr--sm" style="display:flex;gap:0">
+  <div style="flex:1;min-width:0;padding:34px 30px;display:flex;flex-direction:column;gap:22px;border-right:1px solid rgba(255,255,255,.07)">
+    <span class="sec">ПОДКЛЮЧЕНИЕ · ПЕРВЫЙ ЗАПУСК</span>
+    <h1 class="dsp" style="font-size:38px;line-height:1.05">Два сервиса —<br>один плеер</h1>
+    <div class="mut" style="font-size:14px;max-width:440px;line-height:1.55">Вход происходит на настоящих страницах VK и Яндекса внутри приложения. Логин и пароль Duet не видит — только сессию, которую выдал сервис.</div>
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:470px">
+      <div class="glass" style="border-radius:20px;padding:16px;display:flex;align-items:center;gap:14px">
+        <div style="width:46px;height:46px;border-radius:14px;background:rgba(0,119,255,.18);display:flex;align-items:center;justify-content:center;flex:none"><img src="src/renderer/assets/vk.png" alt="VK" style="width:26px;height:17px;object-fit:contain"></div>
+        <div style="flex:1"><div style="font-size:14px;font-weight:600">VK Музыка</div><div class="mut" style="font-size:12px">подключено · Артём</div></div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#f2653c"><path d="M9.6 16.2 5.4 12l-1.4 1.4 5.6 5.6L20.4 8.2 19 6.8z"/></svg>
+      </div>
+      <div class="glass" style="border-radius:20px;padding:16px;display:flex;align-items:center;gap:14px">
+        <div style="width:46px;height:46px;border-radius:14px;background:rgba(255,0,0,.14);display:flex;align-items:center;justify-content:center;flex:none"><img src="src/renderer/assets/yandex.png" alt="Яндекс" style="width:26px;height:17px;object-fit:contain"></div>
+        <div style="flex:1"><div style="font-size:14px;font-weight:600">Яндекс.Музыка</div><div class="mut" style="font-size:12px">токен хранится зашифрованным</div></div>
+        <button class="acc" style="padding:9px 20px;font-size:13.5px">Войти</button>
+      </div>
+      <div class="mut" style="font-size:12.5px">Можно начать с одного сервиса — второй добавится в настройках.</div>
+    </div>
+  </div>
+  <div style="width:520px;flex:none;padding:34px 30px;display:flex;flex-direction:column;gap:20px">
+    <span class="sec">СЛУШАТЬ ВМЕСТЕ</span>
+    <h1 class="dsp" style="font-size:30px;line-height:1.08">Гость подхватывает<br>ваш трек с вашей секунды</h1>
+    <div class="glass" style="border-radius:24px;padding:20px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="ph" style="width:64px;height:64px;border-radius:16px"></div>
+        <div style="flex:1"><div style="font-size:14px;font-weight:600">BRAVE · Oohyo</div><div class="mut" style="font-size:12px">1:04 / 4:27 · вы ведёте</div></div>
+        <img class="badge" src="src/renderer/assets/yandex.png" alt="Яндекс">
+      </div>
+      <div style="height:4px;border-radius:2px;background:rgba(255,255,255,.16)"><i style="display:block;width:24%;height:100%;border-radius:2px;background:#f2653c"></i></div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="display:flex;gap:-8px"><div style="width:32px;height:32px;border-radius:50%;background:#3a3a45;border:2px solid #15151a"></div><div style="width:32px;height:32px;border-radius:50%;background:#4a3a3f;border:2px solid #15151a;margin-left:-10px"></div></div>
+        <span class="mut" style="font-size:12.5px;flex:1">2 слушателя · отставание 0,9 с</span>
+        <span class="gbtn">Скопировать ссылку</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)"><span style="flex:1;font-size:13px">Кнопка в статусе Discord</span><span class="tog"><em></em></span></div>
+      <div class="mut" style="font-size:11.5px;line-height:1.5">Через ретранслятор идёт только «какой трек и с какой секунды» — звук не передаётся. Трек из Яндекса не заиграет у того, у кого Яндекс не подключён.</div>
+    </div>
+    <div class="note" style="max-width:460px">состояние «гость отстаёт»: подпись меняется мягко (fade 200 ms), без прыжков цифр — секунды в tabular-nums</div>
+  </div>
+</div></div></div>
+
+</div>
+<p class="dv-next">Попробуйте дальше: «беру <a class="dv-oid" href="#1a">1a</a>, но hero как в <a class="dv-oid" href="#1b">1b</a>» · «покажи плеер и мини-плеер» · «сделай rail с подписями»</p>
+</section>
+</x-dc>
+</body>
+</html>

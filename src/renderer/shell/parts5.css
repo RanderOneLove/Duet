@@ -465,6 +465,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  align-items: stretch;
   gap: 2px;
   padding: 10px;
   border-radius: var(--r-lg);
@@ -562,4 +563,406 @@
 .themecard__hint {
   font-size: 11.5px;
   line-height: 1.35;
+}
+
+/* ---- выбор вида главного экрана ------------------------------------------ */
+
+.layouts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 6px;
+  max-width: 860px;
+}
+
+.layoutcard {
+  display: flex;
+  flex-direction: column;
+  /*
+   * Кнопке это нужно явно: Chromium задаёт кнопкам align-items: center, и без
+   * этой строки схема экрана внутри сжималась в полоску нулевой ширины.
+   */
+  align-items: stretch;
+  gap: 2px;
+  padding: 10px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  text-align: left;
+}
+
+.layoutcard:hover {
+  background: var(--surface-hover);
+}
+
+.layoutcard[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Схема экрана, а не картинка про него: hero сверху и строки под ним. */
+.layoutcard__stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  height: 92px;
+  padding: 10px;
+  border-radius: var(--r-md);
+  background: var(--bg);
+  overflow: hidden;
+  margin-bottom: 8px;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+.layoutcard__hero {
+  height: 34px;
+  border-radius: 7px;
+  background: var(--fill-3);
+  flex: none;
+}
+
+.layoutcard__line {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--fill-2);
+  flex: none;
+}
+
+.layoutcard__line--short {
+  width: 60%;
+}
+
+/* «Обложка во весь экран»: hero занимает почти всё, списки только выглядывают. */
+.layoutcard__stage--cover .layoutcard__hero {
+  height: 62px;
+}
+
+.layoutcard__stage--cover .layoutcard__line:not(.layoutcard__line--short) {
+  display: none;
+}
+
+/* «Списком»: hero всего лишь строка, дальше сразу треки. */
+.layoutcard__stage--list .layoutcard__hero {
+  height: 10px;
+}
+
+.layoutcard__label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: var(--tr-title);
+}
+
+.layoutcard__hint {
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+/* ---- цвет акцента -------------------------------------------------------- */
+
+.accents {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  flex-wrap: wrap;
+}
+
+.sw {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 0 0 2px transparent;
+  transition: box-shadow var(--t-fast) var(--ease);
+}
+
+.sw--on {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text);
+}
+
+.srow--pick {
+  display: block;
+  padding: 0 16px 16px;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 320px;
+}
+
+/*
+ * Поле насыщенности и яркости. Белый градиент по горизонтали и чёрный по
+ * вертикали поверх чистого тона — тот же способ, что и в системных пипетках.
+ */
+.picker__field {
+  position: relative;
+  height: 130px;
+  border-radius: var(--r-md);
+  cursor: crosshair;
+  touch-action: none;
+  background-image: linear-gradient(to right, #fff, transparent),
+    linear-gradient(to top, #000, transparent);
+}
+
+.picker__dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.picker__hue {
+  width: 100%;
+  height: 12px;
+  border-radius: 6px;
+  appearance: none;
+  background: linear-gradient(
+    to right,
+    #f00 0%,
+    #ff0 17%,
+    #0f0 33%,
+    #0ff 50%,
+    #00f 67%,
+    #f0f 83%,
+    #f00 100%
+  );
+}
+
+.picker__hue::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.picker__row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.picker__swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: inset 0 0 0 1px var(--glass-line);
+}
+
+.picker__hex {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, Menlo, monospace;
+  text-transform: uppercase;
+}
+
+/* ---- блоки главной ------------------------------------------------------- */
+
+.hblocks {
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  /* Той же ширины, что и прочие карточки настроек: иначе один блок тянется
+     во весь экран, а соседние стоят колонкой — и страница выглядит сломанной. */
+  max-width: 620px;
+}
+
+.hblock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline);
+  cursor: grab;
+}
+
+.hblock:last-child {
+  border-bottom: 0;
+}
+
+.hblock--dragging {
+  opacity: 0.45;
+}
+
+.hblock--off .hblock__title {
+  color: var(--text-faint);
+}
+
+.hblock__grip {
+  color: var(--text-faint);
+  font-size: 13px;
+  flex: none;
+}
+
+.hblock__title {
+  flex: 1;
+  font-size: 13.5px;
+}
+
+.hblock__kind {
+  font-size: 11.5px;
+  flex: none;
+}
+
+/* ---- слушать вместе (1l) ------------------------------------------------- */
+
+.together {
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 620px;
+}
+
+.together__now {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.together__art {
+  width: 56px;
+  height: 56px;
+  flex: none;
+}
+
+.together__meta {
+  min-width: 0;
+}
+
+.together__title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.together__state {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.together__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.together__count {
+  flex: 1;
+  font-size: 12.5px;
+}
+
+.together__toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+  font-size: 13.5px;
+}
+
+.together__toggle > span {
+  flex: 1;
+}
+
+.together__note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ---- подключение (1l) ---------------------------------------------------- */
+
+.connectcard__done {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #34c759;
+  flex: none;
+}
+
+.connect__note {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+}
+
+/* ---- громкость под кнопкой ----------------------------------------------- */
+
+.volpop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px 4px;
+  min-width: 0;
+}
+
+.volpop__value {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Столбик громкости: тянется снизу вверх, как и положено громкости. */
+.vbar {
+  position: relative;
+  width: 6px;
+  height: 120px;
+  flex: none;
+  border-radius: var(--r-pill);
+  background: var(--fill-2);
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+}
+
+.vbar:hover,
+.vbar:focus-visible {
+  background: var(--fill-3);
+}
+
+.vbar > i {
+  position: absolute;
+  inset: auto 0 0;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+/*
+ * Панель под ширину столбика. Общие 232 пикселя рассчитаны на списки — под
+ * шестипиксельным ползунком это была пустая плита во всю кнопку и дальше.
+ */
+.pop__panel--vol {
+  min-width: 0;
+  width: 64px;
+  align-items: center;
+}
+
+/* Полоса скачивания обновления: тот же жёлоб, что и у перемотки. */
+.updbar {
+  height: 4px;
+  margin: 10px 2px 0;
+  border-radius: var(--r-pill);
+  background: var(--fill-2);
+  overflow: hidden;
+}
+
+.updbar > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--t-base) var(--ease);
 }

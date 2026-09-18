@@ -61,12 +61,24 @@ export function createMiniPlayer(): BrowserWindow {
     pushPlayback()
   })
 
-  // Dragging switches the anchor to 'custom' and remembers where it landed.
-  // Our own setBounds also fires 'moved', hence the guard.
+  /*
+   * Перетаскивание переводит привязку в «своё место» и запоминает, куда окно
+   * положили. Наш собственный setBounds тоже поднимает 'moved' — отсюда флаг.
+   *
+   * Вместе с координатами запоминается и экран: перенос на соседний монитор и
+   * есть выбор монитора. Без этого настройка продолжала указывать на прежний
+   * дисплей, а applyBounds прижимает окно к его границам — виджет возвращался
+   * обратно тем же движением, которым его унесли.
+   */
   win.on('moved', () => {
     if (repositioning || !win || win.isDestroyed()) return
-    const [x, y] = win.getPosition()
-    setSettings({ miniAnchor: 'custom', miniCustomX: x, miniCustomY: y })
+    const bounds = win.getBounds()
+    setSettings({
+      miniAnchor: 'custom',
+      miniCustomX: bounds.x,
+      miniCustomY: bounds.y,
+      miniDisplayId: screen.getDisplayMatching(bounds).id
+    })
   })
 
   win.on('closed', () => {
@@ -191,13 +203,19 @@ function loadRenderer(target: BrowserWindow): void {
 function applyBounds(width: number, height: number, settings: Settings): void {
   if (!win || win.isDestroyed()) return
 
-  const display = pickDisplay(settings)
+  const previous = win.getBounds()
+  /*
+   * У пресетов экран берётся из настройки, у «своего места» — тот, на котором
+   * окно сейчас лежит. Пока перетаскивание идёт, настройка ещё указывает на
+   * прежний монитор, и считать границы по ней значило бы отменять перенос.
+   */
+  const display =
+    settings.miniAnchor === 'custom' ? screen.getDisplayMatching(previous) : pickDisplay(settings)
   const area = display.workArea
   let x: number
   let y: number
 
   if (settings.miniAnchor === 'custom') {
-    const previous = win.getBounds()
     const left = settings.miniCustomX ?? previous.x
     const top = settings.miniCustomY ?? previous.y
     // Keep the edge nearest the screen border fixed, so growing on hover moves

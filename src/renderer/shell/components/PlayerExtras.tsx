@@ -31,15 +31,32 @@ export function PlayerExtras({ state, settings, playlists, tracks, align = 'up' 
   )
 }
 
-function OutputPicker({ state, align }: { state: PlayerState; align: 'up' | 'down' }): JSX.Element {
+export function OutputPicker({
+  state,
+  align,
+  labelled
+}: {
+  state: PlayerState
+  align: 'up' | 'down'
+  /** В панели плеера кнопка с подписью: видно, куда идёт звук, не открывая её. */
+  labelled?: boolean
+}): JSX.Element {
   // Windows lists "Default" and "Communications" as copies of real devices;
   // showing them would mean the same speakers three times.
   const devices = state.outputDevices.filter(
     (device) => device.id && device.id !== 'default' && device.id !== 'communications'
   )
 
+  const current = devices.find((device) => device.id === state.outputDeviceId)
+
   return (
-    <Popover icon={<Speaker size={15} />} title="Устройство вывода" align={align} active={!!state.outputDeviceId}>
+    <Popover
+      icon={<Speaker size={15} />}
+      label={labelled ? current?.label ?? 'Системное' : undefined}
+      title="Устройство вывода"
+      align={align}
+      active={!!state.outputDeviceId}
+    >
       {(close) => (
         <>
           <div className="pop__title">Устройство вывода</div>
@@ -70,14 +87,17 @@ function OutputPicker({ state, align }: { state: PlayerState; align: 'up' | 'dow
 
 const PRESETS = [5, 15, 30, 45, 60, 90]
 
-function SleepPicker({
+export function SleepPicker({
   state,
   settings,
-  align
+  align,
+  labelled
 }: {
   state: PlayerState
   settings: Settings
   align: 'up' | 'down'
+  /** С подписью кнопка показывает остаток, а не только то, что таймер идёт. */
+  labelled?: boolean
 }): JSX.Element {
   const [custom, setCustom] = useState('20')
   const left = useCountdown(state.sleepEndsAt)
@@ -90,6 +110,7 @@ function SleepPicker({
   return (
     <Popover
       icon={<Timer size={15} />}
+      label={labelled ? (state.sleepEndsAt ? `Сон ${left}` : 'Таймер сна') : undefined}
       title={state.sleepEndsAt ? `Таймер сна: ${left}` : 'Таймер сна'}
       align={align}
       active={state.sleepEndsAt !== null}

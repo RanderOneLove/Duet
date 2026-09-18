@@ -1,10 +1,11 @@
 import type { Track } from '@shared/domain'
 import { TrackList } from '../components/TrackList'
-import { Segmented } from '../components/Segmented'
-import { useServiceFilter } from '../useServiceFilter'
+import { useFiltered, type ServiceFilter } from '../useServiceFilter'
 import { Download, Play, Shuffle } from '../../shared/Icons'
 
 interface Props {
+  /** Выбор сервиса общий на всё окно и приходит из титульной строки. */
+  filter: ServiceFilter
   tracks: Track[]
   loading: boolean
   activeId: string | null
@@ -19,7 +20,7 @@ interface Props {
 
 /** Wireframe 2b: liked tracks from both services in one list. */
 export function LikedScreen(props: Props): JSX.Element {
-  const { filter, setFilter, filtered: filteredTracks, options } = useServiceFilter(props.tracks)
+  const filteredTracks = useFiltered(props.tracks, props.filter)
 
   const vkCount = props.tracks.filter((t) => t.service === 'vk').length
   const yaCount = props.tracks.length - vkCount
@@ -77,14 +78,6 @@ export function LikedScreen(props: Props): JSX.Element {
           </div>
         </div>
       </div>
-
-      <Segmented
-        className="liked-filters"
-        value={filter}
-        onChange={setFilter}
-        options={options}
-      />
-
 
       <div className="tracklist-header muted">
         <span className="tracklist-header__index">#</span>

@@ -33,13 +33,32 @@ export function TrackRow({
   return (
     <div
       className={`trackrow ${active ? 'trackrow--active' : ''} ${track.available ? '' : 'trackrow--off'}`}
-      onDoubleClick={track.available ? onPlay : undefined}
+      onDoubleClick={
+        track.available
+          ? active
+            ? () => window.shell.command({ type: 'playPause' })
+            : onPlay
+          : undefined
+      }
     >
       <button
         className="trackrow__index"
         disabled={!track.available}
-        title={track.available ? 'Воспроизвести' : 'Трек недоступен'}
-        onClick={onPlay}
+        title={
+          !track.available
+            ? 'Трек недоступен'
+            : active && playing
+              ? 'Пауза'
+              : active
+                ? 'Продолжить'
+                : 'Воспроизвести'
+        }
+        /*
+         * У играющей строки кнопка — это пауза, а не «включить заново».
+         * Раньше она всегда пересобирала очередь, и повторное нажатие
+         * отматывало трек в начало вместо того, чтобы его остановить.
+         */
+        onClick={active ? () => window.shell.command({ type: 'playPause' }) : onPlay}
       >
         {/* The number gives way to a transport glyph on hover or while playing. */}
         <span className="trackrow__num">{index + 1}</span>

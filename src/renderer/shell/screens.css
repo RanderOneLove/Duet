@@ -40,32 +40,6 @@
   flex: 1;
 }
 
-/* ---- sidebar playlists ------------------------------------------------- */
-
-.sidebar__label {
-  letter-spacing: var(--tr-caps);
-  padding: 14px 10px 6px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.sidebar__playlists {
-  overflow-y: auto;
-  /* Never let a long playlist list push Settings off the bottom. */
-  max-height: 34vh;
-}
-
-.navitem--sm {
-  padding: 6px 10px;
-  font-weight: 400;
-  font-size: 13px;
-  gap: 8px;
-}
-
-.sidebar__badge {
-  margin-left: auto;
-}
-
 /* ---- track rows (2b) --------------------------------------------------- */
 
 .tracklist {
@@ -74,12 +48,23 @@
   padding: 0 2px;
 }
 
+/*
+ * Высота строки задана явно, а не выведена из содержимого: на ней держится
+ * виртуализация длинных списков, и «примерно столько» её ломает. Значение
+ * приходит из настройки плотности — 40 / 52 / 64.
+ */
 .trackrow {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 7px 10px;
+  height: var(--row-h, 52px);
+  padding: 0 10px;
   border-radius: var(--r-md);
+}
+
+/* В плотном режиме обложке в строке места нет. */
+:root[data-density='compact'] .trackrow__art {
+  display: none;
 }
 
 .trackrow:hover {
@@ -571,6 +556,13 @@
   position: fixed;
   inset: 0;
   z-index: 30;
+  /*
+   * Плеер накрывает всё окно, в том числе rail и титульную строку, а те
+   * объявлены областью перетаскивания. Windows такие области забирает себе:
+   * щелчок по ним уходит на перетаскивание окна и до страницы не доходит.
+   * Программно кнопка закрытия при этом нажималась, а мышью — нет.
+   */
+  -webkit-app-region: no-drag;
   background: linear-gradient(180deg, var(--player-from), var(--player-to) 55%);
   display: flex;
   flex-direction: column;

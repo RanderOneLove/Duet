@@ -1,20 +1,34 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Album, Artist, Playlist, SearchResult, ServiceId, Track } from '@shared/domain'
+import type { Album, Artist, Playlist, SearchResult, Track } from '@shared/domain'
 import { ServiceBadge } from '../../shared/ServiceLogo'
 import { TrackList } from '../components/TrackList'
 import { StateBlock } from '../components/StateBlock'
-import { Segmented } from '../components/Segmented'
-import { Play } from '../../shared/Icons'
+import { Play, Sparkle } from '../../shared/Icons'
 import { Cover } from '../components/Cover'
+import { useFiltered, type ServiceFilter } from '../useServiceFilter'
+import { Segmented } from '../components/Segmented'
 
-type Tab = 'all' | 'vk' | 'yandex'
+/** Какой раздел результатов показывать. */
+type Kind = 'all' | 'tracks' | 'albums' | 'artists' | 'playlists'
+
+const KINDS: { id: Kind; label: string }[] = [
+  { id: 'all', label: 'Всё' },
+  { id: 'tracks', label: 'Треки' },
+  { id: 'albums', label: 'Альбомы' },
+  { id: 'artists', label: 'Исполнители' },
+  { id: 'playlists', label: 'Плейлисты' }
+]
 
 interface Props {
   query: string
+  /** Выбор сервиса общий на всё окно и приходит из титульной строки. */
+  filter: ServiceFilter
   result: SearchResult
   loading: boolean
   activeId: string | null
   playing: boolean
+  recent: string[]
+  onSearch: (query: string) => void
   onPlay: (index: number) => void
   onToggleLike: (track: Track) => void
   downloadedIds: Set<string>
@@ -25,20 +39,27 @@ interface Props {
   onOpenArtist: (artist: Artist) => void
 }
 
-/**
- * Сколько треков показывать сразу. Ровно столько, чтобы под ними в окне
- * оставалось место на ряды карточек — иначе разделы ниже существуют только
- * в разметке.
- */
-const TRACKS_SHOWN = 8
+/** Сколько треков показывать сразу, пока не попросили остальные. */
+const TRACKS_SHOWN = 6
 
-/** Wireframe 2c: tabs, a top result, then tracks, albums, artists, playlists. */
+/**
+ * Поиск по вайрфрейму 1h.
+ *
+ * Слева — один лучший ответ на запрос и недавние запросы, справа — треки и
+ * ряды карточек. Такое деление держит карточки на виду: в прежней раскладке
+ * они стояли под полусотней треков, и до плейлистов никто не доскролливал.
+ *
+ * Фильтр сервиса сюда не дублируется — он один на всё окно, в титульной строке.
+ */
 export function SearchScreen({
   query,
+  filter,
   result,
   loading,
   activeId,
   playing,
+  recent,
+  onSearch,
   onPlay,
   onToggleLike,
   downloadedIds,
@@ -48,72 +69,82 @@ export function SearchScreen({
   onOpenPlaylist,
   onOpenArtist
 }: Props): JSX.Element {
-  const [tab, setTab] = useState<Tab>('all')
-  /**
-   * Показывать ли весь список треков.
-   *
-   * Поиск отдаёт полсотни треков, и раньше они шли сплошняком: альбомы,
-   * исполнители и плейлисты оказывались под ними, и до плейлистов не
-   * доскроллить — раздел был, но его никто не видел. Сначала показываем
-   * горсть, остальное по кнопке.
-   */
+  const [kind, setKind] = useState<Kind>('all')
   const [allTracks, setAllTracks] = useState(false)
 
-  // Запрос сменился — снова показываем короткий список.
-  useEffect(() => setAllTracks(false), [query, tab])
+  // Новый запрос — снова короткий список и раздел «Всё».
+  useEffect(() => {
+    setAllTracks(false)
+    setKind('all')
+  }, [query])
 
-  const vkCount = result.tracks.filter((track) => track.service === 'vk').length
-  const yaCount = result.tracks.filter((track) => track.service === 'yandex').length
+  const tracks = useFiltered(result.tracks, filter)
+  const albums = useMemo(
+    () => (filter === 'all' ? result.albums : result.albums.filter((item) => item.service === filter)),
+    [result.albums, filter]
+  )
+  const artists = useMemo(
+    () => (filter === 'all' ? result.artists : result.artists.filter((item) => item.service === filter)),
+    [result.artists, filter]
+  )
+  const playlists = useMemo(
+    () =>
+      filter === 'all' ? result.playlists : result.playlists.filter((item) => item.service === filter),
+    [result.playlists, filter]
+  )
 
-  const view = useMemo(() => filterByTab(result, tab), [result, tab])
-  const shownTracks = allTracks ? view.tracks : view.tracks.slice(0, TRACKS_SHOWN)
-
-  // The strongest single answer to the query, in the order the wireframe ranks
-  // them: an artist, then an album, then simply the first track.
-  const top = useMemo(() => pickTopResult(view, query), [view, query])
+  const top = useMemo(() => pickTop(tracks, albums, artists, query), [tracks, albums, artists, query])
+  const total = tracks.length + albums.length + artists.length + playlists.length
 
   if (!query.trim()) {
     return (
-      <div className="screen">
+      <div className="screen search">
         <StateBlock
           kind="empty"
           title="Что ищем?"
           hint="Начните вводить название трека, исполнителя или альбома в строке сверху."
         />
+        {recent.length > 0 && (
+          <div className="search__recent">
+            <div className="muted search__label">НЕДАВНИЕ ЗАПРОСЫ</div>
+            <div className="search__chips">
+              {recent.map((item) => (
+                <button key={item} className="chip" onClick={() => onSearch(item)}>
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
 
-  const nothing =
-    !loading &&
-    view.tracks.length === 0 &&
-    view.albums.length === 0 &&
-    view.artists.length === 0 &&
-    view.playlists.length === 0
+  const nothing = !loading && total === 0
+
+  const shownTracks = allTracks ? tracks : tracks.slice(0, TRACKS_SHOWN)
+  const show = (what: Kind): boolean => kind === 'all' || kind === what
 
   return (
-    <div className="screen">
-      <div className="screen__head">
+    <div className="screen search">
+      <div className="search__head">
         <h1 className="screen__title">Поиск</h1>
-        <span className="muted">«{query}»</span>
+        <span className="muted">
+          «{query}» {!loading && <>· {total} результатов</>}
+        </span>
       </div>
 
-      <Segmented
-        className="search__tabs"
-        value={tab}
-        onChange={setTab}
-        options={[
-          { id: 'all', label: 'Все' },
-          { id: 'vk', label: 'VK', hint: loading ? '…' : String(vkCount) },
-          { id: 'yandex', label: 'Яндекс', hint: loading ? '…' : String(yaCount) }
-        ]}
-      />
+      {/* Тот же сегмент, что и фильтр сервиса в титульной строке: два ряда
+          переключателей на одном экране должны выглядеть одинаково. */}
+      <div className="search__kinds">
+        <Segmented value={kind} onChange={setKind} options={KINDS} />
+      </div>
 
       {nothing ? (
         <StateBlock kind="empty" title="Ничего не нашлось" hint="Попробуйте изменить запрос." />
       ) : (
-        <>
-          <div className="search__split">
+        <div className="search__split">
+          <aside className="search__side">
             {top && (
               <div className="topresult">
                 <div className="muted topresult__kicker">ЛУЧШИЙ РЕЗУЛЬТАТ</div>
@@ -134,43 +165,69 @@ export function SearchScreen({
                     onClick={() => {
                       if (top.album) onOpenAlbum(top.album)
                       else if (top.artist) onOpenArtist(top.artist)
-                      else if (top.track) onPlay(indexInAll(result.tracks, top.track))
+                      else if (top.track) onPlay(indexOf(result.tracks, top.track))
                     }}
                   >
                     <Play size={13} /> {top.kind === 'track' ? 'Слушать' : 'Открыть'}
                   </button>
+                  {top.track && (
+                    <button className="gbtn" onClick={() => onSimilar(top.track!)}>
+                      <Sparkle size={13} /> Похожее
+                    </button>
+                  )}
                 </div>
               </div>
             )}
 
-            <div className="search__tracks">
-              <div className="muted search__label">ТРЕКИ</div>
-              <TrackList
-                tracks={shownTracks}
-                loading={loading}
-                activeId={activeId}
-                playing={playing}
-                onPlay={(index) => onPlay(indexInAll(result.tracks, shownTracks[index]))}
-                onToggleLike={onToggleLike}
-                downloadedIds={downloadedIds}
-                onDownload={onDownload}
-            onSimilar={onSimilar}
-                emptyTitle="Треков нет"
-                emptyHint="Попробуйте другой запрос или другую вкладку."
-              />
-              {!allTracks && view.tracks.length > TRACKS_SHOWN && (
-                <button className="pill pill--ghost search__more" onClick={() => setAllTracks(true)}>
-                  Ещё {view.tracks.length - TRACKS_SHOWN} треков
-                </button>
-              )}
-            </div>
-          </div>
+            {recent.length > 0 && (
+              <div className="search__recent">
+                <div className="muted search__label">НЕДАВНИЕ ЗАПРОСЫ</div>
+                <div className="search__chips">
+                  {recent
+                    .filter((item) => item !== query)
+                    .map((item) => (
+                      <button key={item} className="chip" onClick={() => onSearch(item)}>
+                        {item}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+          </aside>
 
-          {view.albums.length > 0 && (
-            <section className="search__section">
-              <div className="muted search__label">АЛЬБОМЫ</div>
-              <div className="cardrow">
-                {view.albums.map((album) => (
+          <div className="search__main">
+            {show('tracks') && tracks.length > 0 && (
+              <section className="search__section">
+                <div className="search__sechead">
+                  <div className="muted search__label">ТРЕКИ</div>
+                  <div className="home__spacer" />
+                  {!allTracks && tracks.length > TRACKS_SHOWN && kind === 'all' && (
+                    <button className="gbtn" onClick={() => setAllTracks(true)}>
+                      Показать все {tracks.length}
+                    </button>
+                  )}
+                </div>
+                <TrackList
+                  tracks={kind === 'tracks' ? tracks : shownTracks}
+                  loading={loading}
+                  activeId={activeId}
+                  playing={playing}
+                  onPlay={(index) =>
+                    onPlay(indexOf(result.tracks, (kind === 'tracks' ? tracks : shownTracks)[index]))
+                  }
+                  onToggleLike={onToggleLike}
+                  downloadedIds={downloadedIds}
+                  onDownload={onDownload}
+                  onSimilar={onSimilar}
+                  emptyTitle="Треков нет"
+                  emptyHint="Попробуйте другой запрос."
+                />
+              </section>
+            )}
+
+            {show('albums') && albums.length > 0 && (
+              <CardRow label="АЛЬБОМЫ">
+                {albums.map((album) => (
                   <button key={album.id} className="card" onClick={() => onOpenAlbum(album)}>
                     <div className="card__artwrap">
                       <Cover url={album.coverUrl} seed={album.title} className="card__art" />
@@ -183,19 +240,16 @@ export function SearchScreen({
                       <ServiceBadge service={album.service} />
                     </div>
                     <div className="truncate muted card__sub">
-                      {[album.artists.join(', '), album.year].filter(Boolean).join(' · ')}
+                      {[album.year, album.artists.join(', ')].filter(Boolean).join(' · ')}
                     </div>
                   </button>
                 ))}
-              </div>
-            </section>
-          )}
+              </CardRow>
+            )}
 
-          {view.artists.length > 0 && (
-            <section className="search__section">
-              <div className="muted search__label">ИСПОЛНИТЕЛИ</div>
-              <div className="cardrow">
-                {view.artists.map((artist) => (
+            {show('artists') && artists.length > 0 && (
+              <CardRow label="ИСПОЛНИТЕЛИ">
+                {artists.map((artist) => (
                   <button key={artist.id} className="card" onClick={() => onOpenArtist(artist)}>
                     <div className="card__artwrap">
                       <Cover url={artist.coverUrl} seed={artist.name} rounded className="card__art" />
@@ -207,15 +261,12 @@ export function SearchScreen({
                     <div className="truncate muted card__sub">Исполнитель</div>
                   </button>
                 ))}
-              </div>
-            </section>
-          )}
+              </CardRow>
+            )}
 
-          {view.playlists.length > 0 && (
-            <section className="search__section">
-              <div className="muted search__label">ПЛЕЙЛИСТЫ</div>
-              <div className="cardrow">
-                {view.playlists.map((playlist) => (
+            {show('playlists') && playlists.length > 0 && (
+              <CardRow label="ПЛЕЙЛИСТЫ">
+                {playlists.map((playlist) => (
                   <button key={playlist.id} className="card" onClick={() => onOpenPlaylist(playlist)}>
                     <div className="card__artwrap">
                       <Cover url={playlist.coverUrl} seed={playlist.title} className="card__art" />
@@ -230,43 +281,67 @@ export function SearchScreen({
                     <div className="truncate muted card__sub">{playlist.trackCount} треков</div>
                   </button>
                 ))}
-              </div>
-            </section>
-          )}
-        </>
+              </CardRow>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-function filterByTab(result: SearchResult, tab: Tab): SearchResult {
-  if (tab === 'all') return result
-  const service: ServiceId = tab
-  return {
-    tracks: result.tracks.filter((item) => item.service === service),
-    albums: result.albums.filter((item) => item.service === service),
-    artists: result.artists.filter((item) => item.service === service),
-    playlists: result.playlists.filter((item) => item.service === service)
-  }
+function CardRow({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
+  return (
+    <section className="search__section">
+      <div className="muted search__label">{label}</div>
+      <div className="cardrow">{children}</div>
+    </section>
+  )
 }
 
-interface TopResult {
+interface Top {
   kind: 'artist' | 'album' | 'track'
   title: string
   subtitle: string
   coverUrl: string | null
-  service: ServiceId
-  /** Exactly one of these is set; the screen decides what a click does. */
+  service: Album['service']
   artist?: Artist
   album?: Album
   track?: Track
 }
 
-/** Prefer an exact-ish name match, since that is what the query usually means. */
-function pickTopResult(result: SearchResult, query: string): TopResult | null {
+/**
+ * Самый уверенный ответ на запрос: точное совпадение с именем исполнителя,
+ * потом с названием альбома, иначе просто первый трек. Так «oohyo» открывает
+ * исполнителя, а не случайную песню с этим словом в названии.
+ */
+function pickTop(tracks: Track[], albums: Album[], artists: Artist[], query: string): Top | null {
   const needle = query.trim().toLowerCase()
-  const artist =
-    result.artists.find((item) => item.name.toLowerCase() === needle) ?? result.artists[0]
+
+  const artist = artists.find((item) => item.name.toLowerCase() === needle) ?? artists[0]
+  if (artist && artist.name.toLowerCase() === needle) {
+    return {
+      kind: 'artist',
+      title: artist.name,
+      subtitle: 'Исполнитель',
+      coverUrl: artist.coverUrl,
+      service: artist.service,
+      artist
+    }
+  }
+
+  const album = albums.find((item) => item.title.toLowerCase() === needle)
+  if (album) {
+    return {
+      kind: 'album',
+      title: album.title,
+      subtitle: [album.year, album.artists.join(', ')].filter(Boolean).join(' · '),
+      coverUrl: album.coverUrl,
+      service: album.service,
+      album
+    }
+  }
+
   if (artist) {
     return {
       kind: 'artist',
@@ -278,35 +353,21 @@ function pickTopResult(result: SearchResult, query: string): TopResult | null {
     }
   }
 
-  const album = result.albums[0]
-  if (album) {
-    return {
-      kind: 'album',
-      title: album.title,
-      subtitle: album.artists.join(', ') || 'Альбом',
-      coverUrl: album.coverUrl,
-      service: album.service,
-      album
-    }
+  const track = tracks[0]
+  if (!track) return null
+  return {
+    kind: 'track',
+    title: track.title,
+    subtitle: track.artists.join(', '),
+    coverUrl: track.coverUrl,
+    service: track.service,
+    track
   }
-
-  const track = result.tracks[0]
-  if (track) {
-    return {
-      kind: 'track',
-      title: track.title,
-      subtitle: track.artists.join(', '),
-      coverUrl: track.coverUrl,
-      service: track.service,
-      track
-    }
-  }
-  return null
 }
 
-/** Playing from a filtered view still has to start the full result queue. */
-function indexInAll(all: Track[], track: Track | undefined): number {
+/** Где этот трек лежит в неотфильтрованном списке — по нему и играем. */
+function indexOf(all: Track[], track: Track | undefined): number {
   if (!track) return 0
-  const index = all.findIndex((item) => item.id === track.id)
-  return index >= 0 ? index : 0
+  const at = all.findIndex((item) => item.id === track.id)
+  return at < 0 ? 0 : at
 }

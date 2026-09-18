@@ -1,9 +1,19 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { DisplayInfo, HotkeyStatus, Settings } from '@shared/types'
-import type { Connection, HomeSection, Playlist, SearchResult, ServiceId, Track, WaveChoice } from '@shared/domain'
+import type {
+  Connection,
+  HomeSection,
+  Lyrics,
+  Playlist,
+  SearchResult,
+  ServiceId,
+  Track,
+  WaveChoice
+} from '@shared/domain'
 import type { PlayerCommand, PlayerState, PlayerUpdate } from '@shared/player'
 import type { DownloadsState } from '@shared/downloads'
+import type { UpdateState } from '@shared/updates'
 
 /** The only surface the shell renderer has onto the main process. */
 const api = {
@@ -44,8 +54,10 @@ const api = {
   removeFromPlaylist: (id: string, trackId: string): Promise<void> =>
     ipcRenderer.invoke(IPC.libLocalRemoveTrack, id, trackId),
   similarTracks: (track: Track): Promise<Track[]> => ipcRenderer.invoke(IPC.libSimilar, track),
-  lyrics: (track: Track): Promise<string | null> => ipcRenderer.invoke(IPC.libLyrics, track),
+  lyrics: (track: Track): Promise<Lyrics | null> => ipcRenderer.invoke(IPC.libLyrics, track),
   search: (query: string): Promise<SearchResult> => ipcRenderer.invoke(IPC.libSearch, query),
+  wavePreview: (choice: WaveChoice): Promise<Track[]> =>
+    ipcRenderer.invoke(IPC.libWavePreview, choice),
   wave: (choice: WaveChoice): Promise<Track[]> => ipcRenderer.invoke(IPC.libWave, choice),
   setLiked: (track: Track, liked: boolean): Promise<void> => ipcRenderer.invoke(IPC.libSetLiked, track, liked),
 
@@ -63,6 +75,12 @@ const api = {
   setSettings: (patch: Partial<Settings>): Promise<Settings> => ipcRenderer.invoke(IPC.settingsSet, patch),
   getDisplays: (): Promise<DisplayInfo[]> => ipcRenderer.invoke(IPC.displaysGet),
   getAppInfo: (): Promise<{ name: string; version: string }> => ipcRenderer.invoke(IPC.appInfo),
+
+  // обновления
+  getUpdate: (): Promise<UpdateState> => ipcRenderer.invoke(IPC.updatesGet),
+  checkUpdate: (): Promise<UpdateState> => ipcRenderer.invoke(IPC.updatesCheck),
+  installUpdate: (): Promise<boolean> => ipcRenderer.invoke(IPC.updatesInstall),
+  onUpdate: (handler: (state: UpdateState) => void) => subscribe(IPC.updatesChanged, handler),
   getHotkeyStatus: (): Promise<HotkeyStatus> => ipcRenderer.invoke(IPC.hotkeyStatus),
   onSettings: (handler: (settings: Settings) => void) => subscribe(IPC.settingsChanged, handler),
   onHotkeyStatus: (handler: (status: HotkeyStatus) => void) => subscribe(IPC.hotkeyStatus, handler),

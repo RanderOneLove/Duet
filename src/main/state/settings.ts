@@ -1,5 +1,5 @@
 import Store from 'electron-store'
-import { DEFAULT_SETTINGS, type Settings } from '@shared/types'
+import { DEFAULT_HOME_BLOCKS, DEFAULT_SETTINGS, type Settings } from '@shared/types'
 
 const store = new Store<Settings>({
   name: 'settings',
@@ -30,6 +30,26 @@ export function getSettings(): Settings {
   if (stored.miniShowWhen === undefined && stored.miniOnMinimize === false) {
     settings.miniShowWhen = 'never'
   }
+  /*
+   * Список блоков Главной мог быть записан прежней версией — без «Скачанного»
+   * или, наоборот, с пунктом, которого больше нет. Тогда экран показывал бы
+   * блок, у которого в настройках нет тумблера: выключить его было бы нечем.
+   * Поэтому порядок берём из сохранённого, а состав — из нынешнего.
+   */
+  const saved = Array.isArray(settings.homeBlocks) ? settings.homeBlocks : []
+  const seen = new Set<string>()
+  settings.homeBlocks = [
+    ...saved.filter((block) => {
+      // Дубль в списке означал бы блок, нарисованный дважды, причём видимость
+      // читалась бы у первой записи, а переключалась у обеих.
+      if (seen.has(block.id)) return false
+      if (!DEFAULT_HOME_BLOCKS.some((known) => known.id === block.id)) return false
+      seen.add(block.id)
+      return true
+    }),
+    ...DEFAULT_HOME_BLOCKS.filter((known) => !seen.has(known.id))
+  ]
+
   cached = settings
   return settings
 }

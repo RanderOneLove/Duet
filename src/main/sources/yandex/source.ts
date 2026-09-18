@@ -1,4 +1,4 @@
-import type { Account, Playlist, SearchResult, Track } from '@shared/domain'
+import type { Account, Lyrics, Playlist, SearchResult, Track } from '@shared/domain'
 import { trackKey } from '@shared/domain'
 import { getSecret, setSecret } from '../../state/secrets'
 import { SessionExpiredError, type Source, type WaveEvent } from '../types'
@@ -25,6 +25,8 @@ export class YandexSource implements Source {
   private liked: { at: number; tracks: Track[] } | null = null
   /** The batch the station last handed out; every report refers to it. */
   private waveBatchId: string | null = null
+  /** Она же треками — чтобы показывать «что дальше», не тревожа станцию. */
+  private waveBatch: Track[] = []
   /** A read already under way; a second caller waits on it instead of starting its own. */
   private likedInFlight: Promise<Track[]> | null = null
   /** Плейлисты — тот же приём, только список короткий. */
@@ -216,7 +218,12 @@ export class YandexSource implements Source {
     const { api } = this.require()
     const batch = await api.wave(afterNativeId)
     this.waveBatchId = batch.batchId
-    return batch.tracks.map((track) => this.toDomain(track, false))
+    this.waveBatch = batch.tracks.map((track) => this.toDomain(track, false))
+    return this.waveBatch
+  }
+
+  lastWave(): Track[] {
+    return this.waveBatch
   }
 
   async waveFeedback(event: WaveEvent, track?: Track, playedSeconds?: number): Promise<void> {
@@ -230,9 +237,24 @@ export class YandexSource implements Source {
     return tracks.map((item) => this.toDomain(item, false))
   }
 
-  async lyrics(track: Track): Promise<string | null> {
+  async lyrics(track: Track): Promise<Lyrics | null> {
     const { api } = this.require()
     return api.lyrics(track.nativeId)
+  }
+
+  canDislike(): boolean {
+    return true
+  }
+
+  async dislike(track: Track): Promise<void> {
+    const { api, uid } = this.require()
+    await api.dislike(uid, track.nativeId)
+
+    // Нелюбимое не должно остаться в избранном — это противоречило бы само себе.
+    if (this.liked) {
+      this.liked.tracks = this.liked.tracks.filter((item) => item.id !== track.id)
+      this.indexLiked(this.liked.tracks)
+    }
   }
 
   async setLiked(track: Track, liked: boolean): Promise<void> {

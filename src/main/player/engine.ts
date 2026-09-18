@@ -8,8 +8,17 @@ import {
 } from '@shared/player'
 import type { AudioEvent } from '../../preload/audio'
 import { controlAudio, loadAudio } from '../windows/audioHost'
-import { resolveStream, setLiked, wave, waveFeedback } from '../sources/registry'
+import {
+  canDislike,
+  dislike,
+  isServiceConnected,
+  resolveStream,
+  setLiked,
+  wave,
+  waveFeedback
+} from '../sources/registry'
 import { startFollowing, stopFollowing } from '../together/follow'
+import { resetPublishing } from '../together/host'
 import type { SharedState } from '../together/host'
 import { flushSession, readSession, writeSession } from '../state/session'
 import { addDownloads, downloadedFile } from '../downloads/manager'
@@ -72,6 +81,14 @@ export function getPlayer(): PlayerState {
   return state
 }
 
+/**
+ * Сколько человек слушает вместе. Приходит ответом ретранслятора на публикацию,
+ * поэтому кладётся сюда снаружи, а не считается движком.
+ */
+export function reportListeners(count: number): void {
+  if (state.listeners !== count) patch({ listeners: count })
+}
+
 /** Дописать сессию на выходе: асинхронная запись до закрытия может не успеть. */
 export function saveSessionNow(): void {
   if (state.index < 0 || state.queue.length === 0) return
@@ -126,11 +143,25 @@ const OWN_CHOICE = new Set<PlayerCommand['type']>([
 ])
 
 export async function command(input: PlayerCommand): Promise<void> {
-  // «Пока ведомый не нажмёт паузу или не включит своё»: любой такой шаг
-  // означает, что человек больше не хочет идти следом.
+  /*
+   * Пока идём следом, часть кнопок означает не то, что обычно.
+   *
+   * Перелистывание отключено: очередь здесь чужая, и «следующий» сбил бы с
+   * толку — трек сменился бы на секунду, а потом ведущий вернул бы своё.
+   * Пауза же означает «подключиться заново»: чаще всего её жмут, когда звук
+   * разошёлся с ведущим, и ждут, что всё встанет на место, а не что
+   * следование прекратится. Уйти от ведущего можно, включив своё.
+   */
   if (state.following && !applyingFollowed) {
-    const ownPause = input.type === 'playPause' && state.playing
-    if (ownPause || OWN_CHOICE.has(input.type)) leaveFollowing()
+    if (input.type === 'next' || input.type === 'prev' || input.type === 'seek') {
+      patch({ followError: 'Пока вы слушаете вместе, переключает ведущий' })
+      return
+    }
+    if (input.type === 'playPause' || input.type === 'play' || input.type === 'pause') {
+      resyncFollowing()
+      return
+    }
+    if (OWN_CHOICE.has(input.type)) leaveFollowing()
   }
 
   switch (input.type) {
@@ -276,6 +307,29 @@ export async function command(input: PlayerCommand): Promise<void> {
       return
     }
 
+    case 'dislike': {
+      const track = state.queue[state.index]
+      if (!track) return
+      try {
+        await dislike(track)
+        // Отвергнутый трек уходит из очереди, а под курсором оказывается
+        // следующий — поэтому не «шаг вперёд», а загрузка того, что встало на
+        // освободившееся место.
+        const queue = state.queue.filter((item) => item.id !== track.id)
+        if (queue.length === 0) {
+          patch({ queue })
+          stop()
+          return
+        }
+        patch({ queue, index: Math.min(state.index, queue.length - 1) })
+        await loadCurrent(true)
+        void topUpWave()
+      } catch (error) {
+        patch({ error: error instanceof Error ? error.message : 'Не удалось отметить трек' })
+      }
+      return
+    }
+
     case 'setOutputDevice':
       setSettings({ outputDeviceId: input.deviceId })
       patch({ outputDeviceId: input.deviceId })
@@ -287,10 +341,16 @@ export async function command(input: PlayerCommand): Promise<void> {
       return
 
     case 'follow': {
-      const joined = await startFollowing(input.code, applyFollowed, () => {
-        // Ведущий закрыл приложение или связь оборвалась.
-        patch({ following: null, followError: null })
-      })
+      const joined = await startFollowing(
+        input.code,
+        applyFollowed,
+        () => {
+          // Добиваться связи больше нечего: ведущий закрыл приложение.
+          lastShared = null
+          patch({ following: null, followError: null })
+        },
+        () => patch({ followError: RECONNECTING })
+      )
       patch({
         following: joined ? input.code : null,
         followError: joined ? null : 'Сессия не найдена — возможно, её уже закрыли'
@@ -484,49 +544,115 @@ const SYNC_TOLERANCE_MS = 2000
 let applyingFollowed = false
 
 function leaveFollowing(): void {
+  lastShared = null
   stopFollowing()
   if (state.following || state.followError) patch({ following: null, followError: null })
 }
 
-/** Принять состояние ведущего и привести своё воспроизведение к нему. */
+/** Последнее, что прислал ведущий, — по нему и подключаемся заново. */
+let lastShared: SharedState | null = null
+
+/**
+ * Встать на то место, где ведущий сейчас.
+ *
+ * Нужно, когда звук разошёлся: сеть моргнула, трек грузился дольше обычного.
+ * Пересчитываем позицию от момента последнего сообщения — часы ведущего с тех
+ * пор не стояли.
+ */
+function resyncFollowing(): void {
+  if (!lastShared) return
+  applyFollowed(lastShared)
+}
+
+/** Что показывается, пока связь с ведущим восстанавливается. */
+const RECONNECTING = 'Связь с ведущим прервалась — восстанавливаем…'
+
+/**
+ * Состояния применяются по одному и только самое свежее.
+ *
+ * Между приходом состояния и его применением есть ожидание: трек надо
+ * загрузить. Если за это время придёт следующее, прежний порядок запускал
+ * второй разбор поверх первого — и флаг «это не своя команда» снимался, пока
+ * первый ещё шёл, отчего собственные действия движка принимались за выбор
+ * человека и следование обрывалось. Промежуточные состояния при этом не нужны:
+ * догонять надо туда, где ведущий сейчас.
+ */
+let pendingShared: SharedState | null = null
+let draining = false
+
 function applyFollowed(shared: SharedState): void {
-  void (async () => {
-    applyingFollowed = true
-    try {
-      const track = shared.track
-      if (!track) {
-        controlAudio({ type: 'pause' })
-        return
-      }
+  lastShared = shared
+  pendingShared = shared
+  if (state.followError === RECONNECTING) patch({ followError: null })
+  if (!draining) void drainFollowed()
+}
 
-      // Пока сообщение шло, время не стояло.
-      const target = shared.positionMs + (shared.playing ? Date.now() - shared.at : 0)
-      const current = state.queue[state.index]
-
-      if (current?.id !== track.id) {
-        if (!track.available) {
-          patch({ followError: `«${track.title}» недоступен в вашем аккаунте` })
-          return
-        }
-        patch({ queue: [track], index: 0, waveService: null, followError: null })
-        await loadCurrent(shared.playing, Math.max(0, target))
-        return
-      }
-
-      const drift = Math.abs(state.positionMs - target)
-      if (drift > SYNC_TOLERANCE_MS) controlAudio({ type: 'seek', positionMs: Math.max(0, target) })
-      if (shared.playing && !state.playing) controlAudio({ type: 'play' })
-      if (!shared.playing && state.playing) controlAudio({ type: 'pause' })
-    } finally {
-      applyingFollowed = false
+async function drainFollowed(): Promise<void> {
+  draining = true
+  applyingFollowed = true
+  try {
+    while (pendingShared) {
+      const shared = pendingShared
+      pendingShared = null
+      await applyOneFollowed(shared)
     }
-  })()
+  } finally {
+    applyingFollowed = false
+    draining = false
+  }
+}
+
+/** Принять состояние ведущего и привести своё воспроизведение к нему. */
+async function applyOneFollowed(shared: SharedState): Promise<void> {
+  const track = shared.track
+  if (!track) {
+    controlAudio({ type: 'pause' })
+    return
+  }
+
+  // Пока сообщение шло, время не стояло.
+  const target = shared.positionMs + (shared.playing ? Date.now() - shared.at : 0)
+  const current = state.queue[state.index]
+
+  if (current?.id !== track.id) {
+    /*
+     * Трек сервиса, к которому мы не подключены, не подменяет собой то, что
+     * звучит. Раньше очередь и подпись переключались, а звук оставался
+     * прежним: на экране Яндекс, в наушниках всё ещё VK.
+     */
+    if (!isServiceConnected(track.service)) {
+      patch({
+        followError: `${track.service === 'vk' ? 'VK' : 'Яндекс'} не подключён — «${track.title}» не заиграет`
+      })
+      return
+    }
+    if (!track.available) {
+      patch({ followError: `«${track.title}» недоступен в вашем аккаунте` })
+      return
+    }
+    patch({ queue: [track], index: 0, waveService: null, followError: null })
+    await loadCurrent(shared.playing, Math.max(0, target))
+    return
+  }
+
+  const drift = Math.abs(state.positionMs - target)
+  if (drift > SYNC_TOLERANCE_MS) controlAudio({ type: 'seek', positionMs: Math.max(0, target) })
+  if (shared.playing && !state.playing) controlAudio({ type: 'play' })
+  if (!shared.playing && state.playing) controlAudio({ type: 'pause' })
 }
 
 /** Fold an event from the audio host into the state. */
 export function handleAudioEvent(event: AudioEvent): void {
   switch (event.type) {
     case 'playing':
+      /*
+       * Трек зазвучал по-настоящему. Между переключением и этим мгновением
+       * проходит загрузка — секунда, иногда больше, — и слушающий вместе всё
+       * это время считает, что песня уже идёт. Забываем последнюю отправку,
+       * чтобы следующая, которая уйдёт прямо сейчас, сообщила настоящее
+       * начало, а не предсказанное.
+       */
+      if (!hasStartedPlayingThisTrack) resetPublishing()
       hasStartedPlayingThisTrack = true
       clearStartWatchdog()
       consecutiveFailures = 0
@@ -835,7 +961,26 @@ function nextRepeat(mode: RepeatMode): RepeatMode {
 }
 
 function patch(changes: Partial<PlayerState>): void {
+  const previous = state.queue[state.index]
   state = { ...state, ...changes, sampledAt: Date.now() }
+  // Признак живёт рядом с треком: он про сервис, из которого тот пришёл.
+  const current = state.queue[state.index]
+
+  /*
+   * Сменился трек — отсчёт начинается заново.
+   *
+   * Переход к следующему шёл в два приёма: сперва сдвигался курсор очереди,
+   * и только потом, дождавшись ссылки на поток, загрузка ставила позицию в
+   * ноль. Между этими приёмами состояние успевало разойтись по слушателям —
+   * новый трек и время от предыдущего, — и тот, кто слушал вместе, начинал
+   * песню с середины. Позиция сбрасывается здесь, рядом со сменой курсора,
+   * чтобы такого промежутка не было вовсе. Явно переданное время не трогаем:
+   * им продолжают прослушивание с сохранённого места и догоняют ведущего.
+   */
+  if (current?.id !== previous?.id && changes.positionMs === undefined) {
+    state.positionMs = 0
+  }
+  state.canDislike = current ? canDislike(current.service) : false
   scheduleSave()
   for (const listener of listeners) listener(state)
 }

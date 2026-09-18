@@ -143,6 +143,13 @@
   min-height: 0;
 }
 
+/*
+ * Список разделов держится на месте, пока страница едет.
+ *
+ * Раздел «Оформление» стал длинным, и вместе с ним уезжал наверх сам список —
+ * человек оказывался в настройках без возможности перейти в другой раздел,
+ * не прокрутив обратно.
+ */
 .settings__nav {
   width: 190px;
   flex: none;
@@ -151,6 +158,38 @@
   flex-direction: column;
   gap: 3px;
   border-right: 1px solid var(--hairline);
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+/*
+ * Список разделов. Прежде он одалживал вид у пунктов боковой панели, а той
+ * больше нет — теперь у него свой.
+ */
+.settings__navitem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  font-size: 13.5px;
+  text-align: left;
+  width: 100%;
+}
+
+.settings__navitem:hover {
+  color: var(--text);
+  background: var(--glass);
+}
+
+.settings__navitem[aria-current='page'] {
+  background: var(--glass-hover);
+  color: var(--text);
+  font-weight: 600;
 }
 
 .settings__pane {
@@ -258,4 +297,101 @@
 /* Кнопка «показать остальные треки» под коротким списком в поиске. */
 .search__more {
   margin-top: 10px;
+}
+
+/* ---- поиск (1h) ---------------------------------------------------------- */
+
+.search__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.search__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.search__kinds {
+  margin-bottom: 18px;
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--fill-3);
+  color: var(--text);
+  font-weight: 600;
+}
+
+/*
+ * Слева — один уверенный ответ и недавние запросы, справа — списки. Так ряды
+ * карточек видно сразу, а не под полусотней треков.
+ */
+.search__split {
+  display: flex;
+  gap: 22px;
+  align-items: flex-start;
+}
+
+.search__side {
+  width: 290px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.search__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.search__sechead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topresult {
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.topresult__art {
+  width: 100%;
+  aspect-ratio: 1;
+  height: auto;
+  margin-bottom: 8px;
+}
+
+.topresult__title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: var(--tr-title);
+}
+
+.topresult__sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topresult__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.search__recent .search__label {
+  margin-bottom: 8px;
 }

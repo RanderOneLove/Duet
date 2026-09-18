@@ -1,6 +1,6 @@
 /*
- * App shell layout, following wireframe 2a: sidebar + main column + a
- * persistent now-playing bar, on the dark surface palette from tokens.css.
+ * Раскладка оболочки по вайрфрейму v2: колонка значков слева, главная колонка
+ * справа, а титульная строка и панель плеера лежат поверх содержимого.
  */
 
 .app {
@@ -29,75 +29,58 @@
   position: relative;
 }
 
-/* ---- sidebar ---------------------------------------------------------- */
+/* ---- rail -------------------------------------------------------------- */
 
-.sidebar {
-  width: var(--nav-w);
+/*
+ * Колонка навигации в 72 пикселя: одни значки, без подписей и без списка
+ * плейлистов. Прежняя панель занимала 214 пикселей ради того, что человек и
+ * так помнит наизусть; плейлисты живут в «Моей коллекции», где видно обложки,
+ * а не столбик обрезанных названий.
+ */
+.rail {
+  width: var(--rail-w);
   flex: none;
-  /* Боковая панель — структурная область, поэтому материал плотнее, чем у
-     всплывающих: тяжёлые материалы разделяют, лёгкие — привлекают. */
-  background: var(--material-thick);
-  backdrop-filter: var(--material-blur);
-  -webkit-backdrop-filter: var(--material-blur);
-  box-shadow: inset 0 0 0 1px var(--hairline);
-  border-radius: var(--r-lg);
-  padding: 14px 10px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  gap: 7px;
+  padding: 14px 0;
 }
 
-.sidebar__brand {
+.rail__brand {
+  width: 46px;
+  height: 46px;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 4px 10px 12px;
-}
-
-.sidebar__mark {
-  width: 24px;
-  height: 24px;
-  border-radius: var(--r-sm);
-  background: var(--accent);
-  box-shadow: 0 3px 10px var(--accent-glow);
+  justify-content: center;
+  color: var(--accent);
   flex: none;
+  margin-bottom: 6px;
 }
 
-.sidebar__title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: var(--tr-title);
-}
-
-.sidebar__seg {
-  margin: 0 6px 10px;
-}
-
-.sidebar__spacer {
+.rail__spacer {
   flex: 1;
 }
 
-.navitem {
+.railitem {
+  width: 46px;
+  height: 46px;
+  border-radius: var(--r-lg);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: var(--r-md);
-  color: var(--text-muted);
-  font-weight: 500;
-  text-align: left;
-  width: 100%;
+  justify-content: center;
+  color: var(--text-faint);
+  flex: none;
 }
 
-.navitem:hover {
+.railitem:hover {
   color: var(--text);
+  background: var(--glass);
 }
 
-.navitem[aria-current='page'] {
-  background: var(--accent-soft);
+.railitem[aria-current='page'] {
+  background: var(--glass-hover);
   color: var(--text);
-  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 /* ---- top bar ---------------------------------------------------------- */
@@ -116,7 +99,12 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 8px 0 16px;
+  /*
+   * Слева — как у содержимого под строкой: поле поиска вставало вплотную к
+   * краю окна и выглядело обрезанным. Справа отступ меньше: там кнопки окна,
+   * и им положено жить в углу.
+   */
+  padding: 0 8px 0 20px;
   flex: none;
   background: var(--material);
   backdrop-filter: var(--material-blur);
@@ -133,16 +121,28 @@
 }
 
 .topbar__search {
-  height: 34px;
-  border-radius: var(--r-pill);
-  background: var(--surface-3);
+  height: 38px;
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
   display: flex;
   align-items: center;
-  padding: 0 14px;
-  gap: 8px;
+  padding: 0 12px 0 14px;
+  gap: 9px;
   color: var(--text-muted);
   flex: 1;
-  max-width: 330px;
+  max-width: 420px;
+}
+
+/* Подсказка про горячую клавишу — как в макете, у правого края поля. */
+.topbar__kbd {
+  font: 500 10.5px ui-monospace, Menlo, monospace;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  border: 1px solid var(--glass-line);
+  border-radius: 6px;
+  padding: 2px 6px;
+  flex: none;
 }
 
 .topbar__search input {
@@ -238,107 +238,168 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  /* Место под плавающей шапкой: она больше не занимает строку в потоке. */
+  /* Место под плавающей шапкой и под плитой плеера: обе лежат поверх. */
   padding-top: var(--topbar-h);
+  padding-bottom: calc(var(--dock-h) + var(--dock-gap) * 2);
 }
 
-/* ---- now playing ------------------------------------------------------ */
+/* ---- панель плеера ------------------------------------------------------ */
 
 /*
- * Нижняя панель — тоже материал: светлая кромка сверху читается как блик на
- * стекле, которым она отделена от фона, а не как нарисованная граница.
+ * Плита, лежащая поверх содержимого, а не полоса, отрезающая от окна свои
+ * пиксели: короче окна, скруглена, отделена кромкой. Список проезжает под ней.
  */
-.nowplaying {
-  height: var(--nowplaying-h);
+.dock {
+  position: absolute;
+  left: var(--dock-gap);
+  right: var(--dock-gap);
+  bottom: var(--dock-gap);
+  z-index: 14;
+  min-height: var(--dock-h);
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 18px;
-  flex: none;
-  background: var(--material-thick);
+  gap: 14px;
+  padding: 10px 16px;
+  border-radius: var(--r-xl);
   backdrop-filter: var(--material-blur);
   -webkit-backdrop-filter: var(--material-blur);
-  box-shadow: inset 0 1px 0 var(--material-edge);
+  box-shadow: var(--shadow-raised);
 }
 
-.nowplaying__track {
+.dock__track {
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 240px;
+  width: 230px;
+  flex: none;
+  text-align: left;
+  border-radius: var(--r-md);
+}
+
+.dock__art {
+  width: 46px;
+  height: 46px;
   flex: none;
 }
 
-.nowplaying__art {
-  width: 52px;
-  height: 52px;
-}
-
-.nowplaying__meta {
+.dock__meta {
   min-width: 0;
-  /* Takes the slack in the strip so the expand icon lands at the edge. */
   flex: 1;
 }
 
-.nowplaying__title {
+.dock__title {
   font-weight: 600;
   font-size: 13.5px;
+  letter-spacing: var(--tr-title);
 }
 
-.nowplaying__artist {
+.dock__artist {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  font-size: 12px;
 }
 
-.nowplaying__center {
+.dock__like {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: var(--glass);
+  flex: none;
+}
+
+.dock__like:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.dock__like--on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dock__center {
   flex: 1;
+  min-width: 260px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 7px;
-  min-width: 0;
+  gap: 4px;
 }
 
-.nowplaying__transport {
+.dock__transport {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
 }
 
-.nowplaying__play {
-  width: 36px;
-  height: 36px;
+.dock__play {
+  width: 42px;
+  height: 42px;
 }
 
-.nowplaying__progress {
+/* Перемотка идёт под транспортом и не тянется через всю плиту: так её видно
+   целиком вместе со временем по краям. */
+.dock__progress {
   display: flex;
   align-items: center;
-  gap: 9px;
-  width: 74%;
+  gap: 10px;
+  width: min(420px, 100%);
 }
 
-.nowplaying__progress .bar {
+.dock__progress .bar {
   flex: 1;
 }
 
-.nowplaying__time {
-  font-size: 11px;
-  flex: none;
+.dock__time {
+  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
+  flex: none;
+  min-width: 34px;
+  text-align: center;
 }
 
-.nowplaying__right {
+.dock__right {
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: var(--text-muted);
-  width: 140px;
-  justify-content: flex-end;
+  gap: 8px;
   flex: none;
+  justify-content: flex-end;
 }
 
-.nowplaying__volume {
+.dock__right .gbtn b {
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+/*
+ * Кнопки с переменной подписью — устройство вывода и таймер сна — занимают
+ * постоянную ширину. Иначе смена устройства или пошедший таймер меняли длину
+ * подписи, и весь ряд, включая громкость, разъезжался под курсором.
+ */
+/*
+ * Ширина по содержимому с потолком. Прежние ровно 150 пикселей на каждую
+ * оставляли пустоту справа от коротких подписей вроде «Сон 29:41», а ряд от
+ * разъезжания держит не одинаковая ширина, а то, что подпись обрезается и
+ * дальше потолка не растёт.
+ */
+.dock__right .gbtn--labelled {
+  max-width: 136px;
+  flex: none;
+  justify-content: flex-start;
+  padding-right: 13px;
+}
+
+.dock__right .gbtn--labelled .pop__label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.dock__volume {
   width: 76px;
   flex: none;
 }
@@ -463,14 +524,43 @@
   align-items: center;
 }
 
+/*
+ * Поля и выпадающие списки — по общему набору: стекло и тонкая кромка, как у
+ * сегментов и кнопок рядом. С плотной заливкой и жирной обводкой они выглядели
+ * в настройках мини-плеера деталями из другого приложения.
+ */
 .select,
 .input {
-  background: var(--surface-3);
-  border: 1px solid var(--outline);
-  border-radius: var(--r-sm);
-  padding: 6px 10px;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 7px 11px;
   font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
   outline: none;
+  appearance: none;
+}
+
+/* Своя стрелка: системную в тёмной теме рисует Windows, и она чёрная. */
+.select {
+  padding-right: 28px;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 13px top 53%, right 9px top 53%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+
+.select:hover,
+.input:hover {
+  background-color: var(--glass-hover);
+}
+
+/* Раскрытый список рисует система — ему нужны свои цвета, не прозрачные. */
+.select option {
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .select:focus,
@@ -491,4 +581,83 @@
 input[type='range'] {
   width: 190px;
   accent-color: var(--accent);
+}
+
+/* ---- панель плеера в узком окне ------------------------------------------ */
+
+/*
+ * Плита несёт много: трек, транспорт, перемотку, очередь, текст, устройство,
+ * таймер, громкость. В широком окне это читается, в узком — вылезает за край
+ * (намерено 408 лишних пикселей при окне 980). Поэтому при нехватке места
+ * подписи уходят, а значки остаются: смысл кнопки держится на значке и
+ * всплывающей подсказке, а не на слове рядом.
+ */
+@media (max-width: 1240px) {
+  .dock__right .gbtn--labelled {
+    width: auto;
+  }
+
+  .dock__right .gbtn--labelled .pop__label,
+  .dock__queue-label {
+    display: none;
+  }
+
+  .dock__volume {
+    width: 56px;
+  }
+
+  .dock__track {
+    width: 190px;
+  }
+}
+
+@media (max-width: 1080px) {
+  /* Ещё уже — уходят и подписи обычных кнопок, и громкость: её ползунок есть
+     в мини-плеере и в полноэкранном, а здесь важнее не потерять транспорт. */
+  .dock__right .gbtn {
+    padding: 8px 10px;
+  }
+
+  .dock__volume {
+    display: none;
+  }
+
+  .dock__progress {
+    width: 100%;
+  }
+}
+
+@media (max-width: 920px) {
+  .dock__track {
+    width: 140px;
+  }
+
+  .dock__meta {
+    display: none;
+  }
+}
+
+@media (max-width: 1240px) {
+  .dock__lyrics {
+    display: none;
+  }
+}
+
+/* Полоска «слушаете вместе» над транспортом: чужая очередь — не поломка. */
+.dock__follow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 100%;
+}
+
+.dock__follow-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }

@@ -4,12 +4,15 @@ import { StateBlock } from '../components/StateBlock'
 import { Segmented } from '../components/Segmented'
 import { TrackList } from '../components/TrackList'
 import { Cover } from '../components/Cover'
-import { useServiceFilter } from '../useServiceFilter'
-import { Pause, Play } from '../../shared/Icons'
+import { useFiltered, type ServiceFilter } from '../useServiceFilter'
+import type { HomeBlock, HomeBlockId, HomeLayout } from '@shared/types'
+import { Heart, HeartOff, Pause, Play } from '../../shared/Icons'
 import { artistLine } from '@shared/domain'
 
 interface WaveState {
   tracks: Track[]
+  /** Умеет ли сервис играющего трека «не нравится». */
+  canDislike: boolean
   loading: boolean
   error: string | null
   reload: () => void
@@ -22,6 +25,11 @@ interface WaveState {
 }
 
 interface Props {
+  filter: ServiceFilter
+  /** Каким показывать экран — выбирается в настройках. */
+  layout: HomeLayout
+  /** Порядок и видимость блоков — оттуда же. */
+  blocks: HomeBlock[]
   sections: HomeSection[]
   loading: boolean
   connections: Connection[]
@@ -34,6 +42,8 @@ interface Props {
   onToggleWave: () => void
   onPlayTracks: (tracks: Track[], index: number) => void
   onOpenPlaylist: (playlist: Playlist) => void
+  /** Кнопка «Все» у ряда плейлистов ведёт в «Мою коллекцию». */
+  onOpenLibrary: () => void
   onToggleLike: (track: Track) => void
   downloadedIds: Set<string>
   onDownload: (track: Track) => void
@@ -42,6 +52,9 @@ interface Props {
 
 /** Wireframe 2a: the radio hero, one merged playlist row, then liked tracks. */
 export function HomeScreen({
+  filter,
+  layout,
+  blocks,
   sections,
   loading,
   connections,
@@ -54,6 +67,7 @@ export function HomeScreen({
   onToggleWave,
   onPlayTracks,
   onOpenPlaylist,
+  onOpenLibrary,
   onToggleLike,
   downloadedIds,
   onDownload,
@@ -63,12 +77,75 @@ export function HomeScreen({
   const playlists = sections.find((section) => section.kind === 'playlists')?.playlists ?? []
   const liked = sections.find((section) => section.kind === 'tracks')?.tracks ?? []
 
+  /** Видимость и порядок берутся из настроек, а не зашиты в разметку. */
+  const shown = (id: HomeBlockId): boolean => blocks.find((block) => block.id === id)?.shown ?? true
+  const offline = liked.filter((track) => downloadedIds.has(track.id))
+
+  const block = (id: HomeBlockId): JSX.Element | null => {
+    if (!shown(id)) return null
+    if (id === 'playlists') {
+      return playlists.length > 0 ? (
+        <PlaylistsBlock
+          key="playlists"
+          playlists={playlists}
+          onOpenPlaylist={onOpenPlaylist}
+          onOpenLibrary={onOpenLibrary}
+        />
+      ) : null
+    }
+    if (id === 'liked') {
+      return liked.length > 0 ? (
+        <TracksBlock
+          key="liked"
+          title="Вам нравится"
+          filter={filter}
+          tracks={liked}
+          activeId={activeId}
+          playing={playing}
+          onPlayTracks={onPlayTracks}
+          onToggleLike={onToggleLike}
+          downloadedIds={downloadedIds}
+          onDownload={onDownload}
+          onSimilar={onSimilar}
+        />
+      ) : null
+    }
+    /*
+     * Дальше — только «Скачанное», и сказано это явно.
+     *
+     * Раньше на его ветку сваливалось всё, что не плейлисты и не избранное, —
+     * в том числе «Моя волна», которую рисует отдельный блок выше по разметке.
+     * Из-за этого «Скачанное» показывалось в самом верху Главной и слушалось
+     * тумблера волны, а не своего.
+     */
+    if (id !== 'downloads') return null
+
+    // Те же треки, что и в избранном, но лежащие на диске: они играют и без
+    // сети, и на Главной это отдельный смысл, а не повтор списка.
+    return offline.length > 0 ? (
+      <TracksBlock
+        key="downloads"
+        title="Скачанное"
+        filter={filter}
+        tracks={offline}
+        activeId={activeId}
+        playing={playing}
+        onPlayTracks={onPlayTracks}
+        onToggleLike={onToggleLike}
+        downloadedIds={downloadedIds}
+        onDownload={onDownload}
+        onSimilar={onSimilar}
+      />
+    ) : null
+  }
+
   return (
-    <div className="home">
-      {available.length > 0 && (
+    <div className={`home home--${layout}`}>
+      {available.length > 0 && shown('wave') && (
         <WaveHero
           service={waveService}
           wave={wave}
+          compact={layout === 'list'}
           options={available.map((connection) => connection.service)}
           onService={onWaveService}
           onPlay={onPlayWave}
@@ -85,53 +162,57 @@ export function HomeScreen({
           hint="Подключите сервис в настройках — здесь появятся ваши плейлисты и треки."
         />
       ) : (
-        <>
-          {playlists.length > 0 && (
-            <section className="home__section">
-              <div className="home__head">
-                <h2 className="home__title">Ваши плейлисты</h2>
-                <span className="muted">оба сервиса · {playlists.length}</span>
-              </div>
-              <div className="cardrow">
-                {playlists.map((playlist) => (
-                  <button key={playlist.id} className="card" onClick={() => onOpenPlaylist(playlist)}>
-                    <div className="card__artwrap">
-                      <Cover url={playlist.coverUrl} seed={playlist.title} className="card__art" />
-                      <span className="card__play">
-                        <Play size={14} />
-                      </span>
-                    </div>
-                    <div className="card__titlerow">
-                      <span className="truncate card__title">{playlist.title}</span>
-                      <ServiceBadge service={playlist.service} />
-                    </div>
-                    <div className="truncate muted card__sub">{playlist.trackCount} треков</div>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {liked.length > 0 && (
-            <LikedBlock
-              tracks={liked}
-              activeId={activeId}
-              playing={playing}
-              onPlayTracks={onPlayTracks}
-              onToggleLike={onToggleLike}
-              downloadedIds={downloadedIds}
-              onDownload={onDownload}
-              onSimilar={onSimilar}
-            />
-          )}
-        </>
+        <>{blocks.map((item) => block(item.id))}</>
       )}
     </div>
   )
 }
 
-/** The same rows as the Liked tab, filtered by service, straight on Home. */
-function LikedBlock({
+/** Ряд плейлистов обоих сервисов. */
+function PlaylistsBlock({
+  playlists,
+  onOpenPlaylist,
+  onOpenLibrary
+}: {
+  playlists: Playlist[]
+  onOpenPlaylist: (playlist: Playlist) => void
+  onOpenLibrary: () => void
+}): JSX.Element {
+  return (
+    <section className="home__section">
+      <div className="home__head">
+        <h2 className="home__title">Плейлисты сервисов</h2>
+        <span className="muted">оба сервиса · {playlists.length}</span>
+        <div className="home__spacer" />
+        <button className="gbtn" onClick={onOpenLibrary}>
+          Все
+        </button>
+      </div>
+      <div className="cardrow">
+        {playlists.map((playlist) => (
+          <button key={playlist.id} className="card" onClick={() => onOpenPlaylist(playlist)}>
+            <div className="card__artwrap">
+              <Cover url={playlist.coverUrl} seed={playlist.title} className="card__art" />
+              <span className="card__play">
+                <Play size={14} />
+              </span>
+            </div>
+            <div className="card__titlerow">
+              <span className="truncate card__title">{playlist.title}</span>
+              <ServiceBadge service={playlist.service} />
+            </div>
+            <div className="truncate muted card__sub">{playlist.trackCount} треков</div>
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/** Список треков на Главной: избранное или скачанное. */
+function TracksBlock({
+  title,
+  filter,
   tracks,
   activeId,
   playing,
@@ -141,6 +222,8 @@ function LikedBlock({
   onDownload,
   onSimilar
 }: {
+  title: string
+  filter: ServiceFilter
   tracks: Track[]
   activeId: string | null
   playing: boolean
@@ -150,15 +233,17 @@ function LikedBlock({
   onDownload: (track: Track) => void
   onSimilar: (track: Track) => void
 }): JSX.Element {
-  const { filter, setFilter, filtered, options } = useServiceFilter(tracks)
+  const filtered = useFiltered(tracks, filter)
 
   return (
     <section className="home__section">
       <div className="home__head">
-        <h2 className="home__title">Вам нравится</h2>
+        <h2 className="home__title">{title}</h2>
+        {/* Счётчик остался, а переключатель сервиса уехал в титульную строку:
+            он один на всё окно и не должен повторяться на каждом экране. */}
+        <span className="muted home__count">{filtered.length}</span>
         <div className="home__spacer" />
-        <Segmented value={filter} onChange={setFilter} options={options} />
-        <button className="pill pill--sm" disabled={filtered.length === 0} onClick={() => onPlayTracks(filtered, 0)}>
+        <button className="gbtn" disabled={filtered.length === 0} onClick={() => onPlayTracks(filtered, 0)}>
           <Play size={13} /> Слушать
         </button>
       </div>
@@ -187,6 +272,7 @@ function LikedBlock({
 function WaveHero({
   service,
   wave,
+  compact,
   options,
   onService,
   onPlay,
@@ -194,6 +280,8 @@ function WaveHero({
 }: {
   service: WaveChoice
   wave: WaveState
+  /** «Списком»: волна сжимается в строку, чтобы сразу шли треки. */
+  compact?: boolean
   options: ServiceId[]
   onService: (choice: WaveChoice) => void
   onPlay: () => void
@@ -206,7 +294,7 @@ function WaveHero({
   const upNext = live ? live.next : wave.tracks.slice(0, 4)
 
   return (
-    <section className={`on-media wave wave--${service}`}>
+    <section className={`on-media wave wave--${service} ${compact ? 'wave--compact' : ''}`}>
       {/* The current cover, blurred, carries the plate's colour. */}
       {cover && <div className="wave__glow" style={{ backgroundImage: `url("${cover}")` }} />}
 
@@ -238,7 +326,7 @@ function WaveHero({
               'Собираем волну…'
             ) : current ? (
               <span className="truncate">
-                {current.title} · {artistLine(current)}
+                Сейчас: <b>{current.title}</b> · {artistLine(current)}
               </span>
             ) : (
               'Подстроена под то, что вы слушали'
@@ -252,7 +340,13 @@ function WaveHero({
                 {live.playing ? 'Пауза' : 'Продолжить'}
               </button>
             ) : (
-              <button className="pill pill--lg" disabled={wave.tracks.length === 0} onClick={onPlay}>
+              /*
+               * Кнопка не зависит от списка предпросмотра: он показывает то,
+               * что станция уже выдала, и на свежем запуске пуст. Треки для
+               * игры запрашивает само нажатие — гасить её значило бы не давать
+               * включить волну до того, как она хоть раз игралась.
+               */
+              <button className="pill pill--lg" disabled={wave.loading} onClick={onPlay}>
                 <Play size={16} /> Слушать
               </button>
             )}
@@ -266,6 +360,34 @@ function WaveHero({
                   { id: 'both' as const, label: 'Обе' }
                 ]}
               />
+            )}
+
+            {/* Сердечко прямо здесь: волну слушают не глядя на список, и
+                отметить понравившееся должно быть можно не открывая плеер. */}
+            <button
+              className={`gbtn ${current?.liked ? 'gbtn--on' : ''}`}
+              disabled={!current}
+              title={current?.liked ? 'Убрать из избранного' : 'В избранное'}
+              onClick={() => window.shell.command({ type: 'toggleLike' })}
+            >
+              <Heart size={13} /> {current?.liked ? 'В избранном' : 'Нравится'}
+            </button>
+
+            {/* В волне «не нравится» уместнее всего: станция сразу перестаёт
+                предлагать похожее, а плеер переходит к следующему. */}
+            {wave.canDislike && (
+              <button
+                className="gbtn"
+                disabled={!current}
+                title={
+                  service === 'vk'
+                    ? 'Не нравится — больше не попадётся в волне'
+                    : 'Не нравится — убрать из рекомендаций'
+                }
+                onClick={() => window.shell.command({ type: 'dislike' })}
+              >
+                <HeartOff size={13} /> Не нравится
+              </button>
             )}
 
             {wave.error && (

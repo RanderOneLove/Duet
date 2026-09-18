@@ -13,9 +13,9 @@ import {
 } from '@shared/domain'
 import { currentTrack, EMPTY_PLAYER, type PlayerState } from '@shared/player'
 import { EMPTY_DOWNLOADS, type DownloadsState } from '@shared/downloads'
-import { Sidebar, type Route } from './components/Sidebar'
+import { Rail, type Route } from './components/Rail'
 import { TopBar } from './components/TopBar'
-import { NowPlayingBar } from './components/NowPlayingBar'
+import { Dock } from './components/Dock'
 import { SettingsScreen } from './components/SettingsScreen'
 import { ConnectScreen } from './screens/ConnectScreen'
 import { HomeScreen } from './screens/HomeScreen'
@@ -26,7 +26,9 @@ import { PlaylistScreen } from './screens/PlaylistScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
 import { DownloadsScreen } from './screens/DownloadsScreen'
 import { useAsync } from './useLibrary'
+import type { ServiceFilter } from './useServiceFilter'
 import { useAppearance } from '../shared/useAppearance'
+import { accentFromImage } from '../shared/accent'
 
 export function App(): JSX.Element {
   // Счётчик перерисовок для `npm run perf`. Считается прямо в теле, а не в
@@ -56,6 +58,12 @@ export function App(): JSX.Element {
   const [waveOverride, setWaveOverride] = useState<WaveChoice | null>(null)
   const waveService = waveOverride ?? settings.waveService
   const [fullPlayer, setFullPlayer] = useState(false)
+  /**
+   * Какой сервис показывать. Раньше этот выбор жил в каждом экране отдельно, и
+   * переключённый на Главной не совпадал с тем, что в «Вам нравится». В
+   * вайрфрейме v2 он один на всё окно и стоит в титульной строке.
+   */
+  const [serviceFilter, setServiceFilter] = useState<ServiceFilter>('all')
   // Connect is shown until a service is linked, or the user skips past it.
   const [skippedConnect, setSkippedConnect] = useState(false)
 
@@ -81,7 +89,31 @@ export function App(): JSX.Element {
     return () => off.forEach((unsubscribe) => unsubscribe())
   }, [])
 
-  useAppearance(settings)
+  /**
+   * Акцент, взятый с обложки.
+   *
+   * Считается в окне, а не в главном процессе: картинка уже загружена сюда, и
+   * второй раз тянуть её из сети ради нескольких пикселей незачем. Пока цвет
+   * не посчитан — остаётся выбранный вручную, чтобы интерфейс не мигал.
+   */
+  const [coverAccent, setCoverAccent] = useState<string | null>(null)
+  const coverUrl = currentTrack(player)?.coverUrl ?? null
+
+  useEffect(() => {
+    if (!settings.accentFromCover || !coverUrl) {
+      setCoverAccent(null)
+      return
+    }
+    let dropped = false
+    void accentFromImage(coverUrl).then((colour) => {
+      if (!dropped) setCoverAccent(colour)
+    })
+    return () => {
+      dropped = true
+    }
+  }, [settings.accentFromCover, coverUrl])
+
+  useAppearance(settings, coverAccent)
 
   const connectedCount = connections.filter((connection) => connection.connected).length
 
@@ -111,10 +143,22 @@ export function App(): JSX.Element {
     [],
     [openSimilar?.id]
   )
+  /*
+   * Hero показывает то, что станция уже выдала, и ничего у неё не просит.
+   *
+   * Раньше здесь был обычный запрос волны — и он же ломал воспроизведение:
+   * станция считает спрошенное выданным, поэтому экран отбирал треки у плеера,
+   * а заодно перезаписывал номер порции, которым плеер отчитывается о
+   * прослушанном. Станция получала отчёты не про ту порцию и начинала
+   * возвращать уже слышанное. Отсюда и повторы.
+   */
   const wave = useAsync(
-    () => (isConnected(connections, waveService) ? window.shell.wave(waveService) : Promise.resolve([])),
+    () =>
+      isConnected(connections, waveService)
+        ? window.shell.wavePreview(waveService)
+        : Promise.resolve([]),
     [],
-    [waveService, connectedCount]
+    [waveService, connectedCount, player.waveService]
   )
 
   useEffect(() => {
@@ -371,11 +415,15 @@ export function App(): JSX.Element {
       case 'home':
         return (
           <HomeScreen
+            filter={serviceFilter}
+            layout={settings.homeLayout}
+            blocks={settings.homeBlocks}
             sections={home.data}
             loading={home.loading}
             connections={connections}
             waveService={waveService}
             wave={{
+              canDislike: player.canDislike,
               tracks: wave.data,
               loading: wave.loading,
               error: wave.error,
@@ -392,6 +440,7 @@ export function App(): JSX.Element {
             playing={player.playing}
             onPlayTracks={playTracks}
             onOpenPlaylist={showPlaylist}
+            onOpenLibrary={() => navigate('library')}
             onToggleLike={toggleLike}
             downloadedIds={downloadedIds}
             onDownload={toggleDownload}
@@ -402,6 +451,9 @@ export function App(): JSX.Element {
         return (
           <SearchScreen
             query={query}
+            filter={serviceFilter}
+            recent={settings.recentSearches}
+            onSearch={goSearch}
             result={search.data}
             loading={search.loading}
             activeId={activeId}
@@ -419,6 +471,7 @@ export function App(): JSX.Element {
       case 'liked':
         return (
           <LikedScreen
+            filter={serviceFilter}
             tracks={liked.data}
             loading={liked.loading}
             activeId={activeId}
@@ -483,7 +536,8 @@ export function App(): JSX.Element {
     activeId,
     playTracks,
     toggleLike,
-    patchSettings
+    patchSettings,
+    serviceFilter
   ])
 
   const [dismissedError, setDismissedError] = useState<string | null>(null)
@@ -504,22 +558,15 @@ export function App(): JSX.Element {
   return (
     <div className="app">
       <div className="app__body">
-        <Sidebar
-          route={route}
-          playlists={playlists.data}
-          recent={settings.recentSearches}
-          onSearch={goSearch}
-          collapsed={settings.sidebarCollapsed}
-          onNavigate={navigate}
-          onOpenPlaylist={showPlaylist}
-          onToggleCollapsed={() => patchSettings({ sidebarCollapsed: !settings.sidebarCollapsed })}
-        />
+        <Rail route={route} onNavigate={navigate} />
         <main className="app__main">
-          <TopBar 
-            query={query} 
+          <TopBar
+            query={query}
             error={topBarError}
-            onSearch={goSearch} 
-            onToggleMini={() => window.shell.toggleMiniPlayer()} 
+            filter={serviceFilter}
+            onFilter={setServiceFilter}
+            onSearch={goSearch}
+            onToggleMini={() => window.shell.toggleMiniPlayer()}
             onRetry={() => {
               setDismissedError(null)
               activeAsync?.reload()
@@ -539,14 +586,18 @@ export function App(): JSX.Element {
               {content}
             </div>
           </div>
+
+          {/* Плита плеера лежит поверх содержимого внутри главной колонки —
+              поэтому она и не заходит на rail. */}
+          <Dock
+            state={player}
+            settings={settings}
+            playlists={playlists.data}
+            queueCount={player.queue.length}
+            onOpenPlayer={() => setFullPlayer(true)}
+          />
         </main>
       </div>
-      <NowPlayingBar
-        state={player}
-        settings={settings}
-        playlists={playlists.data}
-        onOpenPlayer={() => setFullPlayer(true)}
-      />
       {fullPlayer && (
         <PlayerScreen
           state={player}

@@ -76,19 +76,44 @@ export async function publish(state: PlayerState, force = false): Promise<void> 
 
   const { code, key } = ensureInvite()
   try {
-    await fetch(`${settings.relayUrl}/s/${code}`, {
+    const response = await fetch(`${settings.relayUrl}/s/${code}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Duet-Key': key },
       body: JSON.stringify(shared),
       signal: AbortSignal.timeout(8000)
     })
+    // Ответ говорит, сколько сейчас слушает. Раньше мы его выбрасывали, и
+    // ведущий не знал, подключился ли к нему вообще кто-нибудь.
+    const data = (await response.json().catch(() => null)) as { followers?: number } | null
+    listeners = typeof data?.followers === 'number' ? data.followers : 0
+    misses = 0
   } catch {
-    // Ретранслятор недоступен — это не повод мешать воспроизведению здесь.
+    /*
+     * Ретранслятор недоступен — это не повод мешать воспроизведению здесь.
+     *
+     * И не повод сразу писать «никто не слушает»: одна неудачная отправка чаще
+     * всего значит моргнувшую сеть, а не то, что все ушли. Число сбрасывается
+     * только когда не проходит несколько подряд.
+     */
+    misses += 1
+    if (misses >= MISSES_BEFORE_ZERO) listeners = 0
   }
+}
+
+/** Сколько неудачных отправок подряд считать потерей слушателей. */
+const MISSES_BEFORE_ZERO = 3
+
+/** Сколько человек слушает вместе с вами прямо сейчас. */
+let listeners = 0
+let misses = 0
+
+export function listenerCount(): number {
+  return listeners
 }
 
 /** Забыть последнюю отправку, чтобы следующая ушла наверняка. */
 export function resetPublishing(): void {
   lastSent = ''
   lastAt = 0
+  misses = 0
 }

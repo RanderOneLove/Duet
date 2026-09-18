@@ -36,3 +36,260 @@
   border-radius: 2px;
   background: var(--accent);
 }
+
+/* ---- текст песни с метками времени --------------------------------------- */
+
+.lyrics--timed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 4px;
+}
+
+/*
+ * Строка — кнопка: у размеченного текста по ней можно перескочить к нужному
+ * месту песни. Спетое гасится, текущее подсвечено и чуть крупнее — так видно,
+ * где мы, не читая всё подряд.
+ */
+.lyrics__line {
+  text-align: left;
+  padding: 5px 8px;
+  border-radius: var(--r-sm);
+  color: var(--text-faint);
+  font-size: 14px;
+  line-height: 1.4;
+  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+
+.lyrics__line:hover:not(:disabled) {
+  background: var(--fill-1);
+  color: var(--text-muted);
+}
+
+.lyrics__line--past {
+  color: var(--text-faint);
+  opacity: 0.55;
+}
+
+.lyrics__line--on {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.lyrics--big .lyrics__line {
+  font-size: 20px;
+  padding: 7px 10px;
+}
+
+.lyrics--big .lyrics__line--on {
+  font-size: 26px;
+  letter-spacing: var(--tr-title);
+}
+
+/* ---- плеер во всё окно (1f) ---------------------------------------------- */
+
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--player-to);
+  /* Как и обычный плеер: окно под ним объявлено областью перетаскивания, и без
+     этого щелчки по кнопкам уходили бы системе. */
+  -webkit-app-region: no-drag;
+}
+
+/*
+ * Фон — две размытые копии обложки, медленно расходящиеся в стороны. Это не
+ * картинка на фоне, а свет от неё: ни текста, ни границ, поэтому движение не
+ * отвлекает и не мешает читать слова.
+ */
+.ambient__blob {
+  position: absolute;
+  width: 70vw;
+  height: 70vw;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(70px) saturate(170%);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.ambient__blob--a {
+  top: -22vw;
+  left: -14vw;
+}
+
+.ambient__blob--b {
+  bottom: -26vw;
+  right: -16vw;
+  opacity: 0.62;
+}
+
+:root[data-motion='lively'] .ambient__blob--a,
+:root[data-motion='calm'] .ambient__blob--a {
+  animation: blob-a 26s ease-in-out infinite alternate;
+}
+
+:root[data-motion='lively'] .ambient__blob--b,
+:root[data-motion='calm'] .ambient__blob--b {
+  animation: blob-b 34s ease-in-out infinite alternate;
+}
+
+@keyframes blob-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6vw, 4vh, 0) scale(1.12);
+  }
+}
+
+@keyframes blob-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.08);
+  }
+  to {
+    transform: translate3d(-5vw, -4vh, 0) scale(1);
+  }
+}
+
+/* Вуаль поверх света: без неё текст на светлой обложке нечитаем. */
+.ambient__veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 8, 11, 0.3), rgba(8, 8, 11, 0.72));
+  pointer-events: none;
+}
+
+.ambient__top,
+.ambient__stage,
+.ambient__now,
+.ambient__dock {
+  position: relative;
+  z-index: 1;
+}
+
+.ambient__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  flex: none;
+}
+
+.ambient__kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 11px ui-monospace, Menlo, monospace;
+  letter-spacing: var(--tr-caps);
+  color: var(--text-muted);
+}
+
+.ambient__spacer {
+  flex: 1;
+}
+
+/* Слова песни — главное на экране, поэтому им отдана вся середина. */
+.ambient__stage {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  padding: 4vh 8vw;
+  /* Края растворяются, чтобы строки не обрывались линейкой. */
+  mask-image: linear-gradient(transparent, #000 12%, #000 88%, transparent);
+}
+
+.ambient__stage .lyrics {
+  max-width: 780px;
+  width: 100%;
+}
+
+/* На светящемся фоне ещё не спетые строки не должны пропадать. */
+.ambient .lyrics__line {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.ambient .lyrics__line--past {
+  opacity: 0.4;
+}
+
+.ambient .lyrics__line--on {
+  color: #fff;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
+}
+
+.ambient__now {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 24px 14px;
+  flex: none;
+}
+
+.ambient__art {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-raised);
+}
+
+.ambient__meta {
+  min-width: 0;
+}
+
+.ambient__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: var(--tr-title);
+}
+
+.ambient__artist {
+  font-size: 13px;
+}
+
+.ambient__dock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 16px 16px;
+  padding: 12px 18px;
+  border-radius: var(--r-xl);
+  backdrop-filter: var(--material-blur);
+  -webkit-backdrop-filter: var(--material-blur);
+  flex: none;
+}
+
+.ambient__play {
+  width: 48px;
+  height: 48px;
+}
+
+.ambient__seek {
+  flex: 1;
+  min-width: 120px;
+}
+
+.ambient__time {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+/* «По центру» (1d): та же разметка, но без очереди сбоку. */
+.fullplayer--center .queue {
+  display: none;
+}
+
+.fullplayer--center .fullplayer__now {
+  max-width: 760px;
+  margin: 0 auto;
+}

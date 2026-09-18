@@ -1,0 +1,63 @@
+
+body{margin:0;background:#e8e6e1;font-family:'Golos Text',system-ui,sans-serif}
+a{color:#c14a24;text-decoration:none}a:hover{color:#8f3517}
+.dv-turn{padding:44px 48px 36px;border-bottom:1px solid rgba(0,0,0,.09);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 22px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px}
+.dv-tname{font:600 13px/1.2 'Golos Text',system-ui,sans-serif;color:#1a1a1a}
+.dv-opts{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px}
+.dv-olabel{display:flex;align-items:baseline;gap:9px;font:400 11.5px/1.4 'Golos Text',system-ui,sans-serif;color:rgba(0,0,0,.55);max-width:1440px}
+.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.09);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);overflow:hidden;position:relative}
+.dv-opt:target .dv-oid{background:#c14a24;color:#fff}
+.dark .dv-oid{background:rgba(255,255,255,.16);color:#fff}
+.light .dv-oid{background:rgba(0,0,0,.1);color:#17171a}
+.dv-next{margin:26px 0 0;font:12px/1.6 'Golos Text',system-ui,sans-serif;color:rgba(0,0,0,.5)}
+
+.scr{width:1440px;height:900px;display:flex;position:relative;overflow:hidden;font-size:14px;line-height:1.45}
+.scr--sm{width:1440px;height:620px}
+.dark{background:#0b0b0d;color:#f4f4f6}
+.light{background:#f1efec;color:#17171a}
+.dsp{font-family:'Onest',system-ui,sans-serif;letter-spacing:-.025em;font-weight:700;margin:0}
+.ph{background:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 7px,rgba(255,255,255,.025) 7px 14px);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.42);font:500 10px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-align:center;flex:none}
+.light .ph{background:repeating-linear-gradient(135deg,rgba(0,0,0,.07) 0 7px,rgba(0,0,0,.025) 7px 14px);color:rgba(0,0,0,.42)}
+.note{font:500 10px/1.4 ui-monospace,Menlo,monospace;color:#ff7a55;border:1px dashed rgba(255,122,85,.5);border-radius:7px;padding:4px 7px;background:rgba(255,122,85,.09);max-width:215px}
+.light .note{color:#c14a24;border-color:rgba(193,74,36,.4);background:rgba(193,74,36,.07)}
+.nabs{position:absolute;z-index:5}
+.rail{width:72px;flex:none;display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 0 14px}
+.ri{width:46px;height:46px;border-radius:15px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.45)}
+.light .ri{color:rgba(0,0,0,.45)}
+.ri--on{background:rgba(255,255,255,.11);color:#fff}
+.light .ri--on{background:rgba(0,0,0,.07);color:#17171a}
+.glass{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08)}
+.light .glass{background:rgba(255,255,255,.78);border-color:rgba(0,0,0,.07)}
+.mut{color:rgba(255,255,255,.66)}
+.light .mut{color:rgba(0,0,0,.64)}
+.sec{font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.14em;color:rgba(255,255,255,.68)}
+.light .sec{color:rgba(0,0,0,.62)}
+.trow{display:flex;align-items:center;gap:14px;padding:8px 12px;border-radius:15px}
+.trow--on{background:rgba(255,255,255,.07)}
+.light .trow--on{background:rgba(0,0,0,.05)}
+.badge{width:22px;height:14px;object-fit:contain;opacity:.85;flex:none}
+.acc{display:inline-flex;align-items:center;gap:9px;border-radius:999px;padding:13px 26px;font-weight:600;font-size:15px;background:#f2653c;color:#fff;border:0}
+.gbtn{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 15px;font-size:12.5px;font-weight:500;background:rgba(255,255,255,.08);color:inherit;border:0}
+.light .gbtn{background:rgba(0,0,0,.06)}
+.seg{display:inline-flex;border-radius:13px;padding:3px;background:rgba(255,255,255,.07);font-size:12.5px;font-weight:500;gap:2px}
+.light .seg{background:rgba(0,0,0,.05)}
+.seg i{font-style:normal;padding:6px 15px;border-radius:10px;background:rgba(255,255,255,.15);font-weight:600}
+.light .seg i{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.seg s{text-decoration:none;padding:6px 15px;border-radius:10px;color:rgba(255,255,255,.55)}
+.light .seg s{color:rgba(0,0,0,.5)}
+.tog{width:42px;height:26px;border-radius:999px;background:#0a84ff;padding:0 3px;display:flex;align-items:center;justify-content:flex-end;flex:none}
+.tog--off{background:rgba(255,255,255,.16);justify-content:flex-start}
+.light .tog--off{background:rgba(0,0,0,.14)}
+.tog em{width:20px;height:20px;border-radius:50%;background:#fff;display:block;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.accb{background:#0a84ff;box-shadow:0 4px 16px rgba(10,132,255,.35)}
+.sw{width:28px;height:28px;border-radius:50%;box-shadow:0 0 0 2px transparent;flex:none}
+.sw--on{box-shadow:0 0 0 2px #fff,0 0 0 4px rgba(255,255,255,.25)}
+.chip{font-size:12.5px;border-radius:999px;padding:6px 13px;background:rgba(255,255,255,.08);white-space:nowrap}
+.notestrip{display:flex;flex-wrap:wrap;gap:10px;padding:14px 18px;background:#fbfaf9;border-top:1px solid rgba(0,0,0,.08)}
+.notestrip .note{color:#c14a24;border-color:rgba(193,74,36,.4);background:rgba(193,74,36,.07);max-width:300px}
+.ctitle{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.light .chip{background:rgba(0,0,0,.06)}

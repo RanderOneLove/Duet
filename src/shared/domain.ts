@@ -118,3 +118,20 @@ export function trackKey(service: ServiceId, nativeId: string): TrackId {
 export function artistLine(track: Pick<Track, 'artists'>): string {
   return track.artists.filter(Boolean).join(', ')
 }
+
+/**
+ * Строка текста песни с меткой времени.
+ *
+ * Яндекс отдаёт текст двумя способами: простым и размеченным (LRC), где у
+ * каждой строки стоит момент, когда её поют. Размеченный приходит не ко всякой
+ * песне, поэтому `lines` может быть пустым — тогда остаётся простой текст.
+ */
+export interface LyricLine {
+  atMs: number
+  text: string
+}
+
+export interface Lyrics {
+  text: string
+  lines: LyricLine[]
+}

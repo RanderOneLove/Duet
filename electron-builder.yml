@@ -7,6 +7,19 @@ productName: Duet
 # Описание при этом остаётся в package.json для самого репозитория.
 extraMetadata:
   description: Duet
+# Откуда приложение берёт обновления.
+#
+# Установщики уже лежат в релизах репозитория, но одних установщиков мало:
+# рядом должен появиться latest.yml — в нём записано, какая версия последняя,
+# и с чем сверять скачанный файл. Раньше этого раздела не было, поэтому файл
+# не собирался и в релизы не попадал; отсюда и проверять обновление было не по
+# чему. Загружается он тем же `npm run release`.
+publish:
+  provider: github
+  owner: RanderOneLove
+  repo: Duet
+  releaseType: release
+
 directories:
   output: release
   buildResources: resources

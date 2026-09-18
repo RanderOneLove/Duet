@@ -8,8 +8,12 @@ import {
   type AutoDownloadScope,
   type MiniShowWhen,
   type MiniVariant,
+  ACCENTS,
+  type Density,
+  type HomeLayout,
   type MiniDoubleClick,
   type MotionLevel,
+  type PlayerLayout,
   type PlayerAnimation,
   type ScreenAnimation,
   type Settings,
@@ -20,7 +24,11 @@ import { SERVICE_META, type Connection, type ServiceId } from '@shared/domain'
 import type { PlayerState, RepeatMode } from '@shared/player'
 import { MiniPreview } from './MiniPreview'
 import { Segmented } from './Segmented'
+import { ColorPicker } from './ColorPicker'
+import { HomeBlocks } from './HomeBlocks'
+import { TogetherCard } from './TogetherCard'
 import { DuetMark } from '../../shared/Icons'
+import { IDLE_UPDATE, type UpdateState } from '@shared/updates'
 import { ServiceLogo } from '../../shared/ServiceLogo'
 
 interface Props {
@@ -72,7 +80,7 @@ export function SettingsScreen({
         {PANES.map((item) => (
           <button
             key={item.id}
-            className="navitem navitem--sm"
+            className="settings__navitem"
             aria-current={pane === item.id ? 'page' : undefined}
             onClick={() => setPane(item.id)}
           >
@@ -90,7 +98,7 @@ export function SettingsScreen({
         {pane === 'downloads' && <DownloadsPane settings={settings} onChange={onChange} />}
         {pane === 'mini' && <MiniPane settings={settings} player={player} onChange={onChange} />}
         {pane === 'shortcuts' && <ShortcutsPane settings={settings} hotkeys={hotkeys} onChange={onChange} />}
-        {pane === 'about' && <AboutPane />}
+        {pane === 'about' && <AboutPane settings={settings} onChange={onChange} />}
       </div>
     </div>
   )
@@ -98,49 +106,115 @@ export function SettingsScreen({
 
 // ---------------------------------------------------------------------------
 
-const THEMES: { id: ThemeChoice; label: string; hint: string }[] = [
-  { id: 'system', label: 'Как в системе', hint: 'Следует настройке Windows' },
-  { id: 'light', label: 'Светлая', hint: 'Белые поверхности, мягкие тени' },
-  { id: 'dark', label: 'Тёмная', hint: 'Обложка светится на чёрном' }
+const HOME_LAYOUTS: { id: HomeLayout; label: string; hint: string }[] = [
+  { id: 'calm', label: 'Спокойная', hint: 'Волна карточкой, потом списки' },
+  { id: 'cover', label: 'Обложка во весь экран', hint: 'Списки поднимаются скроллом' },
+  { id: 'list', label: 'Списком', hint: 'Без hero — сразу треки' }
 ]
 
 function AppearancePane({ settings, onChange }: Pick<Props, 'settings' | 'onChange'>): JSX.Element {
   // Просит ли система покоя прямо сейчас. Без этого «Как в системе» на машине
   // с выключенными анимациями выглядит как сломанная настройка.
   const systemQuiet = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const [custom, setCustom] = useState(false)
 
   return (
     <>
-      <Group label="ТЕМА" />
-      <div className="themes">
-        {THEMES.map((option) => (
+      <Group label="ГЛАВНЫЙ ЭКРАН · ВЫБЕРИТЕ ВИД" />
+      <div className="layouts">
+        {HOME_LAYOUTS.map((option) => (
           <button
             key={option.id}
-            className="themecard"
-            aria-pressed={settings.theme === option.id}
-            onClick={() => onChange({ theme: option.id })}
+            className="layoutcard"
+            aria-pressed={settings.homeLayout === option.id}
+            onClick={() => onChange({ homeLayout: option.id })}
           >
-            {/* Образец рисуется теми же значениями, что и само окно, поэтому
-                показывает настоящую тему, а не картинку про неё. */}
-            <span className={`themecard__stage themecard__stage--${option.id}`} aria-hidden={true}>
-              <span className="themecard__bar" />
-              <span className="themecard__line" />
-              <span className="themecard__line themecard__line--short" />
-              <span className="themecard__dot" />
+            <span className={`layoutcard__stage layoutcard__stage--${option.id}`} aria-hidden={true}>
+              <span className="layoutcard__hero" />
+              <span className="layoutcard__line" />
+              <span className="layoutcard__line" />
+              <span className="layoutcard__line layoutcard__line--short" />
             </span>
-            <span className="themecard__label">{option.label}</span>
-            <span className="muted themecard__hint">{option.hint}</span>
+            <span className="layoutcard__label">{option.label}</span>
+            <span className="muted layoutcard__hint">{option.hint}</span>
           </button>
         ))}
       </div>
 
-      <p className="muted settings__note">
-        Тема применяется сразу и к мини-плееру тоже. «Как в системе» переключается
-        вместе с Windows — выбранное вручную остаётся до тех пор, пока его не сменят.
-      </p>
-
-      <Group label="АНИМАЦИИ" />
+      <Group label="ЦВЕТ АКЦЕНТА" />
       <Card>
+        <div className="accents">
+          {ACCENTS.map((colour) => (
+            <button
+              key={colour}
+              className={`sw ${settings.accent.toLowerCase() === colour.toLowerCase() ? 'sw--on' : ''}`}
+              style={{ background: colour }}
+              aria-label={`Цвет ${colour}`}
+              aria-pressed={settings.accent.toLowerCase() === colour.toLowerCase()}
+              onClick={() => {
+                setCustom(false)
+                onChange({ accent: colour, accentFromCover: false })
+              }}
+            />
+          ))}
+          <button className="gbtn" aria-pressed={custom} onClick={() => setCustom((value) => !value)}>
+            Свой цвет…
+          </button>
+        </div>
+
+        {custom && (
+          <div className="srow srow--pick">
+            <ColorPicker
+              value={settings.accent}
+              onChange={(hex) => onChange({ accent: hex, accentFromCover: false })}
+              onReset={() => onChange({ accent: ACCENTS[0]!, accentFromCover: false })}
+            />
+          </div>
+        )}
+
+        <Row
+          label="Брать цвет с обложки текущего трека"
+          hint="Акцент подстраивается под то, что играет"
+        >
+          <Toggle
+            value={settings.accentFromCover}
+            onChange={(value) => onChange({ accentFromCover: value })}
+          />
+        </Row>
+        <Row label="Подкрашивать фон плеера обложкой" last>
+          <Toggle
+            value={settings.playerTintFromCover}
+            onChange={(value) => onChange({ playerTintFromCover: value })}
+          />
+        </Row>
+      </Card>
+
+      <Group label="ТЕМА, ПЛОТНОСТЬ, ДВИЖЕНИЕ" />
+      <Card>
+        <Row label="Тема" hint="Меняется сразу и в мини-плеере">
+          <Segmented
+            value={settings.theme}
+            onChange={(value: ThemeChoice) => onChange({ theme: value })}
+            options={[
+              { id: 'light', label: 'Светлая' },
+              { id: 'dark', label: 'Тёмная' },
+              { id: 'system', label: 'Как в Windows' }
+            ]}
+          />
+        </Row>
+
+        <Row label="Плотность списков" hint="Высота строки 40 / 52 / 64 px">
+          <Segmented
+            value={settings.density}
+            onChange={(value: Density) => onChange({ density: value })}
+            options={[
+              { id: 'compact', label: 'Плотно' },
+              { id: 'normal', label: 'Обычно' },
+              { id: 'roomy', label: 'Свободно' }
+            ]}
+          />
+        </Row>
+
         <Row
           label="Сколько движения"
           warn={settings.motion === 'system' && systemQuiet}
@@ -155,6 +229,7 @@ function AppearancePane({ settings, onChange }: Pick<Props, 'settings' | 'onChan
                   ? 'Короткие переходы, ничего не отвлекает'
                   : 'Длиннее переходы, обложка живёт'
           }
+          last
         >
           <Segmented
             value={settings.motion}
@@ -162,13 +237,30 @@ function AppearancePane({ settings, onChange }: Pick<Props, 'settings' | 'onChan
             options={[
               { id: 'system', label: 'Как в системе' },
               { id: 'off', label: 'Выкл' },
-              { id: 'calm', label: 'Сдержанно' },
-              { id: 'lively', label: 'Живо' }
+              { id: 'calm', label: 'Тихое' },
+              { id: 'lively', label: 'Полное' }
             ]}
           />
         </Row>
+      </Card>
 
-        <Row label="Полноэкранный плеер" hint="Как он появляется поверх окна">
+      <Group label="БЛОКИ ГЛАВНОЙ · ПЕРЕТАЩИТЕ, ЧТОБЫ ПОМЕНЯТЬ ПОРЯДОК" />
+      <HomeBlocks blocks={settings.homeBlocks} onChange={(blocks) => onChange({ homeBlocks: blocks })} />
+
+      <Group label="ПОЛНОЭКРАННЫЙ ПЛЕЕР" />
+      <Card>
+        <Row label="Вид" hint="Как выглядит плеер, открытый на весь экран">
+          <Segmented
+            value={settings.playerLayout}
+            onChange={(value: PlayerLayout) => onChange({ playerLayout: value })}
+            options={[
+              { id: 'split', label: 'Обложка и очередь' },
+              { id: 'center', label: 'По центру' },
+              { id: 'ambient', label: 'Во всё окно' }
+            ]}
+          />
+        </Row>
+        <Row label="Как появляется" hint="Движение при открытии" last>
           <Segmented
             value={settings.motionPlayer}
             disabled={settings.motion === 'off' || (settings.motion === 'system' && systemQuiet)}
@@ -180,7 +272,10 @@ function AppearancePane({ settings, onChange }: Pick<Props, 'settings' | 'onChan
             ]}
           />
         </Row>
+      </Card>
 
+      <Group label="ЖИВОЕ В ИНТЕРФЕЙСЕ" />
+      <Card>
         <Row label="«Моя волна»" hint="Что делает обложка на главной, пока вы смотрите">
           <Segmented
             value={settings.motionWave}
@@ -193,7 +288,6 @@ function AppearancePane({ settings, onChange }: Pick<Props, 'settings' | 'onChan
             ]}
           />
         </Row>
-
         <Row label="Переход между экранами" hint="Когда переключаетесь между разделами" last>
           <Segmented
             value={settings.motionScreens}
@@ -355,29 +449,10 @@ function PlaybackPane({
         </Row>
       </Card>
 
-      <Group label="DISCORD" />
-      <Card>
-        <Row
-          label="Разрешить слушать вместе"
-          hint="Ваш статус получит кнопку, а приглашённые — то же, что играет у вас"
-        >
-          <Toggle
-            value={settings.listenTogether}
-            onChange={(value) => onChange({ listenTogether: value })}
-          />
-        </Row>
-        <Row
-          label="Ссылка-приглашение"
-          hint={
-            settings.listenTogether
-              ? 'Её же открывает кнопка в Discord'
-              : 'Появится, когда включите'
-          }
-          last
-        >
-          <InviteLink settings={settings} />
-        </Row>
-      </Card>
+      <Group label="СЛУШАТЬ ВМЕСТЕ" />
+      {/* Не набор тумблеров, а положение дел: что играет, ведёте вы или идёте
+          следом, и сколько человек слушает. */}
+      <TogetherCard state={player} settings={settings} onChange={onChange} />
 
       <p className="muted settings__note">
         Громкость сохраняется между запусками. Последний трек подгружается при старте на паузе.
@@ -647,12 +722,23 @@ function ShortcutsPane({
   )
 }
 
-function AboutPane(): JSX.Element {
+function AboutPane({
+  settings,
+  onChange
+}: {
+  settings: Settings
+  onChange: (patch: Partial<Settings>) => void
+}): JSX.Element {
   const [info, setInfo] = useState<{ name: string; version: string } | null>(null)
+  const [update, setUpdate] = useState<UpdateState>(IDLE_UPDATE)
 
   useEffect(() => {
     void window.shell.getAppInfo().then(setInfo)
+    void window.shell.getUpdate().then(setUpdate)
+    return window.shell.onUpdate(setUpdate)
   }, [])
+
+  const busy = update.phase === 'checking' || update.phase === 'downloading'
 
   return (
     <>
@@ -661,6 +747,41 @@ function AboutPane(): JSX.Element {
         <div className="about__name">{info?.name ?? 'Duet'}</div>
         <div className="muted">Версия {info?.version ?? '—'}</div>
       </div>
+
+      <Group label="ОБНОВЛЕНИЕ" />
+      <Card>
+        <Row label="Состояние" hint={updateHint(update)}>
+          {update.phase === 'ready' ? (
+            <button className="pill pill--sm" onClick={() => void window.shell.installUpdate()}>
+              Перезапустить и обновить
+            </button>
+          ) : (
+            <button
+              className="gbtn"
+              disabled={busy || update.phase === 'unsupported'}
+              onClick={() => void window.shell.checkUpdate().then(setUpdate)}
+            >
+              {update.phase === 'checking' ? 'Смотрим…' : 'Проверить'}
+            </button>
+          )}
+        </Row>
+        <Row
+          label="Обновлять само"
+          hint="Новая версия скачивается заранее и встаёт, когда вы закроете приложение"
+          last
+        >
+          <Toggle value={settings.autoUpdate} onChange={(value) => onChange({ autoUpdate: value })} />
+        </Row>
+      </Card>
+
+      {/* Полоса появляется только пока есть что показывать: строка состояния
+          выше и так называет долю, а пустой жёлоб ничего не сообщает. */}
+      {update.phase === 'downloading' && (
+        <div className="updbar">
+          <i style={{ width: `${Math.round(update.progress * 100)}%` }} />
+        </div>
+      )}
+
       <p className="muted settings__note">
         Duet сводит VK Музыку и Яндекс.Музыку в один плеер. Вход выполняется на сайтах самих сервисов,
         каталог и ссылки на треки приложение запрашивает от вашего имени.
@@ -669,34 +790,24 @@ function AboutPane(): JSX.Element {
   )
 }
 
-/**
- * Готовое приглашение. Показывается только при включённой публикации: ссылка
- * на выключённую сессию ведёт в никуда, и лучше её не давать вовсе.
- */
-function InviteLink({ settings }: { settings: Settings }): JSX.Element {
-  const [copied, setCopied] = useState(false)
-
-  if (!settings.listenTogether || !settings.togetherCode) {
-    return <span className="muted">—</span>
+/** Одной строкой: что сейчас с обновлением. */
+function updateHint(update: UpdateState): string {
+  switch (update.phase) {
+    case 'checking':
+      return 'Смотрим, вышло ли что-то новее'
+    case 'downloading':
+      return `Качается ${update.version ?? ''} — ${Math.round(update.progress * 100)} %`
+    case 'ready':
+      return `Версия ${update.version ?? ''} скачана и встанет при выходе`
+    case 'current':
+      return 'У вас последняя версия'
+    case 'error':
+      return update.error ?? 'Не удалось проверить'
+    case 'unsupported':
+      return 'Запуск из исходников — обновлять нечего'
+    default:
+      return 'Проверим в ближайшие минуты'
   }
-
-  const link = `${settings.joinPageUrl}?join=${encodeURIComponent(settings.togetherCode)}`
-  return (
-    <span className="addto">
-      <input className="settings__input" readOnly value={link} onFocus={(e) => e.target.select()} />
-      <button
-        className="pill pill--sm"
-        onClick={() => {
-          void navigator.clipboard.writeText(link).then(() => {
-            setCopied(true)
-            setTimeout(() => setCopied(false), 2000)
-          })
-        }}
-      >
-        {copied ? 'Скопировано' : 'Копировать'}
-      </button>
-    </span>
-  )
 }
 
 // ---- small building blocks -------------------------------------------------

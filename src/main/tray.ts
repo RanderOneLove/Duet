@@ -4,13 +4,14 @@ import { artistLine } from '@shared/domain'
 import { currentTrack, type PlayerState } from '@shared/player'
 import { getPlayer, command, onPlayerChanged } from './player/engine'
 import { getSettings, onSettingsChanged, setSettings } from './state/settings'
+import { markImage } from './trayIcon'
 import { isMiniPlayerVisible, toggleMiniPlayer } from './windows/miniPlayer'
 import { markQuitting, showMainWindow, toggleMainWindow } from './windows/mainWindow'
 
 let tray: Tray | null = null
 
 export function createTray(): Tray {
-  tray = new Tray(trayIcon())
+  tray = new Tray(trayIcon(getSettings().accent))
   tray.setToolTip(app.getName())
   tray.on('click', toggleMainWindow)
   tray.on('double-click', showMainWindow)
@@ -26,6 +27,7 @@ export function destroyTray(): void {
   tray?.destroy()
   tray = null
   lastFace = ''
+  lastAccent = ''
 }
 
 /**
@@ -37,11 +39,20 @@ export function destroyTray(): void {
  */
 let lastFace = ''
 
+/** Цвет, которым нарисован лежащий в трее значок. */
+let lastAccent = ''
+
 /** Rebuild the menu — Electron cannot mutate a single item's label. */
 function render(): void {
   if (!tray || tray.isDestroyed()) return
   const state = getPlayer()
   const settings = getSettings()
+
+  // Значок в трее той же марки и того же цвета, что и в окне.
+  if (settings.accent !== lastAccent) {
+    lastAccent = settings.accent
+    tray.setImage(trayIcon(settings.accent))
+  }
   const track = currentTrack(state)
 
   const face = [
@@ -110,10 +121,18 @@ function truncate(text: string, max: number): string {
 }
 
 /**
- * The tray icon lives in `resources/`, outside the bundle — next to the sources
- * in development, beside app.asar in a packaged build.
+ * Значок для трея.
+ *
+ * Марка рисуется под выбранный цвет, а не берётся готовым файлом: цвет человек
+ * меняет в настройках, и значок в трее должен меняться вместе со значком в
+ * окне, иначе приложение выглядит двумя разными. Файл из `resources/` остаётся
+ * на случай, если цвет в настройках испорчен, — тогда марку рисовать не из
+ * чего, и лучше показать прежнюю, чем пустоту.
  */
-function trayIcon(): Electron.NativeImage {
+function trayIcon(accent: string): Electron.NativeImage {
+  const drawn = markImage(accent)
+  if (!drawn.isEmpty()) return drawn
+
   const candidates = app.isPackaged
     ? [join(process.resourcesPath, 'tray.ico'), join(process.resourcesPath, 'app.asar.unpacked/resources/tray.ico')]
     : [join(__dirname, '../../resources/tray.ico')]

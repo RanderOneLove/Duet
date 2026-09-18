@@ -3,9 +3,8 @@ import type { Track } from '@shared/domain'
 import { TrackRow } from './TrackRow'
 import { StateBlock } from './StateBlock'
 import { useVisibleRange, VIRTUALIZE_FROM } from './useVisibleRange'
+import { useRowHeight } from './useRowHeight'
 
-/** Must match the `height` on `.trackrow`. */
-const ROW_HEIGHT = 54
 
 interface Props {
   tracks: Track[]
@@ -36,9 +35,11 @@ export function TrackList({
   onSimilar
 }: Props): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
+  // Высота строки зависит от выбранной плотности, поэтому она не константа.
+  const rowHeight = useRowHeight()
   // A library runs to thousands of tracks; only the visible ones are rendered.
   const virtual = tracks.length > VIRTUALIZE_FROM
-  const { start, end } = useVisibleRange(tracks.length, ROW_HEIGHT, ref, virtual)
+  const { start, end } = useVisibleRange(tracks.length, rowHeight, ref, virtual)
 
   if (loading && tracks.length === 0) return <StateBlock kind="loading" title="Загружаем…" />
   // If there's an error, TopBar will display it. We just show empty state if we have no data.
@@ -46,7 +47,7 @@ export function TrackList({
 
   return (
     <div className="tracklist" ref={ref}>
-      {start > 0 && <div className="list__gap" style={{ height: start * ROW_HEIGHT }} />}
+      {start > 0 && <div className="list__gap" style={{ height: start * rowHeight }} />}
       {tracks.slice(start, end).map((track, offset) => {
         const index = start + offset
         return (
@@ -65,7 +66,7 @@ export function TrackList({
         )
       })}
       {end < tracks.length && (
-        <div className="list__gap" style={{ height: (tracks.length - end) * ROW_HEIGHT }} />
+        <div className="list__gap" style={{ height: (tracks.length - end) * rowHeight }} />
       )}
     </div>
   )

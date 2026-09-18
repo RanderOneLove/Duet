@@ -47,6 +47,8 @@ export const IPC = {
   libAlbumTracks: 'lib:albumTracks',
   libSearch: 'lib:search',
   libWave: 'lib:wave',
+  /** Что станция выдала в прошлый раз — для показа, без обращения к сервису. */
+  libWavePreview: 'lib:wavePreview',
   /** main → shell: the catalogue changed; re-read the lists. */
   libChanged: 'lib:changed',
   libSetLiked: 'lib:setLiked',
@@ -74,6 +76,16 @@ export const IPC = {
   miniRestoreMain: 'mini:restoreMain',
   /** mini → main: развернуть приложение и сразу открыть плеер во весь экран. */
   miniOpenPlayer: 'mini:openPlayer',
+
+  // ---- обновления ----
+  /** shell → main: текущее состояние обновления. */
+  updatesGet: 'updates:get',
+  /** shell → main: посмотреть прямо сейчас. */
+  updatesCheck: 'updates:check',
+  /** shell → main: перезапуститься и поставить скачанное. */
+  updatesInstall: 'updates:install',
+  /** main → shell: состояние изменилось. */
+  updatesChanged: 'updates:changed',
 
   // ---- window / system ----
   displaysGet: 'displays:get',

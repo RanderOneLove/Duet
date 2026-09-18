@@ -136,8 +136,12 @@ export const Heart = ({ size = 14 }: Props) => (
 )
 
 /**
- * The Duet mark: two overlapping circles. Colours are fixed rather than
- * tokenised — it is a logo, not a themed control.
+ * Марка Duet: два круга внахлёст.
+ *
+ * Цвет левого круга — выбранный акцент, а не зашитый синий: человек меняет его
+ * в настройках, и значок приложения меняется вместе с остальным. Нахлёст —
+ * смесь акцента со вторым кругом, как и было в исходной марке, поэтому фигура
+ * читается одинаково в любом цвете. Тот же расчёт повторяет значок в трее.
  */
 export const DuetMark = ({ size = 24 }: Props) => (
   <svg
@@ -152,10 +156,10 @@ export const DuetMark = ({ size = 24 }: Props) => (
         <circle cx="40" cy="40" r="40" />
       </clipPath>
     </defs>
-    <circle cx="40" cy="40" r="40" fill="#4A6CF7" />
-    <circle cx="75" cy="40" r="40" fill="#E9E9ED" />
+    <circle cx="40" cy="40" r="40" fill="var(--accent)" />
+    <circle cx="75" cy="40" r="40" fill="var(--mark-second)" />
     <g clipPath="url(#duet-mark-left)">
-      <circle cx="75" cy="40" r="40" fill="#8F9DF5" />
+      <circle cx="75" cy="40" r="40" fill="var(--mark-overlap)" />
     </g>
   </svg>
 )
@@ -208,3 +212,13 @@ export const Sparkle = ({ size = 14 }: Props) => (
     <path d="M12 2.5 13.9 8a4 4 0 0 0 2.6 2.6L22 12.5l-5.5 1.9A4 4 0 0 0 13.9 17L12 22.5 10.1 17a4 4 0 0 0-2.6-2.6L2 12.5l5.5-1.9A4 4 0 0 0 10.1 8zM19 3l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z" />
   </svg>
 )
+
+/** «Не нравится»: перечёркнутое сердце — то же действие, но наоборот. */
+export function HeartOff({ size = 16 }: { size?: number }): JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.8 6.6a5 5 0 0 0-7.1 0L12 8.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21.5l4.6-4.6" />
+      <path d="M4 4l16 16" />
+    </svg>
+  )
+}

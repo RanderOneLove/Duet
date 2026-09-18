@@ -86,7 +86,7 @@ export function useVisibleRange(
 }
 
 /** The nearest ancestor that actually scrolls, falling back to the page. */
-function scrollParent(node: HTMLElement): HTMLElement {
+export function scrollParent(node: HTMLElement): HTMLElement {
   let current = node.parentElement
   while (current) {
     const overflow = getComputedStyle(current).overflowY
