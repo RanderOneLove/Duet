@@ -6,7 +6,7 @@ import { IPC } from '@shared/ipc'
 import type { AudioEvent } from '../preload/audio'
 import { command, onPlayerChanged } from './player/engine'
 import { getSettings, setSettings } from './state/settings'
-import { DEFAULT_HOME_BLOCKS } from '@shared/types'
+import { ACCENTS, DEFAULT_HOME_BLOCKS } from '@shared/types'
 import { discordStats } from './discord'
 import { getPlayer } from './player/engine'
 import { albumTracks, artistTracks, home, likedTracks, playlists, search } from './sources/registry'
@@ -574,11 +574,17 @@ async function runReadmeShots(): Promise<void> {
 
     window.webContents.setBackgroundThrottling(false)
     setSettings({
-      sidebarCollapsed: false,
       recentSearches: [],
       motion: 'calm',
       motionWave: 'breathe',
-      preferDownloaded: true
+      preferDownloaded: true,
+      theme: 'dark',
+      accent: ACCENTS[0]!,
+      accentFromCover: false,
+      density: 'normal',
+      homeLayout: 'calm',
+      playerLayout: 'split',
+      homeBlocks: DEFAULT_HOME_BLOCKS
     })
     window.showInactive()
     window.setSize(1280, 800)
@@ -602,6 +608,32 @@ async function runReadmeShots(): Promise<void> {
       return false
     }`
 
+    /** Открыть раздел настроек по подписи в его боковом списке. */
+    const pane = async (label: string): Promise<void> => {
+      await run<boolean>(`(${click})('Настройки')`)
+      await wait(900)
+      await run<boolean>(
+        `(() => { const n = [...document.querySelectorAll('.settings__navitem')].find((b) => b.textContent.includes(${JSON.stringify(
+          label
+        )}));
+          if (!n) return false; n.click(); return true })()`
+      )
+      await wait(900)
+    }
+
+    /** Подвести нужную карточку под глаз, не двигая остального. */
+    const bring = async (selector: string): Promise<void> => {
+      await run<boolean>(
+        `(() => { const node = document.querySelector(${JSON.stringify(selector)});
+          const box = document.querySelector('.app__content');
+          if (!node || !box) return false;
+          const delta = node.getBoundingClientRect().top - box.getBoundingClientRect().top;
+          box.scrollTop += delta - 110;
+          return true })()`
+      )
+      await wait(700)
+    }
+
     // Что-нибудь играет: иначе нижняя панель пустая, а плеер показывать нечего.
     const queue = (await likedTracks()).filter((track) => track.available).slice(0, 25)
     if (queue.length > 0) {
@@ -611,30 +643,72 @@ async function runReadmeShots(): Promise<void> {
       await wait(500)
     }
 
-    // ---- главное окно, обе темы ----
-    for (const theme of ['dark', 'light'] as const) {
-      setSettings({ theme })
-      await wait(900)
-      await run<boolean>(`(${click})('Главная')`)
-      await wait(1600)
-      await shoot(theme === 'dark' ? 'home' : 'home-light')
-    }
+    // ---- главная: обе темы и два вида ----
+    await run<boolean>(`(${click})('Главная')`)
+    await wait(4000)
+    await shoot('home')
+
+    setSettings({ theme: 'light' })
+    await wait(1100)
+    await shoot('home-light')
 
     setSettings({ theme: 'dark' })
-    await wait(700)
+    await wait(900)
 
-    // ---- полноэкранный плеер ----
-    await run<boolean>(
-      `(() => { const b = document.querySelector('.dock__track'); if (!b) return false; b.click(); return true })()`
-    )
+    /*
+     * Тот же экран другим цветом. Вид главной при этом не меняется нарочно:
+     * снимок стоит в README рядом с предыдущим, и разниться между ними должно
+     * ровно одно — цвет. Заодно видно, что его берёт и значок Duet слева.
+     */
+    setSettings({ accent: ACCENTS[3]! })
     await wait(1400)
-    await shoot('player')
-    await run<boolean>(
-      `(() => { const b = document.querySelector('.fullplayer__header button'); if (b) b.click(); return true })()`
-    )
-    await wait(700)
+    await shoot('home-accent')
+    setSettings({ accent: ACCENTS[0]! })
+    await wait(1200)
 
-    // ---- поиск: ради рядов карточек, включая плейлисты ----
+    // ---- «Вам нравится»: строки списка со всеми действиями ----
+    await run<boolean>(`(${click})('Вам нравится')`)
+    await wait(1600)
+    await shoot('liked')
+
+    // ---- плеер: два вида ----
+    const openPlayer = async (): Promise<void> => {
+      await run<boolean>(
+        `(() => { const b = document.querySelector('.dock__track'); if (!b) return false; b.click(); return true })()`
+      )
+      await wait(1600)
+    }
+    const closePlayer = async (): Promise<void> => {
+      /*
+       * Кнопка ищется внутри шапки плеера, а не по подписи на всё окно: такая
+       * же подпись есть у сворачивания окна в титульной строке, и она лежит в
+       * разметке раньше — поиск по подписи сворачивал окно, а плеер оставался
+       * открытым, и все следующие снимки выходили одним и тем же.
+       */
+      await run<boolean>(
+        `(() => { const b = document.querySelector('.fullplayer__header button, .ambient__top button');
+          if (!b) return false; b.click(); return true })()`
+      )
+      await wait(900)
+      return run<boolean>(`document.querySelector('.fullplayer, .ambient') === null`).then((closed) => {
+        if (!closed) throw new Error('плеер не закрылся — снимки дальше будут не те')
+      })
+    }
+
+    await openPlayer()
+    await shoot('player')
+    await closePlayer()
+
+    setSettings({ playerLayout: 'ambient' })
+    await wait(700)
+    await openPlayer()
+    await wait(1200)
+    await shoot('player-ambient')
+    await closePlayer()
+    setSettings({ playerLayout: 'split' })
+    await wait(600)
+
+    // ---- поиск ----
     await run<boolean>(`(() => {
       const input = document.querySelector('.topbar input')
       if (!input) return false
@@ -642,23 +716,27 @@ async function runReadmeShots(): Promise<void> {
       setter.call(input, 'ROCK')
       input.dispatchEvent(new Event('input', { bubbles: true }))
       const form = input.closest('form')
-      if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      if (form) form.requestSubmit()
       return true
     })()`)
-    await wait(4000)
-    await run<boolean>(`(() => {
-      const box = document.querySelector('.app__content')
-      if (!box) return false
-      box.scrollTop = box.scrollHeight
-      return true
-    })()`)
-    await wait(1000)
+    await wait(4500)
     await shoot('search')
 
-    // ---- настройки: тема и анимации ----
-    await run<boolean>(`(${click})('Настройки')`)
-    await wait(1400)
-    await shoot('settings')
+    // ---- настройки ----
+    await pane('Оформление')
+    await shoot('settings-appearance')
+    await bring('.hblocks')
+    await shoot('settings-blocks')
+
+    await pane('Воспроизведение')
+    await bring('.together')
+    await shoot('together')
+
+    await pane('Мини-плеер')
+    await shoot('settings-mini')
+
+    await pane('О программе')
+    await shoot('settings-update')
 
     // ---- четыре вида мини-плеера ----
     const mini = createMiniPlayer()
