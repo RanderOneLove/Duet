@@ -57,6 +57,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'vkban') return runVkBanProbe()
   if (PROBE === 'together') return runTogetherProbe()
   if (PROBE === 'about') return runAboutProbe()
+  if (PROBE === 'seg') return runSegProbe()
   if (PROBE) return runProbe()
   return runScenario()
 }
@@ -2254,6 +2255,81 @@ async function runAboutProbe(): Promise<void> {
     const file = join(out, 'about.png')
     writeFileSync(file, image.toPNG())
     report.снимок = file
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Читается ли выбранный сегмент.
+ *
+ * Жалоба была про «Мою волну» в светлой теме: выбранный сервис становился
+ * белым по белому. Проверяются обе темы сразу — и «Моя волна», которая лежит
+ * на обложке, и обычный сегмент в титульной строке: починка одного легко
+ * ломает другое, потому что цвет у них общий.
+ */
+async function runSegProbe(): Promise<void> {
+  const { writeFileSync, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+
+  const report: Record<string, unknown> = { probe: 'seg' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1280, 800)
+    await wait(1200)
+
+    const run = async <T>(code: string): Promise<T> =>
+      (await window.webContents.executeJavaScript(code)) as T
+
+    await run<boolean>(
+      `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Главная'));
+        if (!b) return false; b.click(); return true })()`
+    )
+    await wait(2500)
+
+    /*
+     * Контраст числом здесь не посчитать: «Моя волна» лежит на картинке, а
+     * вычисленный стиль знает цвета, а не пиксели, — сложить полупрозрачную
+     * плашку с обложкой нечем, и любое число вышло бы выдуманным. Зато саму
+     * поломку видно точно: белым по белому сегмент становился тогда, когда
+     * заливка была сплошной и совпадала с цветом текста.
+     */
+    const measure = `(selector) => {
+      const node = document.querySelector(selector)
+      if (!node) return { нет: selector }
+      const style = getComputedStyle(node)
+      const parts = (value) => (value.match(/[0-9.]+/g) || []).map(Number)
+      const bg = parts(style.backgroundColor)
+      const fg = parts(style.color)
+      const opaque = bg.length < 4 || bg[3] === 1
+      const same = opaque && bg[0] === fg[0] && bg[1] === fg[1] && bg[2] === fg[2]
+      return { текст: style.color, фон: style.backgroundColor, белоеПоБелому: same }
+    }`
+
+    for (const theme of ['light', 'dark'] as const) {
+      setSettings({ theme })
+      await wait(900)
+      report[`волна_${theme}`] = await run(
+        `(${measure})('.on-media .seg > button[aria-pressed="true"]')`
+      )
+      report[`титульная_${theme}`] = await run(
+        `(${measure})('.topbar .seg > button[aria-pressed="true"]')`
+      )
+      const image = await window.webContents.capturePage()
+      writeFileSync(join(out, `seg-${theme}.png`), image.toPNG())
+    }
 
     report.ok = true
   } catch (error) {
