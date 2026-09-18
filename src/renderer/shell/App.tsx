@@ -27,6 +27,7 @@ import { PlayerScreen } from './screens/PlayerScreen'
 import { DownloadsScreen } from './screens/DownloadsScreen'
 import { useAsync } from './useLibrary'
 import type { ServiceFilter } from './useServiceFilter'
+import { useUpdate } from './useUpdate'
 import { useAppearance } from '../shared/useAppearance'
 import { accentFromImage } from '../shared/accent'
 
@@ -41,6 +42,7 @@ export function App(): JSX.Element {
   const [hotkeys, setHotkeys] = useState<HotkeyStatus>({})
   const [connections, setConnections] = useState<Connection[]>([])
   const [downloads, setDownloads] = useState<DownloadsState>(EMPTY_DOWNLOADS)
+  const update = useUpdate()
   const [route, setRoute] = useState<Route>('home')
   const [query, setQuery] = useState('')
   const [openPlaylist, setOpenPlaylist] = useState<Playlist | null>(null)
@@ -563,6 +565,7 @@ export function App(): JSX.Element {
           <TopBar
             query={query}
             error={topBarError}
+            update={update}
             filter={serviceFilter}
             onFilter={setServiceFilter}
             onSearch={goSearch}

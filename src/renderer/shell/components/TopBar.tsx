@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import type { ServiceFilter } from '../useServiceFilter'
-import { Close, Maximize, Minimize, Search, TrayDown } from '../../shared/Icons'
+import type { UpdateState } from '@shared/updates'
+import { Close, Maximize, Minimize, Search, TrayDown, Update } from '../../shared/Icons'
 import { Segmented } from './Segmented'
 
 interface Props {
   query: string
   error: string | null
+  /** Состояние обновления: по нему появляется кнопка «Обновить». */
+  update: UpdateState
   /** Какой сервис показывать — фильтр общий на всё окно. */
   filter: ServiceFilter
   onFilter: (filter: ServiceFilter) => void
@@ -27,6 +30,7 @@ interface Props {
 export function TopBar({
   query,
   error,
+  update,
   filter,
   onFilter,
   onSearch,
@@ -78,6 +82,21 @@ export function TopBar({
       )}
 
       <div className="topbar__actions nodrag">
+        {/*
+          Кнопка появляется, только когда обновление скачано и ждёт установки.
+          Пока оно качается, нажимать нечего, а место в строке не бесконечное;
+          ход скачивания видно в «О программе», куда за этим и ходят.
+        */}
+        {update.phase === 'ready' && (
+          <button
+            className="pill pill--sm topbar__update"
+            title={`Перезапустить и поставить версию ${update.version ?? ''}`}
+            onClick={() => void window.shell.installUpdate()}
+          >
+            <Update size={13} /> Обновить
+          </button>
+        )}
+
         <Segmented
           value={filter}
           onChange={onFilter}

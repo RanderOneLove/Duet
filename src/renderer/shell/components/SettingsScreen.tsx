@@ -28,7 +28,8 @@ import { ColorPicker } from './ColorPicker'
 import { HomeBlocks } from './HomeBlocks'
 import { TogetherCard } from './TogetherCard'
 import { DuetMark } from '../../shared/Icons'
-import { IDLE_UPDATE, type UpdateState } from '@shared/updates'
+import type { UpdateState } from '@shared/updates'
+import { useUpdate } from '../useUpdate'
 import { ServiceLogo } from '../../shared/ServiceLogo'
 
 interface Props {
@@ -730,12 +731,10 @@ function AboutPane({
   onChange: (patch: Partial<Settings>) => void
 }): JSX.Element {
   const [info, setInfo] = useState<{ name: string; version: string } | null>(null)
-  const [update, setUpdate] = useState<UpdateState>(IDLE_UPDATE)
+  const update = useUpdate()
 
   useEffect(() => {
     void window.shell.getAppInfo().then(setInfo)
-    void window.shell.getUpdate().then(setUpdate)
-    return window.shell.onUpdate(setUpdate)
   }, [])
 
   const busy = update.phase === 'checking' || update.phase === 'downloading'
@@ -759,7 +758,11 @@ function AboutPane({
             <button
               className="gbtn"
               disabled={busy || update.phase === 'unsupported'}
-              onClick={() => void window.shell.checkUpdate().then(setUpdate)}
+              onClick={() => {
+                // Ответ ждать незачем: главный процесс рассылает каждую перемену
+                // состояния, и хук её поймает.
+                void window.shell.checkUpdate()
+              }}
             >
               {update.phase === 'checking' ? 'Смотрим…' : 'Проверить'}
             </button>

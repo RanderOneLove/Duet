@@ -58,6 +58,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'together') return runTogetherProbe()
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
+  if (PROBE === 'updbtn') return runUpdateButtonProbe()
   if (PROBE) return runProbe()
   return runScenario()
 }
@@ -2330,6 +2331,85 @@ async function runSegProbe(): Promise<void> {
       const image = await window.webContents.capturePage()
       writeFileSync(join(out, `seg-${theme}.png`), image.toPNG())
     }
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Кнопка «Обновить» в титульной строке.
+ *
+ * Настоящего обновления из исходников не бывает, поэтому состояние подсылается
+ * напрямую — проверяется не поиск обновления, а то, что кнопка появляется,
+ * встаёт в один рост с соседями и не залезает под область перетаскивания окна.
+ */
+async function runUpdateButtonProbe(): Promise<void> {
+  const { writeFileSync, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+
+  const report: Record<string, unknown> = { probe: 'updbtn' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1280, 800)
+    await wait(1500)
+
+    const run = async <T>(code: string): Promise<T> =>
+      (await window.webContents.executeJavaScript(code)) as T
+
+    const sizes = `(() => {
+      const box = (selector) => {
+        const node = document.querySelector(selector)
+        if (!node) return null
+        const r = node.getBoundingClientRect()
+        return { ширина: Math.round(r.width), высота: Math.round(r.height), левее: Math.round(r.left) }
+      }
+      return {
+        кнопка: box('.topbar__update'),
+        сегмент: box('.topbar__actions .seg'),
+        мини: box('.topbar__actions .gbtn'),
+        перетаскивание: (() => {
+          const node = document.querySelector('.topbar__update')
+          if (!node) return null
+          return getComputedStyle(node.closest('.nodrag') ?? node).webkitAppRegion ?? 'не задано'
+        })()
+      }
+    })()`
+
+    report.безОбновления = await run(sizes)
+
+    // Состояние подсылается тем же каналом, которым его рассылает настоящий
+    // модуль обновления, — окно не отличит.
+    window.webContents.send(IPC.updatesChanged, {
+      phase: 'ready',
+      version: '0.5.2',
+      progress: 1,
+      error: null,
+      checkedAt: Date.now()
+    })
+    await wait(900)
+
+    report.сОбновлением = await run(sizes)
+    report.подпись = await run<string>(
+      `document.querySelector('.topbar__update')?.textContent ?? 'кнопки нет'`
+    )
+    report.подсказка = await run<string>(
+      `document.querySelector('.topbar__update')?.title ?? '—'`
+    )
+
+    const image = await window.webContents.capturePage()
+    writeFileSync(join(out, 'update-button.png'), image.toPNG())
 
     report.ok = true
   } catch (error) {

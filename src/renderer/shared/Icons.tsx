@@ -182,6 +182,13 @@ export const Download = ({ size = 14 }: Props) => (
   </svg>
 )
 
+/** Обновление: та же стрелка, что и у загрузки, но вверх — «поставить». */
+export const Update = ({ size = 14 }: Props) => (
+  <svg {...base(size)}>
+    <path d="M12 21a1 1 0 0 1-1-1v-8.6l-3 3L6.6 13 12 7.6l5.4 5.4-1.4 1.4-3-3V20a1 1 0 0 1-1 1ZM5 4h14v2H5z" />
+  </svg>
+)
+
 export const Check = ({ size = 14 }: Props) => (
   <svg {...base(size)}>
     <path d="M9.6 16.2 5.4 12l-1.4 1.4 5.6 5.6L20.4 8.2 19 6.8z" />
