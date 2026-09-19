@@ -349,6 +349,10 @@
           <a class="pill pill--ghost" id="download-join" href="#">Скачать Duet</a>
         </div>
         <div class="hr"></div>
+        <p class="note" id="jam-note" hidden>
+          В общей сессии вы <b>сами добавляете треки в очередь и переключаете</b> —
+          у всех участников сразу.
+        </p>
         <p class="note">
           Код приглашения: <code id="code"></code><br />
           Играть будет из вашего аккаунта — по ссылке идёт только то,
@@ -413,13 +417,26 @@
       const params = new URLSearchParams(location.search)
       const raw = params.get('join') || location.hash.replace(/^#/, '')
       const code = /^[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : ''
+      /*
+       * Пропуск в общую сессию, если он в ссылке.
+       *
+       * С ним зовут не послушать, а участвовать: добавлять треки в общую
+       * очередь и переключать. Поэтому и страница говорит другое — иначе гость
+       * не узнает, что ему можно больше обычного.
+       */
+      const jamRaw = params.get('jam') || ''
+      const jam = /^[A-Za-z0-9_-]{1,64}$/.test(jamRaw) ? jamRaw : ''
 
       if (!code) {
         document.getElementById('plain').hidden = false
       } else {
         document.getElementById('join').hidden = false
         document.getElementById('code').textContent = code
-        const link = `duet://join/${code}`
+        if (jam) {
+          document.querySelector('#join h1').textContent = 'Вас зовут в общую сессию'
+          document.getElementById('jam-note').hidden = false
+        }
+        const link = jam ? `duet://join/${code}?jam=${encodeURIComponent(jam)}` : `duet://join/${code}`
         document.getElementById('open').href = link
         // Try it straight away; a browser with no handler simply does nothing,
         // which is why the buttons above stay on screen either way.

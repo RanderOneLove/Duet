@@ -1,8 +1,10 @@
 import type { Track } from '@shared/domain'
 import { formatTime } from '../../shared/format'
 import { ServiceBadge } from '../../shared/ServiceLogo'
-import { Check, Download, Pause, Play, Sparkle } from '../../shared/Icons'
+import { Check, Download, Pause, Play, PlaylistAdd, Sparkle } from '../../shared/Icons'
 import { Cover } from './Cover'
+import { useContext } from 'react'
+import { JamGuestContext } from '../JamContext'
 
 interface Props {
   track: Track
@@ -30,6 +32,7 @@ export function TrackRow({
   onDownload,
   onSimilar
 }: Props): JSX.Element {
+  const jamGuest = useContext(JamGuestContext)
   return (
     <div
       className={`trackrow ${active ? 'trackrow--active' : ''} ${track.available ? '' : 'trackrow--off'}`}
@@ -73,6 +76,21 @@ export function TrackRow({
         <div className="truncate trackrow__title">{track.title}</div>
         <div className="truncate muted trackrow__artist">{track.artists.join(', ') || '—'}</div>
       </div>
+
+      {/* В общей сессии трек уходит в общую очередь у ведущего, а не играет
+          здесь: музыка одна на всех. */}
+      {jamGuest && (
+        <button
+          className="trackrow__dl"
+          title="Добавить в общую очередь"
+          onClick={(event) => {
+            event.stopPropagation()
+            window.shell.command({ type: 'jamAdd', tracks: [track] })
+          }}
+        >
+          <PlaylistAdd size={14} />
+        </button>
+      )}
 
       {onSimilar && (
         <button className="trackrow__dl" title="Похожие треки" onClick={onSimilar}>

@@ -28,6 +28,7 @@ import { DownloadsScreen } from './screens/DownloadsScreen'
 import { useAsync } from './useLibrary'
 import type { ServiceFilter } from './useServiceFilter'
 import { useUpdate } from './useUpdate'
+import { JamGuestContext } from './JamContext'
 import { useAppearance } from '../shared/useAppearance'
 import { accentFromImage } from '../shared/accent'
 
@@ -558,6 +559,7 @@ export function App(): JSX.Element {
   const topBarError = activeAsync?.error && activeAsync.error !== dismissedError ? activeAsync.error : null
 
   return (
+    <JamGuestContext.Provider value={player.jamGuest}>
     <div className="app">
       <div className="app__body">
         <Rail route={route} onNavigate={navigate} />
@@ -614,6 +616,7 @@ export function App(): JSX.Element {
         />
       )}
     </div>
+    </JamGuestContext.Provider>
   )
 }
 

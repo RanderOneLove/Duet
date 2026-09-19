@@ -81,7 +81,10 @@ export function Dock({ state, settings, playlists, queueCount, onOpenPlayer }: P
           <div className="dock__follow">
             <span className="dock__follow-dot" />
             <span className="truncate">
-              {state.followError ?? 'Слушаете вместе — переключает ведущий'}
+              {state.followError ??
+                (state.jamGuest
+                  ? 'Общая сессия — можно добавлять треки и переключать'
+                  : 'Слушаете вместе — переключает ведущий')}
             </span>
             <button
               className="gbtn"
@@ -103,8 +106,14 @@ export function Dock({ state, settings, playlists, queueCount, onOpenPlayer }: P
           </button>
           <button
             className="transport"
-            disabled={!track || state.following !== null}
-            title={state.following ? 'Пока слушаете вместе, переключает ведущий' : 'Предыдущий'}
+            disabled={!track || (state.following !== null && !state.jamGuest)}
+            title={
+              state.jamGuest
+                ? 'Предыдущий — просьба уйдёт ведущему'
+                : state.following
+                  ? 'Пока слушаете вместе, переключает ведущий'
+                  : 'Предыдущий'
+            }
             onClick={() => window.shell.command({ type: 'prev' })}
           >
             <Prev size={17} />
@@ -131,8 +140,14 @@ export function Dock({ state, settings, playlists, queueCount, onOpenPlayer }: P
           </button>
           <button
             className="transport"
-            disabled={!track || state.following !== null}
-            title={state.following ? 'Пока слушаете вместе, переключает ведущий' : 'Следующий'}
+            disabled={!track || (state.following !== null && !state.jamGuest)}
+            title={
+              state.jamGuest
+                ? 'Следующий — просьба уйдёт ведущему'
+                : state.following
+                  ? 'Пока слушаете вместе, переключает ведущий'
+                  : 'Следующий'
+            }
             onClick={() => window.shell.command({ type: 'next' })}
           >
             <Next size={17} />

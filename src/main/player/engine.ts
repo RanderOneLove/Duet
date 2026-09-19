@@ -20,6 +20,9 @@ import {
 } from '../sources/registry'
 import { startFollowing, stopFollowing } from '../together/follow'
 import { resetPublishing } from '../together/host'
+import { closeJam, openJam, rotateJam, sayToHost } from '../together/jam'
+import { resolveSeed } from '../sources/registry'
+import type { JamMessage } from '@shared/jam'
 import type { SharedState } from '../together/host'
 import { flushSession, readSession, writeSession } from '../state/session'
 import { addDownloads, downloadedFile } from '../downloads/manager'
@@ -153,7 +156,23 @@ export async function command(input: PlayerCommand): Promise<void> {
    * разошёлся с ведущим, и ждут, что всё встанет на место, а не что
    * следование прекратится. Уйти от ведущего можно, включив своё.
    */
-  if (state.following && !applyingFollowed) {
+  if (state.following && !applyingFollowed && !applyingJam) {
+    /*
+     * В общей сессии переключать может каждый — но не у себя, а у ведущего:
+     * музыка одна на всех, и своё переключение развалило бы её на два разных
+     * прослушивания. Поэтому кнопка не делает, а просит.
+     */
+    if (state.jamGuest && (input.type === 'next' || input.type === 'prev')) {
+      const passed = followJamPass
+      const code = state.following
+      void (async () => {
+        const delivered = passed
+          ? await sayToHost(code, passed, { type: input.type as 'next' | 'prev' })
+          : false
+        if (!delivered) patch({ followError: 'Ведущий сейчас не на связи — просьба не дошла' })
+      })()
+      return
+    }
     if (input.type === 'next' || input.type === 'prev' || input.type === 'seek') {
       patch({ followError: 'Пока вы слушаете вместе, переключает ведущий' })
       return
@@ -361,7 +380,9 @@ export async function command(input: PlayerCommand): Promise<void> {
        * можно было только кнопкой «Отключиться», о которой в этот момент никто
        * не думает.
        */
+      followJamPass = input.jam ?? null
       if (input.code === getSettings().togetherCode) {
+        followJamPass = null
         patch({ followError: 'Это ваша же ссылка — вы и так слушаете то, что в ней' })
         return
       }
@@ -378,6 +399,7 @@ export async function command(input: PlayerCommand): Promise<void> {
       )
       patch({
         following: joined ? input.code : null,
+        jamGuest: joined && followJamPass !== null,
         followError: joined ? null : 'Сессия не найдена — возможно, её уже закрыли'
       })
       return
@@ -386,6 +408,60 @@ export async function command(input: PlayerCommand): Promise<void> {
     case 'stopFollowing':
       leaveFollowing()
       return
+
+    case 'openJam': {
+      const opened = await openJam(handleJamMessage)
+      patch({
+        jamOpen: opened,
+        followError: opened ? null : 'Не вышло открыть общую сессию — нет связи с ретранслятором'
+      })
+      return
+    }
+
+    case 'closeJam':
+      await closeJam()
+      patch({ jamOpen: false })
+      return
+
+    case 'rotateJam': {
+      const opened = await rotateJam(handleJamMessage)
+      patch({
+        jamOpen: opened,
+        followError: opened ? 'Прежние ссылки больше не работают' : 'Не вышло сменить пропуск'
+      })
+      return
+    }
+
+    case 'jamAdd': {
+      // Просьба уходит ведущему; своя очередь у участника не меняется —
+      // иначе у него заиграло бы одно, а у всех остальных другое.
+      const code = state.following
+      if (!code || !followJamPass) {
+        patch({ followError: 'Добавлять в общую очередь можно только по ссылке участника' })
+        return
+      }
+      let delivered = 0
+      for (const track of input.tracks) {
+        const ok = await sayToHost(code, followJamPass, {
+          type: 'add',
+          track: {
+            title: track.title,
+            artists: track.artists,
+            durationMs: track.durationMs,
+            service: track.service,
+            nativeId: track.nativeId
+          }
+        })
+        if (ok) delivered += 1
+      }
+      patch({
+        followError:
+          delivered > 0
+            ? `Отправлено ведущему: ${delivered} ${delivered === 1 ? 'трек' : 'трека'}`
+            : 'Ведущий сейчас не на связи — просьба не дошла'
+      })
+      return
+    }
 
     case 'clearQueue':
       unshuffled = null
@@ -570,6 +646,8 @@ let applyingFollowed = false
 
 function leaveFollowing(): void {
   lastShared = null
+  followJamPass = null
+  if (state.jamGuest) patch({ jamGuest: false })
   stopFollowing()
   if (state.following || state.followError) patch({ following: null, followError: null })
 }
@@ -587,6 +665,47 @@ let lastShared: SharedState | null = null
 function resyncFollowing(): void {
   if (!lastShared) return
   applyFollowed(lastShared)
+}
+
+/** Пропуск, по которому мы сами участвуем в чужой сессии. */
+let followJamPass: string | null = null
+
+/**
+ * Просьба участника, пришедшая ведущему.
+ *
+ * Трек приезжает описанием, а не номером, и ищется здесь — у того, кто его
+ * будет играть. Если не нашёлся ни у одного нашего сервиса, молчать нельзя:
+ * участник нажал кнопку и ждёт, что песня появится в очереди.
+ */
+let applyingJam = false
+
+function handleJamMessage(message: JamMessage): void {
+  void (async () => {
+    /*
+     * Просьба участника — это решение ведущего, а не его собственное нажатие,
+     * и проверки «пока вы слушаете вместе» её не касаются. Ведущий, который сам
+     * идёт за кем-то третьим, иначе отправлял бы просьбу дальше по цепочке
+     * вместо того, чтобы выполнить.
+     */
+    applyingJam = true
+    try {
+      if (message.type === 'next' || message.type === 'prev') {
+        await command({ type: message.type })
+        return
+      }
+      if (message.type !== 'add') return
+
+      const track = await resolveSeed(message.track)
+      if (!track) {
+        patch({ followError: `«${message.track.title}» не нашёлся ни в VK, ни в Яндексе` })
+        return
+      }
+      await command({ type: 'enqueueNext', tracks: [track] })
+      patch({ followError: `В очередь добавлено: «${track.title}»` })
+    } finally {
+      applyingJam = false
+    }
+  })()
 }
 
 /** Что показывается, пока связь с ведущим восстанавливается. */

@@ -58,6 +58,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'together') return runTogetherProbe()
   if (PROBE === 'selfjoin') return runSelfJoinProbe()
   if (PROBE === 'enrich') return runEnrichProbe()
+  if (PROBE === 'jam') return runJamProbe()
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
   if (PROBE === 'updbtn') return runUpdateButtonProbe()
@@ -2588,4 +2589,195 @@ async function runEnrichProbe(): Promise<void> {
 
   writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
   app.exit(0)
+}
+
+/**
+ * Общая сессия целиком: ведущий, участник и пропуск.
+ *
+ * Ретранслятор поднимается свой — проверяется поведение, а не чужой сервер, и
+ * чужую живую сессию замер трогать не должен. Участник изображается теми же
+ * вызовами, какими его изображало бы второе приложение: ретранслятор не знает,
+ * кто по ту сторону, и это ровно то, что здесь нужно.
+ */
+async function runJamProbe(): Promise<void> {
+  const { spawn } = await import('node:child_process')
+  const { join } = await import('node:path')
+  const report: Record<string, unknown> = { probe: 'jam' }
+
+  const port = 8801
+  const relay = spawn(process.execPath, [join(app.getAppPath(), 'server/relay.mjs')], {
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: String(port), HOST: '127.0.0.1' },
+    stdio: 'ignore'
+  })
+
+  try {
+    await wait(900)
+    const { ensureInvite } = await import('./together/host')
+    const { sayToHost, jamLink } = await import('./together/jam')
+
+    setSettings({ relayUrl: `http://127.0.0.1:${port}`, listenTogether: true })
+    const { code } = ensureInvite()
+
+    // Ведущему надо что-то играть: без этого сессии на ретрансляторе нет.
+    const queue = (await likedTracks()).filter((t) => t.available).slice(0, 5)
+    if (queue.length < 3) throw new Error('мало доступных треков для проверки')
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    await wait(1200)
+
+    await command({ type: 'openJam' })
+    await wait(1200)
+    report.сессияОткрыта = getPlayer().jamOpen
+    const pass = getSettings().jamPass
+    report.ссылкаУчастника = (jamLink() ?? '').replace(pass, '<пропуск>')
+
+    // ---- участник добавляет трек ----
+    const гость = queue[4]!
+    const было = getPlayer().queue.length
+    const дошло = await sayToHost(code, pass, {
+      type: 'add',
+      track: {
+        title: гость.title,
+        artists: гость.artists,
+        durationMs: гость.durationMs,
+        service: гость.service,
+        nativeId: гость.nativeId
+      }
+    })
+    await wait(4000)
+    const стало = getPlayer().queue.length
+    report.добавление = {
+      дошлоДоВедущего: дошло,
+      очередьБыла: было,
+      очередьСтала: стало,
+      следующий: getPlayer().queue[getPlayer().index + 1]?.title,
+      сообщение: getPlayer().followError
+    }
+
+    // ---- участник переключает ----
+    const игралоДо = getPlayer().queue[getPlayer().index]?.title
+    await sayToHost(code, pass, { type: 'next' })
+    await wait(3500)
+    report.переключение = {
+      было: игралоДо,
+      стало: getPlayer().queue[getPlayer().index]?.title,
+      сменился: getPlayer().queue[getPlayer().index]?.title !== игралоDo(игралоДо)
+    }
+
+    // ---- пропуск меняется, старый умирает ----
+    await command({ type: 'rotateJam' })
+    await wait(1200)
+    const новый = getSettings().jamPass
+    report.сменаПропуска = {
+      пропускДругой: новый !== pass,
+      сессияОткрыта: getPlayer().jamOpen,
+      староеДошло: await sayToHost(code, pass, { type: 'next' }),
+      новоеДошло: await sayToHost(code, новый, { type: 'next' })
+    }
+
+    // ---- закрыли: не доходит ничего ----
+    await command({ type: 'closeJam' })
+    await wait(800)
+    report.послеЗакрытия = {
+      сессияОткрыта: getPlayer().jamOpen,
+      дошло: await sayToHost(code, новый, { type: 'next' })
+    }
+
+    /*
+     * Гость целиком: не прямой вызов отправки, а команды движка.
+     *
+     * Ведущий и гость здесь одно приложение, поэтому свой код на время
+     * подменяется — иначе сработает защита «по своей же ссылке идти некуда».
+     * Ретранслятору всё равно, кто по ту сторону, а проверяется именно путь
+     * от нажатой кнопки до очереди ведущего.
+     */
+    await command({ type: 'openJam' })
+    await wait(1000)
+    const свой = getSettings().togetherCode
+    const пропуск = getSettings().jamPass
+    setSettings({ togetherCode: 'ЧужойКодДляПроверки'.replace(/[^A-Za-z]/g, 'x') + '12345678' })
+    await command({ type: 'follow', code: свой, jam: пропуск })
+    await wait(2500)
+    report.гость = { следуем: getPlayer().following !== null, праваУчастника: getPlayer().jamGuest }
+
+    const доДобавления = getPlayer().queue.length
+    const кандидат = queue[3]!
+    await command({ type: 'jamAdd', tracks: [кандидат] })
+    await wait(4500)
+    report.гостьДобавил = {
+      трек: кандидат.title,
+      очередьБыла: доДобавления,
+      очередьСтала: getPlayer().queue.length,
+      сообщение: getPlayer().followError
+    }
+
+    const доПереключения = getPlayer().queue[getPlayer().index]?.title
+    await command({ type: 'next' })
+    await wait(3500)
+    report.гостьПереключил = {
+      было: доПереключения,
+      стало: getPlayer().queue[getPlayer().index]?.title
+    }
+
+    await command({ type: 'stopFollowing' })
+    setSettings({ togetherCode: свой })
+    await wait(500)
+
+    // ---- разбор ссылок ----
+    const { joinCodeFrom } = await import('./together/join')
+    report.разборСсылок = {
+      обычная: joinCodeFrom(['duet://join/AbcDef123']),
+      участника: joinCodeFrom(['duet://join/AbcDef123?jam=PassWord9']),
+      сКосой: joinCodeFrom(['duet://join/AbcDef123/']),
+      мусор: joinCodeFrom(['duet://join/Abc?jam=не буквы']),
+      неНаша: joinCodeFrom(['https://example.com/join/Abc'])
+    }
+
+    // ---- как это выглядит ----
+    setSettings({ relayUrl: 'https://rander.pro/duet' })
+    await command({ type: 'openJam' }).catch(() => undefined)
+    const window = getMainWindow()
+    if (window) {
+      const { writeFileSync: save, mkdirSync } = await import('node:fs')
+      const { join: j } = await import('node:path')
+      const out = process.env['DUET_SHOTS'] ?? '.'
+      mkdirSync(out, { recursive: true })
+      window.webContents.setBackgroundThrottling(false)
+      window.showInactive()
+      window.setSize(1280, 820)
+      await wait(1200)
+      const run = async (code: string): Promise<unknown> => window.webContents.executeJavaScript(code)
+      await run(
+        `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Настройки'));
+          if (b) b.click(); return true })()`
+      )
+      await wait(900)
+      await run(
+        `(() => { const n = [...document.querySelectorAll('.settings__navitem')].find((b) => b.textContent.includes('Воспроизведение'));
+          if (n) n.click(); return true })()`
+      )
+      await wait(900)
+      await run(
+        `(() => { const node = document.querySelector('.together'); const box = document.querySelector('.app__content');
+          if (!node || !box) return false;
+          box.scrollTop += node.getBoundingClientRect().top - box.getBoundingClientRect().top - 90; return true })()`
+      )
+      await wait(700)
+      save(j(out, 'jam-card.png'), (await window.webContents.capturePage()).toPNG())
+      report.снимок = j(out, 'jam-card.png')
+    }
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+
+  relay.kill()
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/** Подсказка сравнения: имя до переключения. */
+function игралоDo(name: string | undefined): string | undefined {
+  return name
 }

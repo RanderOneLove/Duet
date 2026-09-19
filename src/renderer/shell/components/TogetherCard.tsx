@@ -25,12 +25,19 @@ export function TogetherCard({ state, settings, onChange }: Props): JSX.Element 
   const position = useSmoothPosition(state)
   const track = currentTrack(state)
   const [copied, setCopied] = useState(false)
+  const [jamCopied, setJamCopied] = useState(false)
 
   const following = state.following !== null
   const link =
     settings.togetherCode && settings.listenTogether
       ? `${settings.joinPageUrl}?join=${encodeURIComponent(settings.togetherCode)}`
       : null
+  /*
+   * Ссылка участника — та же, что и у слушателя, плюс пропуск. Пропуск и есть
+   * вся разница в правах, поэтому такую ссылку раздают выборочно, а не
+   * выкладывают: по ней добавляют треки и переключают.
+   */
+  const jamLink = link && settings.jamPass ? `${link}&jam=${encodeURIComponent(settings.jamPass)}` : null
 
   return (
     <div className="together">
@@ -84,6 +91,58 @@ export function TogetherCard({ state, settings, onChange }: Props): JSX.Element 
           >
             {copied ? 'Скопировано' : 'Скопировать ссылку'}
           </button>
+        )}
+      </div>
+
+      {/* Общая сессия: вторая ссылка, с правами. */}
+      <div className="together__jam">
+        <div className="together__jam-head">
+          <span className="together__jam-title">Общая сессия</span>
+          <span className="muted together__jam-hint">
+            {state.jamOpen
+              ? 'По ссылке участника можно добавлять треки и переключать'
+              : 'Открыть, чтобы гости могли добавлять треки в очередь'}
+          </span>
+        </div>
+
+        {state.jamOpen ? (
+          <div className="together__jam-row">
+            <button
+              className="pill pill--sm"
+              disabled={!jamLink}
+              title={jamLink ?? ''}
+              onClick={() => {
+                if (!jamLink) return
+                void navigator.clipboard.writeText(jamLink).then(() => {
+                  setJamCopied(true)
+                  setTimeout(() => setJamCopied(false), 2000)
+                })
+              }}
+            >
+              {jamCopied ? 'Скопировано' : 'Ссылка участника'}
+            </button>
+            <button
+              className="gbtn"
+              title="Выдать новый пропуск: прежние ссылки перестанут работать"
+              onClick={() => window.shell.command({ type: 'rotateJam' })}
+            >
+              Сменить ссылку
+            </button>
+            <button className="gbtn" onClick={() => window.shell.command({ type: 'closeJam' })}>
+              Закрыть
+            </button>
+          </div>
+        ) : (
+          <div className="together__jam-row">
+            <button
+              className="pill pill--sm"
+              disabled={!link}
+              title={link ? '' : 'Сначала включите «Разрешить слушать вместе»'}
+              onClick={() => window.shell.command({ type: 'openJam' })}
+            >
+              Открыть общую сессию
+            </button>
+          </div>
         )}
       </div>
 

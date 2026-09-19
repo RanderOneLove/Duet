@@ -966,3 +966,33 @@
   background: var(--accent);
   transition: width var(--t-base) var(--ease);
 }
+
+/* Общая сессия внутри карточки «Слушать вместе»: отдельная полка с правами. */
+.together__jam {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.together__jam-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.together__jam-title {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.together__jam-hint {
+  font-size: 12.5px;
+}
+
+.together__jam-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}

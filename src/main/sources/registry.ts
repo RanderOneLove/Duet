@@ -12,6 +12,7 @@ import { EMPTY_SEARCH } from '@shared/domain'
 import { SessionExpiredError, type Source, type WaveEvent } from './types'
 import { localPlaylists, localPlaylistTracks } from '../library/playlists'
 import { notifyLibraryChanged } from '../library/changed'
+import type { JamSeed } from '@shared/jam'
 import { matchKey, pickTwin } from '../library/match'
 import { lrclibLyrics } from '../lyrics/lrclib'
 import { getSettings } from '../state/settings'
@@ -225,6 +226,36 @@ export async function findTwin(track: Track): Promise<Track | null> {
 
   twins.set(key, { at: Date.now(), track: found })
   return found
+}
+
+/**
+ * Найти у себя трек, который предложил участник общей сессии.
+ *
+ * Едет описание, а не номер: номера у сервисов свои, и добавленный из VK трек
+ * нечем открыть тому, у кого только Яндекс. Сначала спрашиваем тот сервис,
+ * откуда трек у предложившего, — там он точно есть под этим названием.
+ */
+export async function resolveSeed(seed: JamSeed): Promise<Track | null> {
+  const probe: Pick<Track, 'title' | 'artists' | 'durationMs'> = {
+    title: seed.title,
+    artists: seed.artists,
+    durationMs: seed.durationMs
+  }
+  const query = `${seed.artists.join(' ')} ${seed.title}`.trim()
+  if (!query) return null
+
+  const tryFirst = order.filter((id) => id === seed.service)
+  for (const id of [...tryFirst, ...order.filter((x) => x !== seed.service)]) {
+    if (!sources[id].isConnected()) continue
+    try {
+      const result = await sources[id].search(query)
+      const hit = pickTwin(probe as Track, result.tracks)
+      if (hit) return hit
+    } catch {
+      // Один сервис не ответил — спросим второй.
+    }
+  }
+  return null
 }
 
 /**

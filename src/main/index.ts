@@ -162,9 +162,9 @@ function start(): void {
 
   const toShell = createPlayerWire()
   // Приглашение может прийти и до того, как окно готово: тогда оно ждёт здесь.
-  onJoinRequest((code) => {
+  onJoinRequest(({ code, jam }) => {
     showMainWindow()
-    void command({ type: 'follow', code })
+    void command({ type: 'follow', code, ...(jam ? { jam } : {}) })
   })
 
   onPlayerChanged((state) => {

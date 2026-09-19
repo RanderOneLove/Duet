@@ -223,6 +223,14 @@ export interface Settings {
   joinPageUrl: string
   /** This machine's invite, made once and kept so the link stays the same. */
   togetherCode: string
+  /**
+   * Пропуск в общую сессию — второй секрет рядом с кодом.
+   *
+   * Код знают все, кому когда-либо давали послушать, поэтому права участника
+   * на нём держаться не могут: отозвать их было бы нечем. Пропуск меняется
+   * одной кнопкой, и прежние ссылки становятся недействительны.
+   */
+  jamPass: string
   /** Proves this machine is the host; goes to the relay and nowhere else. */
   togetherKey: string
   /** Collapse the sidebar to icons only. */
@@ -288,6 +296,7 @@ export const DEFAULT_SETTINGS: Settings = {
   relayUrl: 'https://rander.pro/duet',
   joinPageUrl: 'https://randeronelove.github.io/Duet/',
   togetherCode: '',
+  jamPass: '',
   togetherKey: '',
   sidebarCollapsed: false,
   autoStart: false,

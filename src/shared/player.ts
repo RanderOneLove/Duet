@@ -46,6 +46,10 @@ export interface PlayerState {
   followError: string | null
   /** Умеет ли сервис играющего трека «не нравится». */
   canDislike: boolean
+  /** Открыта ли общая сессия у нас — то есть ведём ли мы её. */
+  jamOpen: boolean
+  /** Идём следом и держим пропуск: можно добавлять и переключать. */
+  jamGuest: boolean
   /** Сколько человек слушает вместе с вами — 0, когда вы никого не ведёте. */
   listeners: number
   /** Set when the current track failed to load, cleared on the next track. */
@@ -72,6 +76,8 @@ export const EMPTY_PLAYER: PlayerState = {
   following: null,
   followError: null,
   canDislike: false,
+  jamOpen: false,
+  jamGuest: false,
   listeners: 0,
   error: null,
   sampledAt: 0
@@ -113,7 +119,14 @@ export type PlayerCommand =
   | { type: 'setOutputDevice'; deviceId: string }
   /** null cancels a running timer. */
   | { type: 'setSleepTimer'; minutes: number | null }
-  | { type: 'follow'; code: string }
+  | { type: 'follow'; code: string; jam?: string }
+  /** Открыть общую сессию: по второй ссылке можно добавлять и переключать. */
+  | { type: 'openJam' }
+  | { type: 'closeJam' }
+  /** Выдать новый пропуск: прежние ссылки становятся недействительны. */
+  | { type: 'rotateJam' }
+  /** Участник просит ведущего поставить трек в общую очередь. */
+  | { type: 'jamAdd'; tracks: Track[] }
   | { type: 'stopFollowing' }
   /** Jump to a position in the existing queue. */
   | { type: 'playIndex'; index: number }

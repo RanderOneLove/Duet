@@ -15,9 +15,20 @@ const SCHEME = 'duet'
 /** Everything the invite needs: who to follow and where to ask. */
 // The code must end where the link does: without the boundary an over-long
 // code was quietly cut to its first 64 characters and taken for a valid one.
-const JOIN = /^duet:\/\/join\/([A-Za-z0-9_-]{1,64})\/?$/i
+const JOIN = /^duet:\/\/join\/([A-Za-z0-9_-]{1,64})\/?(?:\?jam=([A-Za-z0-9_-]{1,64}))?$/i
 
-type Listener = (code: string) => void
+/**
+ * Приглашение бывает двух видов, и отличает их пропуск в конце ссылки.
+ *
+ * Без него зовут послушать: гость слышит то же самое и ничем не управляет.
+ * С ним зовут участвовать — добавлять треки в общую очередь и переключать.
+ */
+export interface JoinRequest {
+  code: string
+  jam: string | null
+}
+
+type Listener = (request: JoinRequest) => void
 const listeners = new Set<Listener>()
 
 /** Called for a code from the launch arguments and from a second launch. */
@@ -28,14 +39,14 @@ export function onJoinRequest(listener: Listener): () => void {
   // ordinary `const off = onJoinRequest(...)` would otherwise be called back
   // before `off` exists.
   if (pending) {
-    const code = pending
+    const request = pending
     pending = null
-    queueMicrotask(() => listener(code))
+    queueMicrotask(() => listener(request))
   }
   return () => listeners.delete(listener)
 }
 
-let pending: string | null = null
+let pending: JoinRequest | null = null
 
 /**
  * Claim `duet://` so Windows knows which program opens it. In development
@@ -52,20 +63,20 @@ export function claimJoinScheme(): void {
 }
 
 /** Pull a join code out of a command line, or null when there is none. */
-export function joinCodeFrom(argv: readonly string[]): string | null {
+export function joinCodeFrom(argv: readonly string[]): JoinRequest | null {
   for (const argument of argv) {
     const match = JOIN.exec(argument)
-    if (match?.[1]) return match[1]
+    if (match?.[1]) return { code: match[1], jam: match[2] ?? null }
   }
   return null
 }
 
 /** Hand a code to whoever is listening, or hold it until someone is. */
-export function offerJoinCode(code: string | null): void {
-  if (!code) return
+export function offerJoinCode(request: JoinRequest | null): void {
+  if (!request) return
   if (listeners.size === 0) {
-    pending = code
+    pending = request
     return
   }
-  for (const listener of listeners) listener(code)
+  for (const listener of listeners) listener(request)
 }
