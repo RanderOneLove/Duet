@@ -60,6 +60,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'enrich') return runEnrichProbe()
   if (PROBE === 'jam') return runJamProbe()
   if (PROBE === 'ambient') return runAmbientProbe()
+  if (PROBE === 'flaws') return runFlawsProbe()
   if (PROBE === 'wavesave') return runWaveSaveProbe()
   if (PROBE === 'waveresume') return runWaveResumeProbe()
   if (PROBE === 'about') return runAboutProbe()
@@ -3003,6 +3004,131 @@ async function runWaveResumeProbe(): Promise<void> {
       играет: getPlayer().playing,
       трек: getPlayer().queue[getPlayer().index]?.title
     }
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/** Мерки по жалобам: что где вылезает и каким шрифтом написано. */
+async function runFlawsProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'flaws' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1280, 820)
+    setSettings({ theme: 'dark', playerLayout: 'ambient' })
+    await wait(1200)
+    const run = async <T>(code: string): Promise<T> =>
+      (await window.webContents.executeJavaScript(code)) as T
+
+    const pane = async (label: string): Promise<void> => {
+      await run<boolean>(
+        `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Настройки'));
+          if (b) b.click(); return true })()`
+      )
+      await wait(800)
+      await run<boolean>(
+        `(() => { const n = [...document.querySelectorAll('.settings__navitem')].find((b) => b.textContent.includes(${JSON.stringify(
+          label
+        )}));
+          if (n) n.click(); return true })()`
+      )
+      await wait(800)
+    }
+
+    const grid = `(() => {
+      const g = document.querySelector('.settings__variants')
+      const card = document.querySelector('.settings__card')
+      if (!g) return { нет: 'сетки' }
+      const cards = [...g.querySelectorAll('.variantcard')]
+      return {
+        сеткаШирина: Math.round(g.getBoundingClientRect().width),
+        сеткаСодержимое: Math.round(g.scrollWidth),
+        рядомКарточкаНастроек: card ? Math.round(card.getBoundingClientRect().width) : null,
+        плашек: cards.length,
+        плашкиШирина: cards.map((c) => Math.round(c.getBoundingClientRect().width)),
+        вылезает: g.scrollWidth > g.clientWidth + 1,
+        шире: card ? Math.round(g.getBoundingClientRect().width - card.getBoundingClientRect().width) : null
+      }
+    })()`
+
+    await pane('Оформление')
+    report.видГлавной = await run(grid)
+    save(join(out, 'flaw-appearance.png'), (await window.webContents.capturePage()).toPNG())
+
+    await pane('Мини-плеер')
+    report.видМиниПлеера = await run(grid)
+    save(join(out, 'flaw-mini.png'), (await window.webContents.capturePage()).toPNG())
+
+    // Повторное нажатие на раздел возвращает наверх.
+    await run<boolean>(
+      `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Главная'));
+        if (b) b.click(); return true })()`
+    )
+    await wait(1800)
+    const прокрутка = `Math.round(document.querySelector('.app__content').scrollTop)`
+    await run<boolean>(`(() => { document.querySelector('.app__content').scrollTop = 900; return true })()`)
+    await wait(400)
+    const уехали = await run<number>(прокрутка)
+    await run<boolean>(
+      `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Главная'));
+        if (b) b.click(); return true })()`
+    )
+    await wait(1400)
+    report.возвратНаверх = {
+      уехалиНа: уехали,
+      послеНажатия: await run<number>(прокрутка),
+      вернулись: (await run<number>(прокрутка)) < 30
+    }
+
+    // Значок настроек в колонке — как он нарисован.
+    report.значокНастроек = await run(
+      `(() => { const b = [...document.querySelectorAll('.rail button, .rail__gear, .rail a')].map((n) => n.title).filter(Boolean);
+        const svg = document.querySelector('.rail')?.lastElementChild?.querySelector?.('svg')
+        return { кнопкиКолонки: b, путей: svg ? svg.querySelectorAll('path').length : 0, правило: svg ? getComputedStyle(svg.querySelector('path')).fillRule : 'нет' }
+      })()`
+    )
+
+    // Плеер во всё окно: кнопка «свернуть» и надпись сверху.
+    const queue = (await likedTracks()).filter((t) => t.available).slice(0, 3)
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    await wait(1200)
+    await run<boolean>(
+      `(() => { const b = document.querySelector('.dock__track'); if (!b) return false; b.click(); return true })()`
+    )
+    await wait(2000)
+    report.плеерВоВсёОкно = await run(
+      `(() => {
+        const b = document.querySelector('.ambient__top button')
+        const svg = b?.querySelector('svg')
+        const k = document.querySelector('.ambient__kicker')
+        return {
+          кнопка: b ? Math.round(b.getBoundingClientRect().width) + 'px' : 'нет',
+          значок: svg ? Math.round(svg.getBoundingClientRect().width) + 'px' : 'нет',
+          надписьСверху: k ? k.textContent.trim() : 'нет',
+          шрифтНадписи: k ? getComputedStyle(k).fontFamily : 'нет',
+          классКнопки: b ? b.className : 'нет',
+          атрибутыЗначка: svg ? svg.getAttribute('width') + 'x' + svg.getAttribute('height') : 'нет',
+          вычисленоЗначку: svg ? getComputedStyle(svg).width + ' / ' + getComputedStyle(svg).height : 'нет',
+          вычисленоКнопке: b ? getComputedStyle(b).width + ' padding ' + getComputedStyle(b).padding : 'нет',
+          другиеЗначкиРядом: [...document.querySelectorAll('.ambient__dock svg')].slice(0, 3).map((n) => Math.round(n.getBoundingClientRect().width))
+        }
+      })()`
+    )
+    save(join(out, 'flaw-ambient-top.png'), (await window.webContents.capturePage()).toPNG())
 
     report.ok = true
   } catch (error) {

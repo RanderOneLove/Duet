@@ -448,11 +448,16 @@
   line-height: 1.5;
 }
 
+/* То же, что и у плашек главной: ширина колонки настроек и перенос. */
 .settings__variants {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin-bottom: 18px;
+  max-width: var(--settings-w);
+  /* Каждая плашка своей высоты: иначе низкие тянутся до самой высокой в ряду
+     и под ними остаётся пустота. */
+  align-items: start;
 }
 
 .variantcard {
@@ -474,7 +479,7 @@
 }
 
 .variantcard__stage {
-  display: flex;
+  display: block;
   align-items: center;
   justify-content: center;
   margin-bottom: 10px;
@@ -494,6 +499,9 @@
 
 .minipreview {
   overflow: hidden;
+  /* Место даёт плашка; высоту проставляет сам предпросмотр, когда измерит,
+     во что уместился. */
+  width: 100%;
 }
 
 .minipreview__scale {

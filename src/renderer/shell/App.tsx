@@ -243,11 +243,26 @@ export function App(): JSX.Element {
     [settings.recentSearches, patchSettings]
   )
 
-  const navigate = useCallback((next: Route) => {
-    setRoute(next)
-    setOpenPlaylist(null)
-    setOpenAlbum(null)
-  }, [])
+  /*
+   * Повторное нажатие на раздел, в котором уже находишься, возвращает наверх.
+   *
+   * Так устроено везде, и ожидание от значка именно такое: нажал «Главная» —
+   * увидел начало главной. Раньше нажатие не делало ничего, потому что экран
+   * и так был нужный, и уехавший на тысячу строк вниз список оставался там же.
+   */
+  const navigate = useCallback(
+    (next: Route) => {
+      const plain = !openPlaylist && !openAlbum && !openArtist && !openSimilar
+      if (next === route && plain) {
+        document.querySelector('.app__content')?.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+      setRoute(next)
+      setOpenPlaylist(null)
+      setOpenAlbum(null)
+    },
+    [route, openPlaylist, openAlbum, openArtist, openSimilar]
+  )
 
   const showPlaylist = useCallback((playlist: Playlist) => {
     setOpenAlbum(null)

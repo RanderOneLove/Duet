@@ -302,23 +302,6 @@ input {
  */
 .pill,
 .iconbtn,
-/* Чип из вайрфрейма: недавние запросы и подобные короткие ссылки. */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-  border-radius: var(--r-pill);
-  padding: 6px 13px;
-  background: var(--fill-2);
-  color: inherit;
-  white-space: nowrap;
-}
-
-.chip:hover {
-  background: var(--fill-3);
-}
-
 .playbtn,
 .railitem,
 .settings__navitem,
@@ -342,6 +325,23 @@ input {
 .chip:active {
   transform: scale(0.96);
   transition-duration: var(--t-press);
+}
+
+/* Чип из вайрфрейма: недавние запросы и подобные короткие ссылки. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  border-radius: var(--r-pill);
+  padding: 6px 13px;
+  background: var(--fill-2);
+  color: inherit;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  background: var(--fill-3);
 }
 
 .railitem:active,
