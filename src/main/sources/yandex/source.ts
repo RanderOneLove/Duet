@@ -237,6 +237,20 @@ export class YandexSource implements Source {
     return this.waveBatch
   }
 
+  /**
+   * Станция вокруг одного трека.
+   *
+   * Отдельно от `wave` не потому, что устроена иначе — устроена она так же, —
+   * а потому, что у неё своя отправная точка. Продолжается она от последнего
+   * выданного трека, как и личная волна.
+   */
+  async trackWave(seed: Track, afterNativeId?: string): Promise<Track[]> {
+    const { api } = this.require()
+    const batch = await api.trackWave(seed.nativeId, afterNativeId)
+    this.waveBatchId = batch.batchId
+    return batch.tracks.map((track) => this.toDomain(track, false))
+  }
+
   /** Спросить порцию заранее — чтобы было что показать, не отнимая у плеера. */
   async prefetchWave(afterNativeId?: string): Promise<Track[]> {
     if (this.waveBatch.length > 0) return this.waveBatch

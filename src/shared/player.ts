@@ -46,6 +46,12 @@ export interface PlayerState {
   followError: string | null
   /** Умеет ли сервис играющего трека «не нравится». */
   canDislike: boolean
+  /**
+   * Трек, вокруг которого построена станция. null — это личная волна.
+   * Нужен и для подписи на экране, и чтобы продолжать станцию после
+   * перезапуска.
+   */
+  waveSeed: Track | null
   /** Открыта ли общая сессия у нас — то есть ведём ли мы её. */
   jamOpen: boolean
   /** Идём следом и держим пропуск: можно добавлять и переключать. */
@@ -76,6 +82,7 @@ export const EMPTY_PLAYER: PlayerState = {
   following: null,
   followError: null,
   canDislike: false,
+  waveSeed: null,
   jamOpen: false,
   jamGuest: false,
   listeners: 0,
@@ -116,6 +123,11 @@ export type PlayerCommand =
     }
   /** Start the service's endless station. */
   | { type: 'playWave'; service: WaveChoice }
+  /**
+   * Станция вокруг одного трека: «включить похожее и не останавливаться».
+   * От «Похожего» отличается тем, что это не список, а бесконечная волна.
+   */
+  | { type: 'playTrackWave'; track: Track }
   | { type: 'setOutputDevice'; deviceId: string }
   /** null cancels a running timer. */
   | { type: 'setSleepTimer'; minutes: number | null }

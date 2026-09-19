@@ -13,6 +13,7 @@ import {
   dislike,
   isServiceConnected,
   playableTrack,
+  trackWave,
   resolveStream,
   setLiked,
   wave,
@@ -100,7 +101,8 @@ export function saveSessionNow(): void {
     queue: state.queue,
     index: state.index,
     positionMs: state.positionMs,
-    waveService: state.waveService
+    waveService: state.waveService,
+    waveSeed: state.waveSeed
   })
 }
 
@@ -123,7 +125,12 @@ export async function restoreSession(): Promise<void> {
   if (!saved) return
   // Вместе с очередью возвращается и станция: иначе приложение считает
   // бесконечный список обычным и останавливается, когда тот кончится.
-  patch({ queue: saved.queue, index: saved.index, waveService: saved.waveService })
+  patch({
+    queue: saved.queue,
+    index: saved.index,
+    waveService: saved.waveService,
+    waveSeed: saved.waveSeed
+  })
   // Resuming within a couple of seconds of the end just triggers `ended`.
   const duration = saved.queue[saved.index]?.durationMs ?? 0
   const startAt = duration > 0 && saved.positionMs > duration - 2000 ? 0 : saved.positionMs
@@ -141,7 +148,8 @@ function scheduleSave(): void {
       queue: state.queue,
       index: state.index,
       positionMs: state.positionMs,
-      waveService: state.waveService
+      waveService: state.waveService,
+      waveSeed: state.waveSeed
     })
   }, SAVE_INTERVAL_MS)
 }
@@ -226,7 +234,7 @@ export async function command(input: PlayerCommand): Promise<void> {
           : Math.max(0, tracks.findIndex((track) => track.id === clicked?.id))
 
       unshuffled = null
-      patch({ queue: tracks, index, shuffle: false, waveService: null })
+      patch({ queue: tracks, index, shuffle: false, waveService: null, waveSeed: null })
       if (wantShuffle) patch(shuffleQueue())
       await loadCurrent(true)
       return
@@ -234,7 +242,15 @@ export async function command(input: PlayerCommand): Promise<void> {
 
     case 'playWave': {
       unshuffled = null
-      patch({ queue: [], index: -1, shuffle: false, waveService: input.service, loading: true, error: null })
+      patch({
+        queue: [],
+        index: -1,
+        shuffle: false,
+        waveService: input.service,
+        waveSeed: null,
+        loading: true,
+        error: null
+      })
       try {
         // Resume the station where it left off; starting it cold makes the
         // rotor hand back its opening batch again, the same one every time.
@@ -252,6 +268,39 @@ export async function command(input: PlayerCommand): Promise<void> {
           loading: false,
           waveService: null,
           error: error instanceof Error ? error.message : 'Не удалось запустить волну'
+        })
+      }
+      return
+    }
+
+    case 'playTrackWave': {
+      /*
+       * Станция вокруг трека. Первым ставится он сам: её включают, слушая
+       * именно эту песню, и услышать вместо неё похожую — не то, чего ждут.
+       * Дальше идёт то, что подобрал сервис, без повтора начального трека.
+       */
+      unshuffled = null
+      patch({
+        queue: [input.track],
+        index: 0,
+        shuffle: false,
+        waveService: input.track.service,
+        waveSeed: input.track,
+        loading: true,
+        error: null
+      })
+      try {
+        const tracks = await trackWave(input.track)
+        const rest = tracks.filter((track) => track.available && track.id !== input.track.id)
+        patch({ queue: [input.track, ...rest] })
+        await loadCurrent(true)
+        void topUpWave()
+      } catch (error) {
+        patch({
+          loading: false,
+          waveService: null,
+          waveSeed: null,
+          error: error instanceof Error ? error.message : 'Не удалось запустить волну по треку'
         })
       }
       return
@@ -952,6 +1001,12 @@ function cursorsFromQueue(): Partial<Record<ServiceId, string>> {
  * хуже, чем не откликнуться, — человек хотя бы поймёт, что надо выбрать самому.
  */
 async function resumeWave(): Promise<void> {
+  // Станция вокруг трека возвращается той же станцией, а не личной волной.
+  const seed = state.waveSeed
+  if (seed) {
+    await command({ type: 'playTrackWave', track: seed })
+    return
+  }
   const choice = state.waveService
   if (!choice) return
   await command({ type: 'playWave', service: choice })
@@ -964,6 +1019,17 @@ async function topUpWave(): Promise<void> {
 
   toppingUp = true
   try {
+    // Станция вокруг трека продолжается от последнего выданного — так она и
+    // уходит от начальной песни, вместо того чтобы кружить возле неё.
+    const seed = state.waveSeed
+    if (seed) {
+      const last = state.queue[state.queue.length - 1]
+      const next = await trackWave(seed, last?.nativeId)
+      const known = new Set(state.queue.map((track) => track.id))
+      const fresh = next.filter((track) => track.available && !known.has(track.id))
+      if (fresh.length > 0) patch({ queue: [...state.queue, ...fresh] })
+      return
+    }
     // Each station continues from the last track it gave us, which for a woven
     // wave is not the same as the last track in the queue.
     const next = await wave(choice, cursorsFromQueue())

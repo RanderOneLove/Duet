@@ -22,6 +22,8 @@ export interface Session {
    * — при том, что станции есть чем продолжить, курсоры лежат в настройках.
    */
   waveService: WaveChoice | null
+  /** Трек, вокруг которого была станция. null — обычная «Моя волна». */
+  waveSeed: Track | null
 }
 
 const FILE = (): string => join(app.getPath('userData'), 'session.json')
@@ -46,7 +48,8 @@ export function readSession(): Session | null {
       waveService:
         raw.waveService === 'yandex' || raw.waveService === 'vk' || raw.waveService === 'both'
           ? raw.waveService
-          : null
+          : null,
+      waveSeed: raw.waveSeed && typeof raw.waveSeed === 'object' ? (raw.waveSeed as Track) : null
     }
   } catch {
     // Missing or corrupt: simply start with nothing loaded.
@@ -65,7 +68,8 @@ function payloadOf(session: Session): string {
     queue,
     index: session.index - start,
     positionMs: session.positionMs,
-    waveService: session.waveService
+    waveService: session.waveService,
+    waveSeed: session.waveSeed
   })
 }
 

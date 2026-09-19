@@ -6,24 +6,7 @@ import { formatTime, ratio } from '../../shared/format'
 import { ServiceBadge } from '../../shared/ServiceLogo'
 import { useSmoothPosition } from '../../shared/useSmoothPosition'
 import { SeekBar } from '../components/SeekBar'
-import {
-  Check,
-  Close,
-  Download,
-  Heart,
-  Maximize,
-  Minimize,
-  Next,
-  Pause,
-  Play,
-  Prev,
-  Repeat,
-  RepeatOne,
-  Shuffle,
-  Sparkle,
-  TrayDown,
-  Volume
-} from '../../shared/Icons'
+import { Check, Close, Download, Heart, Maximize, Minimize, Next, Pause, Play, Prev, Radio, Repeat, RepeatOne, Shuffle, Sparkle, TrayDown, Volume } from '../../shared/Icons'
 import { Cover } from '../components/Cover'
 import { QueueList } from '../components/QueueList'
 import { Lyrics } from '../components/Lyrics'
@@ -227,6 +210,16 @@ export function PlayerScreen({
                 onClick={() => onSimilar(track)}
               >
                 <Sparkle size={14} /> Похожее
+              </button>
+
+              {/* Рядом с «Похожим» и нарочно: одно показывает список, другое
+                  включает станцию и не останавливается. */}
+              <button
+                className="pill pill--outline"
+                title="Бесконечная станция вокруг этого трека"
+                onClick={() => window.shell.command({ type: 'playTrackWave', track })}
+              >
+                <Radio size={14} /> Волна отсюда
               </button>
 
               <button

@@ -65,6 +65,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'waveresume') return runWaveResumeProbe()
   if (PROBE === 'wavehero') return runWaveHeroProbe()
   if (PROBE === 'stations') return runStationsProbe()
+  if (PROBE === 'trackwave') return runTrackWaveProbe()
   if (PROBE === 'listsave') return runListSaveProbe()
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
@@ -3439,4 +3440,89 @@ function trim(value: unknown, depth = 0): unknown {
     return out
   }
   return typeof value === 'string' && value.length > 60 ? value.slice(0, 60) + '…' : value
+}
+
+/** Волна по треку: у обоих сервисов, с продолжением и без повторов. */
+async function runTrackWaveProbe(): Promise<void> {
+  const report: Record<string, unknown> = { probe: 'trackwave' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const liked = (await likedTracks()).filter((t) => t.available)
+
+    for (const service of ['yandex', 'vk'] as const) {
+      const seed = liked.find((t) => t.service === service)
+      if (!seed) continue
+      const out: Record<string, unknown> = { откуда: `${seed.title} — ${seed.artists.join(', ')}` }
+
+      void command({ type: 'playTrackWave', track: seed })
+      await waitFor(() => getPlayer().playing, 60_000).catch(() => undefined)
+      await wait(1500)
+
+      const p = getPlayer()
+      out.началосьСнего = p.queue[0]?.id === seed.id
+      out.вОчереди = p.queue.length
+      out.станция = { сервис: p.waveService, откуда: p.waveSeed?.title ?? null }
+      out.первые = p.queue.slice(0, 4).map((t) => t.title)
+
+      // Продолжение: листаем к концу порции и смотрим, дольётся ли.
+      const было = p.queue.length
+      for (let i = 0; i < Math.max(1, было - 2); i += 1) {
+        void command({ type: 'next' })
+        await wait(1200)
+      }
+      await wait(2500)
+      const стало = getPlayer().queue
+      out.продолжение = {
+        было,
+        стало: стало.length,
+        долилась: стало.length > было,
+        различных: new Set(стало.map((t) => t.id)).size,
+        повторов: стало.length - new Set(стало.map((t) => t.id)).size
+      }
+
+      report[service] = out
+      void command({ type: 'pause' })
+      await wait(500)
+    }
+
+    // Как это выглядит на Главной: подпись не должна звать станцию «Моей волной».
+    const window = getMainWindow()
+    if (window) {
+      const { writeFileSync: save, mkdirSync } = await import('node:fs')
+      const { join: j } = await import('node:path')
+      const out = process.env['DUET_SHOTS'] ?? '.'
+      mkdirSync(out, { recursive: true })
+      window.webContents.setBackgroundThrottling(false)
+      window.showInactive()
+      window.setSize(1280, 820)
+      await wait(1000)
+      await window.webContents.executeJavaScript(
+        `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Главная'));
+          if (b) b.click(); return true })()`
+      )
+      await wait(1800)
+      report.подписьНаГлавной = await window.webContents.executeJavaScript(
+        `(() => { const h = document.querySelector('.wave__title'); const s = document.querySelector('.wave__sub');
+          return { заголовок: h?.textContent ?? 'нет', подпись: s?.textContent?.trim().slice(0, 70) ?? 'нет' } })()`
+      )
+      save(j(out, 'trackwave.png'), (await window.webContents.capturePage()).toPNG())
+    }
+
+    // Переживает ли станция перезапуск: проверяем, что попало в сессию.
+    saveSessionNow()
+    await wait(600)
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const raw = JSON.parse(
+      readFileSync(join(app.getPath('userData'), 'session.json'), 'utf8')
+    ) as Record<string, any>
+    report.вСессии = { станция: raw.waveService, откуда: raw.waveSeed?.title ?? null }
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
 }

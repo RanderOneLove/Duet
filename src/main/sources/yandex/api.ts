@@ -178,6 +178,30 @@ export class YandexApi {
   }
 
   /**
+   * Порция со станции, построенной вокруг одного трека.
+   *
+   * Устроена так же, как «Моя волна»: тот же вид ответа, тот же `batchId`, та
+   * же обратная связь. Отличается только адресом станции — вместо личной
+   * подставляется `track:<номер>`, и дальше всё идёт по одним правилам.
+   */
+  async trackWave(
+    trackId: string,
+    afterId?: string
+  ): Promise<{ tracks: YandexTrack[]; batchId: string | null }> {
+    const params = new URLSearchParams({ settings2: 'true' })
+    if (afterId) params.set('queue', afterId)
+    const data = await this.get<Record<string, any>>(
+      `/rotor/station/track:${encodeURIComponent(trackId)}/tracks?${params}`
+    )
+    return {
+      tracks: asArray(data?.sequence)
+        .map((item: any) => toTrack(item?.track))
+        .filter((track): track is YandexTrack => track !== null),
+      batchId: data?.batchId ? String(data.batchId) : null
+    }
+  }
+
+  /**
    * Tell the station how a track went. Measured: with only `queue` the rotor
    * hands back the very same opening batch every time — it is these reports,
    * not the cursor, that make the wave go on.

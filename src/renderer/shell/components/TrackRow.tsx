@@ -1,7 +1,7 @@
 import type { Track } from '@shared/domain'
 import { formatTime } from '../../shared/format'
 import { ServiceBadge } from '../../shared/ServiceLogo'
-import { Check, Download, Pause, Play, PlaylistAdd, Sparkle } from '../../shared/Icons'
+import { Check, Download, Pause, Play, PlaylistAdd, Radio, Sparkle } from '../../shared/Icons'
 import { Cover } from './Cover'
 import { useContext } from 'react'
 import { JamGuestContext } from '../JamContext'
@@ -91,6 +91,19 @@ export function TrackRow({
           <PlaylistAdd size={14} />
         </button>
       )}
+
+      {/* Волна отсюда: не список похожего, а бесконечная станция вокруг этой
+          песни — начинается с неё же. */}
+      <button
+        className="trackrow__dl"
+        title="Волна по этому треку"
+        onClick={(event) => {
+          event.stopPropagation()
+          window.shell.command({ type: 'playTrackWave', track })
+        }}
+      >
+        <Radio size={14} />
+      </button>
 
       {onSimilar && (
         <button className="trackrow__dl" title="Похожие треки" onClick={onSimilar}>

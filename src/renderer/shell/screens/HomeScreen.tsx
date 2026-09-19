@@ -22,6 +22,8 @@ interface WaveState {
    * than showing the batch it was handed when the screen opened.
    */
   playback: { current: Track | null; next: Track[]; playing: boolean } | null
+  /** Трек, вокруг которого станция; null — обычная «Моя волна». */
+  seed: Track | null
 }
 
 interface Props {
@@ -317,7 +319,9 @@ function WaveHero({
             <span>БЕСКОНЕЧНОЕ РАДИО</span>
           </div>
 
-          <h2 className="wave__title">Моя волна</h2>
+          {/* Станция вокруг трека — это не «Моя волна», и называть её так
+              значило бы врать: подстроена она под одну песню, а не под вас. */}
+          <h2 className="wave__title">{wave.seed ? 'Волна по треку' : 'Моя волна'}</h2>
 
           <div className="wave__sub">
             {wave.error ? (
@@ -327,6 +331,10 @@ function WaveHero({
             ) : current ? (
               <span className="truncate">
                 Сейчас: <b>{current.title}</b> · {artistLine(current)}
+              </span>
+            ) : wave.seed ? (
+              <span className="truncate">
+                От трека <b>{wave.seed.title}</b> · {artistLine(wave.seed)}
               </span>
             ) : (
               'Подстроена под то, что вы слушали'

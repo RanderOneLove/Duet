@@ -51,6 +51,13 @@ export interface Source {
    */
   prefetchWave(afterNativeId?: string): Promise<Track[]>
   /**
+   * Станция вокруг одного трека — «включить похожее и не останавливаться».
+   *
+   * `afterNativeId` продолжает её с того места, где остановились, как и у
+   * личной волны: без него станция начиналась бы заново на каждой порции.
+   */
+  trackWave(seed: Track, afterNativeId?: string): Promise<Track[]>
+  /**
    * Report how a radio track went. Yandex's station will not advance without
    * this; VK's mix moves on its own and ignores it.
    */

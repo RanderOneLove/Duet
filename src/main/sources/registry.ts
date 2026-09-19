@@ -363,6 +363,15 @@ export function prefetchWave(
   return waveAhead
 }
 
+/** Станция вокруг трека — у того сервиса, из которого он пришёл. */
+export async function trackWave(seed: Track, afterNativeId?: string): Promise<Track[]> {
+  const source = sources[seed.service]
+  if (!source.isConnected()) {
+    throw new Error(`${SERVICE_LABEL[seed.service]}: нет подключения`)
+  }
+  return source.trackWave(seed, afterNativeId)
+}
+
 export async function wavePreview(choice: WaveChoice): Promise<Track[]> {
   /*
    * Дожидаемся порции, если её уже пошли брать.

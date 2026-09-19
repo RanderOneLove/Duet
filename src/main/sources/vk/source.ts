@@ -24,6 +24,8 @@ const LISTS_TTL_MS = 10 * 60 * 1000
  * волны, а она не заглядывает на годы назад — расти ему без края незачем.
  */
 const DISLIKED_KEPT = 2000
+/** Сколько треков просить у станции по треку за раз. */
+const WAVE_BATCH = 30
 
 export class VkSource implements Source {
   readonly id = 'vk' as const
@@ -276,6 +278,27 @@ export class VkSource implements Source {
       .filter((track) => !disliked.has(track.nativeId))
     this.waveAhead = false
     return this.waveBatch
+  }
+
+  /**
+   * Станция вокруг одного трека.
+   *
+   * У VK нет отдельной «волны по треку» — есть подбор похожего, на котором уже
+   * стоит кнопка «Похожее». Разница не в запросе, а в том, как этим
+   * пользоваться: список показывают, а станцию слушают, и она продолжается.
+   * Продолжение берётся от последнего выданного трека — так она и уходит от
+   * начальной песни, как положено волне.
+   */
+  async trackWave(seed: Track, afterNativeId?: string): Promise<Track[]> {
+    if (!this.client) throw new SessionExpiredError('vk')
+    const target = afterNativeId ?? seed.nativeId
+    const params = new URLSearchParams({ target_audio: target, count: String(WAVE_BATCH) })
+    const items = (await this.call('audio.getRecommendations', params))?.items
+    if (!Array.isArray(items)) throw new Error('VK не отдал треки волны')
+    const disliked = new Set(getSettings().vkDisliked)
+    return items
+      .map((item: any) => this.mapRawAudio(item, false))
+      .filter((track) => !disliked.has(track.nativeId))
   }
 
   /** Спросить порцию заранее — чтобы было что показать, не отнимая у плеера. */

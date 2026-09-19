@@ -446,7 +446,8 @@ export function App(): JSX.Element {
               loading: wave.loading,
               error: wave.error,
               reload: wave.reload,
-              playback: wavePlayback
+              playback: wavePlayback,
+              seed: player.waveSeed
             }}
             onWaveService={(service) => {
               setWaveOverride(null)

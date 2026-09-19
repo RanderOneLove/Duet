@@ -13,6 +13,7 @@ import {
   Pause,
   Play,
   Prev,
+  Radio,
   Repeat,
   RepeatOne,
   Shuffle,
@@ -176,6 +177,15 @@ export function AmbientPlayer({
         {track && (
           <button className="gbtn" onClick={() => onSimilar(track)} title="Треки, похожие на этот">
             <Sparkle size={13} /> Похожее
+          </button>
+        )}
+        {track && (
+          <button
+            className="gbtn"
+            title="Бесконечная станция вокруг этого трека"
+            onClick={() => window.shell.command({ type: 'playTrackWave', track })}
+          >
+            <Radio size={13} /> Волна отсюда
           </button>
         )}
 
