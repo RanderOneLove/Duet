@@ -15,9 +15,6 @@ const VARIANTS: Record<MiniVariant, (props: VariantProps) => JSX.Element> = {
   cover: CoverVariant
 }
 
-/** Width each variant renders at, used to scale it into the settings card. */
-const NATURAL_WIDTH: Record<MiniVariant, number> = { bar: 384, card: 272, pill: 330, cover: 264 }
-
 /**
  * Ширину превью задаёт не число, а место в плашке.
  *
@@ -36,7 +33,7 @@ export function MiniPreview({ variant, player }: { variant: MiniVariant; player:
   const Variant = VARIANTS[variant]
   const box = useRef<HTMLDivElement>(null)
   const inner = useRef<HTMLDivElement>(null)
-  const [size, setSize] = useState({ width: 0, height: 0 })
+  const [size, setSize] = useState({ width: 0, height: 0, scale: 0 })
 
   useEffect(() => {
     const outer = box.current
@@ -45,9 +42,17 @@ export function MiniPreview({ variant, player }: { variant: MiniVariant; player:
 
     const measure = (): void => {
       const width = outer.clientWidth
-      const natural = child.offsetHeight
-      if (width > 0 && natural > 0) {
-        setSize({ width, height: Math.round(natural * (width / NATURAL_WIDTH[variant])) })
+      /*
+       * Настоящий размер спрашивается у самой плиты, а не берётся из таблицы.
+       * Записанные числами ширины расходились с тем, что вариант рисует на
+       * деле, и превью то не дотягивалось до края, то подрезалось справа.
+       * Уменьшение сделано трансформацией, а она раскладку не трогает, поэтому
+       * offset-размеры здесь — это размеры до уменьшения, ровно то, что нужно.
+       */
+      const natural = { width: child.offsetWidth, height: child.offsetHeight }
+      if (width > 0 && natural.width > 0 && natural.height > 0) {
+        const scale = width / natural.width
+        setSize({ width, height: Math.round(natural.height * scale), scale })
       }
     }
 
@@ -60,14 +65,12 @@ export function MiniPreview({ variant, player }: { variant: MiniVariant; player:
     return () => watcher.disconnect()
   }, [variant])
 
-  const scale = size.width > 0 ? size.width / NATURAL_WIDTH[variant] : 0
-
   return (
     <div className="minipreview" ref={box} style={{ height: size.height || undefined }}>
       <div
         className="minipreview__scale"
         ref={inner}
-        style={{ transform: scale ? `scale(${scale})` : undefined }}
+        style={{ transform: size.scale ? `scale(${size.scale})` : undefined }}
       >
         <Variant player={player} expanded onToggleExpand={noop} onCommand={noop} onClose={noop} onRestore={noop} />
       </div>

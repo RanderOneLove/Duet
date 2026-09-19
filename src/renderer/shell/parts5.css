@@ -580,7 +580,6 @@
   gap: 10px;
   margin-bottom: 6px;
   max-width: var(--settings-w);
-  align-items: start;
 }
 
 .layoutcard {

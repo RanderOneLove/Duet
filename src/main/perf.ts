@@ -3059,7 +3059,23 @@ async function runFlawsProbe(): Promise<void> {
         рядомКарточкаНастроек: card ? Math.round(card.getBoundingClientRect().width) : null,
         плашек: cards.length,
         плашкиШирина: cards.map((c) => Math.round(c.getBoundingClientRect().width)),
+        плашкиВысота: cards.map((c) => Math.round(c.getBoundingClientRect().height)),
+        высотыРавны: new Set(cards.map((c) => Math.round(c.getBoundingClientRect().height))).size <= 2,
+        превьюПоЦентру: cards.map((c) => {
+          const stage = c.querySelector('.variantcard__stage')
+          const pic = c.querySelector('.minipreview')
+          if (!stage || !pic) return 'нет'
+          const s = stage.getBoundingClientRect(), p = pic.getBoundingClientRect()
+          return Math.round(p.top - s.top) + '/' + Math.round(s.bottom - p.bottom)
+        }),
         вылезает: g.scrollWidth > g.clientWidth + 1,
+        ктоШирокий: cards.map((c) => {
+          const stage = c.querySelector('.variantcard__stage')
+          const pic = c.querySelector('.minipreview')
+          const inner = c.querySelector('.minipreview__scale')
+          const w = (n) => (n ? Math.round(n.getBoundingClientRect().width) + '/' + Math.round(n.scrollWidth) : 'нет')
+          return { плашка: w(c), сцена: w(stage), превью: w(pic), внутри: w(inner) }
+        }),
         шире: card ? Math.round(g.getBoundingClientRect().width - card.getBoundingClientRect().width) : null
       }
     })()`
