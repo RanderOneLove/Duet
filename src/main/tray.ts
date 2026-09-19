@@ -42,6 +42,25 @@ let lastFace = ''
 /** Цвет, которым нарисован лежащий в трее значок. */
 let lastAccent = ''
 
+/**
+ * Цвет, взятый с обложки, если такой режим включён.
+ *
+ * Его считает окно приложения и присылает сюда: картинка уже загружена туда, и
+ * тянуть её второй раз ради нескольких пикселей незачем. Пока не прислали —
+ * значок держит выбранный вручную.
+ */
+let liveAccent: string | null = null
+
+/** Чем сейчас покрашен значок — для проверок. */
+export function getLiveAccent(): string | null {
+  return liveAccent
+}
+
+export function setLiveAccent(hex: string | null): void {
+  liveAccent = hex
+  render()
+}
+
 /** Rebuild the menu — Electron cannot mutate a single item's label. */
 function render(): void {
   if (!tray || tray.isDestroyed()) return
@@ -49,9 +68,10 @@ function render(): void {
   const settings = getSettings()
 
   // Значок в трее той же марки и того же цвета, что и в окне.
-  if (settings.accent !== lastAccent) {
-    lastAccent = settings.accent
-    tray.setImage(trayIcon(settings.accent))
+  const accent = (settings.accentFromCover && liveAccent) || settings.accent
+  if (accent !== lastAccent) {
+    lastAccent = accent
+    tray.setImage(trayIcon(accent))
   }
   const track = currentTrack(state)
 

@@ -76,6 +76,9 @@ const api = {
   getDisplays: (): Promise<DisplayInfo[]> => ipcRenderer.invoke(IPC.displaysGet),
   getAppInfo: (): Promise<{ name: string; version: string }> => ipcRenderer.invoke(IPC.appInfo),
 
+  /** Сказать остальным окнам, каким стал акцент, взятый с обложки. */
+  setLiveAccent: (hex: string | null): void => ipcRenderer.send(IPC.accentLive, hex),
+
   // обновления
   getUpdate: (): Promise<UpdateState> => ipcRenderer.invoke(IPC.updatesGet),
   checkUpdate: (): Promise<UpdateState> => ipcRenderer.invoke(IPC.updatesCheck),

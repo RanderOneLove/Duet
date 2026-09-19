@@ -49,7 +49,7 @@ import {
   wavePreview
 } from './sources/registry'
 import { prefetchWave } from './sources/registry'
-import { createTray, destroyTray } from './tray'
+import { createTray, destroyTray, setLiveAccent } from './tray'
 import {
   checkForUpdates,
   getUpdateState,
@@ -89,7 +89,14 @@ import {
   showMainWindow
 } from './windows/mainWindow'
 import { createAudioHost, destroyAudioHost } from './windows/audioHost'
-import { destroyMiniPlayer, hideMiniPlayer, resizeMiniPlayer, showMiniPlayer, toggleMiniPlayer } from './windows/miniPlayer'
+import {
+  destroyMiniPlayer,
+  hideMiniPlayer,
+  resizeMiniPlayer,
+  sendToMini,
+  showMiniPlayer,
+  toggleMiniPlayer
+} from './windows/miniPlayer'
 import { initDiscordRPC } from './discord'
 import { mark, perfEnabled, runPerf } from './perf'
 
@@ -340,6 +347,18 @@ function registerIpc(): void {
     if (target.isMaximized()) target.unmaximize()
     else target.maximize()
   })
+  /*
+   * Цвет с обложки расходится по всем окнам сразу.
+   *
+   * Считает его одно окно — то, у которого картинка уже есть, — а красятся по
+   * нему и трей, и мини-плеер. Без этого включённая настройка меняла цвет
+   * только там, где он считался, и выглядело это как поломка.
+   */
+  ipcMain.on(IPC.accentLive, (_event, hex: string | null) => {
+    setLiveAccent(typeof hex === 'string' ? hex : null)
+    sendToMini(IPC.accentLive, typeof hex === 'string' ? hex : null)
+  })
+
   ipcMain.on(IPC.windowHideToTray, hideMainWindow)
 }
 

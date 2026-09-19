@@ -67,11 +67,11 @@
 }
 
 .storage__part--vk {
-  background: var(--accent);
+  background: var(--brand-vk);
 }
 
 .storage__part--yandex {
-  background: #7f8cf0;
+  background: var(--brand-yandex);
 }
 
 .storage__legend {
@@ -89,11 +89,11 @@
 }
 
 .storage__dot--vk {
-  background: var(--accent);
+  background: var(--brand-vk);
 }
 
 .storage__dot--yandex {
-  background: #7f8cf0;
+  background: var(--brand-yandex);
 }
 
 /* ---- download rows -------------------------------------------------------- */

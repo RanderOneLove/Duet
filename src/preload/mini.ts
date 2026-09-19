@@ -23,7 +23,9 @@ const api = {
   onPlayer: (handler: (state: PlayerUpdate) => void) => subscribe(IPC.playerState, handler),
   /** Hover comes from the main process — drag regions swallow DOM mouse events. */
   onHover: (handler: (hovered: boolean) => void) => subscribe(IPC.miniHover, handler),
-  onSettings: (handler: (settings: Settings) => void) => subscribe(IPC.settingsChanged, handler)
+  onSettings: (handler: (settings: Settings) => void) => subscribe(IPC.settingsChanged, handler),
+  /** Цвет с обложки: его считает окно приложения, а красимся и мы. */
+  onAccent: (handler: (hex: string | null) => void) => subscribe(IPC.accentLive, handler)
 }
 
 function subscribe<T>(channel: string, handler: (payload: T) => void): () => void {

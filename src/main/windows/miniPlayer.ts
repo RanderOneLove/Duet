@@ -184,6 +184,12 @@ export function pushPlayback(): void {
   win.webContents.send(IPC.playerState, toMini(getPlayer()))
 }
 
+/** Послать плите что-нибудь одно — например, цвет, взятый с обложки. */
+export function sendToMini(channel: string, payload: unknown): void {
+  if (!win || win.isDestroyed()) return
+  win.webContents.send(channel, payload)
+}
+
 export function pushConfig(): void {
   if (!win || win.isDestroyed()) return
   win.webContents.send(IPC.settingsChanged, getSettings())

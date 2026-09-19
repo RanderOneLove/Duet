@@ -66,6 +66,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'wavehero') return runWaveHeroProbe()
   if (PROBE === 'stations') return runStationsProbe()
   if (PROBE === 'trackwave') return runTrackWaveProbe()
+  if (PROBE === 'tint') return runTintProbe()
   if (PROBE === 'listsave') return runListSaveProbe()
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
@@ -3518,6 +3519,72 @@ async function runTrackWaveProbe(): Promise<void> {
       readFileSync(join(app.getPath('userData'), 'session.json'), 'utf8')
     ) as Record<string, any>
     report.вСессии = { станция: raw.waveService, откуда: raw.waveSeed?.title ?? null }
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/** Доходит ли цвет с обложки до трея и плиты, и своими ли цветами полоса загрузок. */
+async function runTintProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'tint' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1280, 820)
+    setSettings({ theme: 'dark', accent: ACCENTS[0]!, accentFromCover: true })
+    await wait(1000)
+
+    const queue = (await likedTracks()).filter((t) => t.available && t.coverUrl).slice(0, 3)
+    if (queue.length === 0) throw new Error('нет треков с обложкой')
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    await wait(3000)
+
+    const вОкне = await window.webContents.executeJavaScript(
+      `getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()`
+    )
+    const { getLiveAccent } = await import('./tray')
+    report.цвет = { вОкне, вГлавномПроцессе: getLiveAccent(), совпал: вОкне === getLiveAccent() }
+
+    // Плита: тот же ли цвет у неё.
+    const mini = createMiniPlayer()
+    showMiniPlayer()
+    await wait(2500)
+    report.вПлите = await mini.webContents.executeJavaScript(
+      `getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()`
+    )
+    report.плитаСовпала = report.вПлите === вОкне
+    save(join(out, 'tint-mini.png'), (await mini.webContents.capturePage()).toPNG())
+    hideMiniPlayer()
+
+    // Полоса загрузок: свои цвета у обоих.
+    await window.webContents.executeJavaScript(
+      `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Загрузки'));
+        if (b) b.click(); return true })()`
+    )
+    await wait(1800)
+    report.полосаЗагрузок = await window.webContents.executeJavaScript(
+      `(() => {
+        const vk = document.querySelector('.storage__part--vk')
+        const ya = document.querySelector('.storage__part--yandex')
+        if (!vk || !ya) return { нет: 'полосы' }
+        const c = (n) => getComputedStyle(n).backgroundColor
+        return { vk: c(vk), яндекс: c(ya), разные: c(vk) !== c(ya) }
+      })()`
+    )
+    save(join(out, 'tint-downloads.png'), (await window.webContents.capturePage()).toPNG())
 
     report.ok = true
   } catch (error) {

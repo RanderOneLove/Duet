@@ -22,7 +22,14 @@ const VARIANTS: Record<MiniVariant, (props: VariantProps) => JSX.Element> = {
  */
 export function App(): JSX.Element {
   const { player, settings } = useMiniState()
-  useAppearance(settings)
+  /*
+   * Цвет с обложки приходит из окна приложения — считать его здесь нечем:
+   * у плиты та же картинка, но тянуть её второй раз ради нескольких пикселей
+   * незачем, а в свёрнутом виде обложки может не быть вовсе.
+   */
+  const [liveAccent, setLiveAccent] = useState<string | null>(null)
+  useEffect(() => window.mini.onAccent(setLiveAccent), [])
+  useAppearance(settings, settings.accentFromCover ? liveAccent : null)
   const ref = useRef<HTMLDivElement>(null)
   /**
    * Authoritative hover, measured against the cursor position by the main

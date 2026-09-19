@@ -118,6 +118,17 @@ export function App(): JSX.Element {
 
   useAppearance(settings, coverAccent)
 
+  /*
+   * Тот же цвет — трею и мини-плееру.
+   *
+   * Они в других процессах и картинку не видят, поэтому сами его не посчитают.
+   * Раньше включённая настройка красила только это окно, а полоски в плите и
+   * значок в трее оставались прежними — выглядело как поломка.
+   */
+  useEffect(() => {
+    window.shell.setLiveAccent(settings.accentFromCover ? coverAccent : null)
+  }, [settings.accentFromCover, coverAccent])
+
   const connectedCount = connections.filter((connection) => connection.connected).length
 
   // Catalogue queries. Each re-runs when the set of connected services changes,
