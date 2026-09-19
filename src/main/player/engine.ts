@@ -96,7 +96,12 @@ export function reportListeners(count: number): void {
 /** Дописать сессию на выходе: асинхронная запись до закрытия может не успеть. */
 export function saveSessionNow(): void {
   if (state.index < 0 || state.queue.length === 0) return
-  flushSession({ queue: state.queue, index: state.index, positionMs: state.positionMs })
+  flushSession({
+    queue: state.queue,
+    index: state.index,
+    positionMs: state.positionMs,
+    waveService: state.waveService
+  })
 }
 
 export function onPlayerChanged(listener: Listener): () => void {
@@ -116,7 +121,9 @@ export async function restoreSession(): Promise<void> {
   if (state.queue.length > 0) return // the user already started something
   const saved = readSession()
   if (!saved) return
-  patch({ queue: saved.queue, index: saved.index })
+  // Вместе с очередью возвращается и станция: иначе приложение считает
+  // бесконечный список обычным и останавливается, когда тот кончится.
+  patch({ queue: saved.queue, index: saved.index, waveService: saved.waveService })
   // Resuming within a couple of seconds of the end just triggers `ended`.
   const duration = saved.queue[saved.index]?.durationMs ?? 0
   const startAt = duration > 0 && saved.positionMs > duration - 2000 ? 0 : saved.positionMs
@@ -130,7 +137,12 @@ function scheduleSave(): void {
   saveTimer = setTimeout(() => {
     saveTimer = null
     if (state.index < 0 || state.queue.length === 0) return
-    writeSession({ queue: state.queue, index: state.index, positionMs: state.positionMs })
+    writeSession({
+      queue: state.queue,
+      index: state.index,
+      positionMs: state.positionMs,
+      waveService: state.waveService
+    })
   }, SAVE_INTERVAL_MS)
 }
 
@@ -251,14 +263,21 @@ export async function command(input: PlayerCommand): Promise<void> {
       await loadCurrent(true)
       return
 
+    /*
+     * «Играть», когда играть нечего, — это просьба включить музыку, а не сбой.
+     *
+     * Так жмут из мини-плеера, не открывая окна: приложение только запустилось
+     * или очередь кончилась. Если последним слушали волну, включается она же —
+     * станция помнит, где остановилась, и продолжает с того места.
+     */
     case 'playPause':
-      if (state.index < 0) return
+      if (state.index < 0) return resumeWave()
       if (state.playing) controlAudio({ type: 'pause' })
       else controlAudio({ type: 'play' })
       return
 
     case 'play':
-      if (state.index < 0) return
+      if (state.index < 0) return resumeWave()
       controlAudio({ type: 'play' })
       return
 
@@ -924,6 +943,18 @@ function cursorsFromQueue(): Partial<Record<ServiceId, string>> {
   const cursors: Partial<Record<ServiceId, string>> = {}
   for (const track of state.queue) cursors[track.service] = track.nativeId
   return cursors
+}
+
+/**
+ * Включить ту волну, которую слушали последней.
+ *
+ * Отвечает молча, если её не было: обещать музыку, которой неоткуда взяться,
+ * хуже, чем не откликнуться, — человек хотя бы поймёт, что надо выбрать самому.
+ */
+async function resumeWave(): Promise<void> {
+  const choice = state.waveService
+  if (!choice) return
+  await command({ type: 'playWave', service: choice })
 }
 
 async function topUpWave(): Promise<void> {

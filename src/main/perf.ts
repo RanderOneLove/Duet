@@ -8,7 +8,7 @@ import { command, onPlayerChanged } from './player/engine'
 import { getSettings, setSettings } from './state/settings'
 import { ACCENTS, DEFAULT_HOME_BLOCKS } from '@shared/types'
 import { discordStats } from './discord'
-import { getPlayer } from './player/engine'
+import { getPlayer, saveSessionNow } from './player/engine'
 import { albumTracks, artistTracks, home, likedTracks, lyrics, playlists, search } from './sources/registry'
 import { getMainWindow } from './windows/mainWindow'
 import { createMiniPlayer, hideMiniPlayer, showMiniPlayer } from './windows/miniPlayer'
@@ -60,6 +60,8 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'enrich') return runEnrichProbe()
   if (PROBE === 'jam') return runJamProbe()
   if (PROBE === 'ambient') return runAmbientProbe()
+  if (PROBE === 'wavesave') return runWaveSaveProbe()
+  if (PROBE === 'waveresume') return runWaveResumeProbe()
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
   if (PROBE === 'updbtn') return runUpdateButtonProbe()
@@ -2910,6 +2912,102 @@ async function runAmbientProbe(): Promise<void> {
     report.error = error instanceof Error ? error.message : String(error)
   }
 
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/** Первый заход: послушать волну и закрыться, как это делает человек. */
+async function runWaveSaveProbe(): Promise<void> {
+  const report: Record<string, unknown> = { probe: 'wavesave' }
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    void command({ type: 'playWave', service: 'yandex' })
+    await waitFor(() => getPlayer().playing, 60_000)
+    await wait(3000)
+    report.игралоПередЗакрытием = {
+      станция: getPlayer().waveService,
+      трек: getPlayer().queue[getPlayer().index]?.title,
+      вОчереди: getPlayer().queue.length
+    }
+    saveSessionNow()
+    await wait(500)
+
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const raw = JSON.parse(
+      readFileSync(join(app.getPath('userData'), 'session.json'), 'utf8')
+    ) as Record<string, unknown>
+    report.вФайлеСессии = {
+      станция: raw.waveService,
+      треков: Array.isArray(raw.queue) ? raw.queue.length : 0,
+      курсор: raw.index
+    }
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/** Второй заход: то, ради чего всё — нажать «играть» и получить музыку. */
+async function runWaveResumeProbe(): Promise<void> {
+  const report: Record<string, unknown> = { probe: 'waveresume' }
+  try {
+    // Сессия поднимается на старте; ждём, пока трек встанет на паузу.
+    await waitFor(() => getPlayer().queue.length > 0, 60_000)
+    await wait(1500)
+    report.послеЗапуска = {
+      станцияВернулась: getPlayer().waveService,
+      вОчереди: getPlayer().queue.length,
+      трек: getPlayer().queue[getPlayer().index]?.title,
+      играет: getPlayer().playing
+    }
+
+    // Человек жмёт «играть» в мини-плеере, не открывая окна.
+    void command({ type: 'playPause' })
+    await waitFor(() => getPlayer().playing, 30_000).catch(() => undefined)
+    report.послеНажатияИграть = {
+      играет: getPlayer().playing,
+      трек: getPlayer().queue[getPlayer().index]?.title
+    }
+
+    // Отдельно — случай, когда играть нечего вовсе.
+    void command({ type: 'pause' })
+    await wait(400)
+    void command({ type: 'clearQueue' })
+    await wait(800)
+    report.очередьПуста = { вОчереди: getPlayer().queue.length, курсор: getPlayer().index }
+
+    void command({ type: 'playPause' })
+    await waitFor(() => getPlayer().playing, 60_000).catch(() => undefined)
+    report.играТемЖеНажатием = {
+      играет: getPlayer().playing,
+      станция: getPlayer().waveService,
+      трек: getPlayer().queue[getPlayer().index]?.title,
+      вОчереди: getPlayer().queue.length
+    }
+    /*
+     * Ради этого всё и затевалось: станция бесконечна, и восстановленная
+     * очередь должна пополняться, а не кончиться на пятом треке.
+     */
+    const доПролистывания = getPlayer().queue.length
+    for (let i = 0; i < 4; i += 1) {
+      void command({ type: 'next' })
+      await wait(2500)
+    }
+    report.станцияПродолжается = {
+      былоВОчереди: доПролистывания,
+      сталоПослеЧетырёх: getPlayer().queue.length,
+      пополнилась: getPlayer().queue.length > доПролистывания,
+      играет: getPlayer().playing,
+      трек: getPlayer().queue[getPlayer().index]?.title
+    }
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
   writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
   app.exit(0)
 }

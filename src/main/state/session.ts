@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { Track } from '@shared/domain'
+import type { Track, WaveChoice } from '@shared/domain'
 
 /**
  * What was playing when the app last closed, so it comes back with the same
@@ -14,6 +14,14 @@ export interface Session {
   queue: Track[]
   index: number
   positionMs: number
+  /**
+   * Была ли это волна и какая.
+   *
+   * Без этого станция не переживала перезапуск: очередь возвращалась, а
+   * приложение не знало, что она бесконечная. Треки доигрывали и всё вставало
+   * — при том, что станции есть чем продолжить, курсоры лежат в настройках.
+   */
+  waveService: WaveChoice | null
 }
 
 const FILE = (): string => join(app.getPath('userData'), 'session.json')
@@ -33,7 +41,12 @@ export function readSession(): Session | null {
       // nothing downstream has to wonder which version wrote this.
       queue: raw.queue.map((track) => ({ ...track, artistRefs: track.artistRefs ?? [] })),
       index,
-      positionMs: Math.max(0, Number(raw.positionMs ?? 0))
+      positionMs: Math.max(0, Number(raw.positionMs ?? 0)),
+      // Файл от прежней версии про волну ничего не знает — значит, не волна.
+      waveService:
+        raw.waveService === 'yandex' || raw.waveService === 'vk' || raw.waveService === 'both'
+          ? raw.waveService
+          : null
     }
   } catch {
     // Missing or corrupt: simply start with nothing loaded.
@@ -48,7 +61,12 @@ let lastPayload = ''
 function payloadOf(session: Session): string {
   const start = Math.max(0, session.index - MAX_TRACKS / 2)
   const queue = session.queue.slice(start, start + MAX_TRACKS)
-  return JSON.stringify({ queue, index: session.index - start, positionMs: session.positionMs })
+  return JSON.stringify({
+    queue,
+    index: session.index - start,
+    positionMs: session.positionMs,
+    waveService: session.waveService
+  })
 }
 
 /**
