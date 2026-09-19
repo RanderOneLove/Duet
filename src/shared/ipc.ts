@@ -52,6 +52,9 @@ export const IPC = {
   /** main → shell: the catalogue changed; re-read the lists. */
   libChanged: 'lib:changed',
   libSetLiked: 'lib:setLiked',
+  /** shell → main: чем можно подкрутить волну и запись выбора. */
+  libWaveTuning: 'lib:waveTuning',
+  libSetWaveTuning: 'lib:setWaveTuning',
 
   // ---- downloads ----
   downloadsGet: 'downloads:get',

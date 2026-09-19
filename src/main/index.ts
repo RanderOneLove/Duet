@@ -48,7 +48,8 @@ import {
   wave,
   wavePreview
 } from './sources/registry'
-import { prefetchWave } from './sources/registry'
+import { prefetchWave, setWaveTuning, waveTuning } from './sources/registry'
+import type { WaveTuning } from '@shared/wave'
 import { createTray, destroyTray, setLiveAccent } from './tray'
 import {
   checkForUpdates,
@@ -278,6 +279,15 @@ function registerIpc(): void {
   ipcMain.handle(IPC.libLyrics, (_event, track: Track): Promise<Lyrics | null> => lyrics(track))
   ipcMain.handle(IPC.libSearch, (_event, query: string): Promise<SearchResult> => search(query))
   ipcMain.handle(IPC.libWave, (_event, choice: WaveChoice): Promise<Track[]> => wave(choice))
+  ipcMain.handle(
+    IPC.libWaveTuning,
+    (_event, choice: WaveChoice): Promise<WaveTuning | null> => waveTuning(choice)
+  )
+  ipcMain.handle(
+    IPC.libSetWaveTuning,
+    (_event, choice: WaveChoice, values: Record<string, string>): Promise<boolean> =>
+      setWaveTuning(choice, values)
+  )
   ipcMain.handle(IPC.libWavePreview, (_event, choice: WaveChoice): Promise<Track[]> => wavePreview(choice))
   ipcMain.handle(IPC.libSetLiked, async (_event, track: Track, liked: boolean) => {
     await setLiked(track, liked)

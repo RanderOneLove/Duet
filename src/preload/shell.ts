@@ -13,6 +13,7 @@ import type {
 } from '@shared/domain'
 import type { PlayerCommand, PlayerState, PlayerUpdate } from '@shared/player'
 import type { DownloadsState } from '@shared/downloads'
+import type { WaveTuning } from '@shared/wave'
 import type { UpdateState } from '@shared/updates'
 
 /** The only surface the shell renderer has onto the main process. */
@@ -56,6 +57,10 @@ const api = {
   similarTracks: (track: Track): Promise<Track[]> => ipcRenderer.invoke(IPC.libSimilar, track),
   lyrics: (track: Track): Promise<Lyrics | null> => ipcRenderer.invoke(IPC.libLyrics, track),
   search: (query: string): Promise<SearchResult> => ipcRenderer.invoke(IPC.libSearch, query),
+  waveTuning: (choice: WaveChoice): Promise<WaveTuning | null> =>
+    ipcRenderer.invoke(IPC.libWaveTuning, choice),
+  setWaveTuning: (choice: WaveChoice, values: Record<string, string>): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.libSetWaveTuning, choice, values),
   wavePreview: (choice: WaveChoice): Promise<Track[]> =>
     ipcRenderer.invoke(IPC.libWavePreview, choice),
   wave: (choice: WaveChoice): Promise<Track[]> => ipcRenderer.invoke(IPC.libWave, choice),

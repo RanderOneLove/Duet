@@ -1,4 +1,5 @@
 import type { Account, Album, Lyrics, Playlist, SearchResult, ServiceId, Track } from '@shared/domain'
+import type { WaveTuning } from '@shared/wave'
 
 /**
  * One music service, behind an interface the screens never look past. Both
@@ -57,6 +58,14 @@ export interface Source {
    * личной волны: без него станция начиналась бы заново на каждой порции.
    */
   trackWave(seed: Track, afterNativeId?: string): Promise<Track[]>
+  /**
+   * Чем станцию можно подкрутить: настроение, язык, подбор.
+   *
+   * null означает «нечем» — и это не заглушка на будущее, а ответ: у VK
+   * записать выбор некуда, и переключатели там были бы мёртвыми.
+   */
+  waveTuning(): Promise<WaveTuning | null>
+  setWaveTuning(values: Record<string, string>): Promise<boolean>
   /**
    * Report how a radio track went. Yandex's station will not advance without
    * this; VK's mix moves on its own and ignores it.

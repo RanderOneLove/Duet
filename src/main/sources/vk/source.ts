@@ -6,6 +6,7 @@ import { VKAudio } from '@toil/vk-audio'
 import { VKWebClient } from '@toil/vk-audio/client'
 import { forgetLists, readList, writeList } from '../../library/cache'
 import { listChanged, notifyLibraryChanged } from '../../library/changed'
+import type { WaveTuning } from '@shared/wave'
 import { matchKey } from '../../library/match'
 import { getSettings, setSettings } from '../../state/settings'
 
@@ -278,6 +279,27 @@ export class VkSource implements Source {
       .filter((track) => !disliked.has(track.nativeId))
     this.waveAhead = false
     return this.waveBatch
+  }
+
+  /**
+   * У VK настроить волну нечем.
+   *
+   * Категории он показывает — audio.getStreamMixSettings отдаёт настроение,
+   * узнаваемость и язык, — но записать выбор некуда: проверены
+   * setStreamMixSettings, saveStreamMixSettings, updateStreamMixSettings,
+   * setStreamMixCategories и editStreamMix, все отказали. Передача категории
+   * прямо в запрос за треками ничего не меняет: доля русских исполнителей при
+   * «русском» 46%, при «иностранном» 54% — то есть параметр просто проглочен.
+   *
+   * Показывать переключатели, которые ни на что не влияют, хуже, чем не
+   * показывать их вовсе.
+   */
+  async waveTuning(): Promise<WaveTuning | null> {
+    return null
+  }
+
+  async setWaveTuning(): Promise<boolean> {
+    return false
   }
 
   /**

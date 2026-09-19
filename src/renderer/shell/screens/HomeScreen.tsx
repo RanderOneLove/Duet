@@ -2,6 +2,7 @@ import type { Connection, HomeSection, Playlist, ServiceId, Track, WaveChoice } 
 import { ServiceBadge } from '../../shared/ServiceLogo'
 import { StateBlock } from '../components/StateBlock'
 import { Segmented } from '../components/Segmented'
+import { WaveTuner } from '../components/WaveTuner'
 import { TrackList } from '../components/TrackList'
 import { Cover } from '../components/Cover'
 import { useFiltered, type ServiceFilter } from '../useServiceFilter'
@@ -358,6 +359,10 @@ function WaveHero({
                 <Play size={16} /> Слушать
               </button>
             )}
+
+            {/* Подкрутить станцию — рядом с выбором сервиса: и то и другое про
+                то, какая это будет волна. */}
+            {!wave.seed && <WaveTuner service={service} />}
 
             {options.length > 1 && (
               <Segmented

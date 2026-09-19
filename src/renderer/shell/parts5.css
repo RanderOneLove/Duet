@@ -1051,3 +1051,52 @@
 :root[data-motion='off'] .likeburst {
   display: none;
 }
+
+/* ---- настройка волны ------------------------------------------------------ */
+
+/*
+ * Разворачивается от кнопки вправо, а не влево.
+ *
+ * Общее правило для всплывающих панелей — держаться правым краем: они живут в
+ * правой части нижней плиты, и оттуда им расти некуда, кроме как влево. Эта
+ * стоит слева, у самого начала строки, и по общему правилу уезжала за край
+ * окна вместе с первым переключателем.
+ */
+/* Панель в портале сама себе якорь: место ей задаёт кнопка, а не разметка. */
+.pop__panel--floating {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+}
+
+.pop__panel--tuner {
+  left: 0;
+  right: auto;
+  min-width: 320px;
+  padding: 12px;
+  gap: 12px;
+}
+
+.tuner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tuner__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tuner__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: var(--tr-caps);
+}
+
+.tuner__note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}

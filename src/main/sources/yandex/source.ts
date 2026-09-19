@@ -1,4 +1,5 @@
 import type { Account, Lyrics, Playlist, SearchResult, Track } from '@shared/domain'
+import type { WaveTuning } from '@shared/wave'
 import { trackKey } from '@shared/domain'
 import { getSecret, setSecret } from '../../state/secrets'
 import { SessionExpiredError, type Source, type WaveEvent } from '../types'
@@ -235,6 +236,72 @@ export class YandexSource implements Source {
     this.waveBatch = batch.tracks.map((track) => this.toDomain(track, false))
     this.waveAhead = false
     return this.waveBatch
+  }
+
+  /*
+   * Подписи наши, ключи и значения — станции.
+   *
+   * Названия приходят машинными («not-russian», «discover»), и показывать их
+   * человеку нельзя. Но и список вариантов сюда не переписан: он берётся у
+   * станции, а здесь лежит только перевод. Появится у неё новое значение —
+   * оно покажется как есть, а не пропадёт из окна.
+   */
+  private static readonly TUNING_LABELS: Record<string, { label: string; values: Record<string, string> }> = {
+    moodEnergy: {
+      label: 'Настроение',
+      values: { all: 'Любое', active: 'Бодрое', fun: 'Весёлое', calm: 'Спокойное', sad: 'Грустное' }
+    },
+    language: {
+      label: 'Язык',
+      values: {
+        any: 'Любой',
+        russian: 'Русский',
+        'not-russian': 'Иностранный',
+        'without-words': 'Без слов'
+      }
+    },
+    diversity: {
+      label: 'Подбор',
+      values: {
+        default: 'Как обычно',
+        favorite: 'Любимое',
+        discover: 'Открытия',
+        popular: 'Популярное'
+      }
+    }
+  }
+
+  async waveTuning(): Promise<WaveTuning | null> {
+    const { api } = this.require()
+    const raw = await api.stationSettings()
+    if (!raw) return null
+
+    const groups: WaveTuning['groups'] = []
+    for (const [key, allowed] of Object.entries(raw.allowed)) {
+      const known = YandexSource.TUNING_LABELS[key]
+      if (!known || allowed.length === 0) continue
+      groups.push({
+        key,
+        label: known.label,
+        choices: allowed.map((id) => ({ id, label: known.values[id] ?? id }))
+      })
+    }
+    // Порядок как в окне: сначала настроение, потом язык, потом подбор.
+    const order = ['moodEnergy', 'language', 'diversity']
+    groups.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key))
+    return { values: raw.values, groups }
+  }
+
+  async setWaveTuning(values: Record<string, string>): Promise<boolean> {
+    const { api } = this.require()
+    const raw = await api.stationSettings()
+    if (!raw) return false
+    // Станция принимает настройки только целиком: одно поле без остальных
+    // возвращает отказ, поэтому недостающее берётся из того, что уже стоит.
+    const ok = await api.setStationSettings({ ...raw.values, ...values })
+    // Следующая порция должна прийти уже по новым настройкам.
+    if (ok) this.waveBatch = []
+    return ok
   }
 
   /**

@@ -65,6 +65,8 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'waveresume') return runWaveResumeProbe()
   if (PROBE === 'wavehero') return runWaveHeroProbe()
   if (PROBE === 'stations') return runStationsProbe()
+  if (PROBE === 'tuning') return runTuningProbe()
+  if (PROBE === 'tuner') return runTunerProbe()
   if (PROBE === 'trackwave') return runTrackWaveProbe()
   if (PROBE === 'tint') return runTintProbe()
   if (PROBE === 'motion2') return runMotion2Probe()
@@ -3708,6 +3710,228 @@ async function runMotion2Probe(): Promise<void> {
     report.уходПлеера = уход
 
     save(join(out, 'motion2.png'), (await window.webContents.capturePage()).toPNG())
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/** Как записываются настройки волны: допустимые значения и приём записи. */
+async function runTuningProbe(): Promise<void> {
+  const report: Record<string, unknown> = { probe: 'tuning' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+
+    // ---- Яндекс: что вообще разрешено ----
+    const { YandexSource } = await import('./sources/yandex/source')
+    const ya = new YandexSource() as unknown as { restore: () => Promise<unknown>; isConnected: () => boolean }
+    await ya.restore()
+    const yandex: Record<string, unknown> = { подключён: ya.isConnected() }
+
+    if (ya.isConnected()) {
+      const api = (ya as unknown as { api: any }).api
+      const info = (await api.get('/rotor/station/user:onyourwave/info')) as any[]
+      yandex.сейчас = info?.[0]?.settings2
+      // Ограничения лежат внутри самой станции, а не рядом с настройками.
+      const rest = info?.[0]?.station?.restrictions2 ?? {}
+      yandex.разрешено = Object.fromEntries(
+        Object.entries(rest).map(([k, v]: [string, any]) => [
+          k,
+          Array.isArray(v?.possibleValues)
+            ? v.possibleValues.map((x: any) => x?.value ?? x?.name ?? x)
+            : typeof v === 'object'
+              ? Object.keys(v)
+              : v
+        ])
+      )
+
+      // Записываем настроение и возвращаем обратно — трогать чужую волну надолго
+      // нельзя, но узнать, принимается ли запись, иначе нечем.
+      const было = info?.[0]?.settings2 ?? {}
+      // Берём значение не из головы, а из того, что сервис сам назвал допустимым.
+      const выбор = (yandex.разрешено as Record<string, string[]>)?.moodEnergy ?? []
+      const другое = выбор.find((v) => v !== было.moodEnergy) ?? было.moodEnergy
+      yandex.пробуемЗначение = другое
+      const пробное = { ...было, moodEnergy: другое }
+      const шлём = async (body: unknown): Promise<number> => {
+        const r = await fetch('https://api.music.yandex.net/rotor/station/user:onyourwave/settings3', {
+          method: 'POST',
+          headers: { ...api.headers(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+        return r.status
+      }
+      yandex.записьНастроения = await шлём(пробное)
+      const после = (await api.get('/rotor/station/user:onyourwave/info')) as any[]
+      yandex.сталоПослеЗаписи = после?.[0]?.settings2
+      yandex.вернулиОбратно = await шлём(было)
+    }
+    report.яндекс = yandex
+
+    // ---- VK: принимает ли запись ----
+    const { VkSource } = await import('./sources/vk/source')
+    const vk = new VkSource() as unknown as {
+      restore: () => Promise<unknown>
+      isConnected: () => boolean
+      call: (method: string, params: URLSearchParams) => Promise<any>
+    }
+    await vk.restore()
+    const vkOut: Record<string, unknown> = { подключён: vk.isConnected() }
+
+    if (vk.isConnected()) {
+      const now = await vk.call('audio.getStreamMixSettings', new URLSearchParams({ mix_id: 'common' }))
+      vkOut.сейчас = (now?.settings?.mix_categories ?? []).map((c: any) => ({
+        ключ: c.id,
+        выбрано: (c.items ?? []).filter((o: any) => o.is_selected).map((o: any) => o.id)
+      }))
+
+      // Пробуем разные виды: как поле с запятыми и как повторённый параметр.
+      const попытки: Record<string, unknown> = {}
+      const пробуем = async (имя: string, method: string, params: URLSearchParams): Promise<void> => {
+        try {
+          const data = await vk.call(method, params)
+          попытки[имя] = data === null ? 'отказ' : JSON.stringify(data).slice(0, 160)
+        } catch (error) {
+          попытки[имя] = `ошибка: ${error instanceof Error ? error.message : String(error)}`
+        }
+      }
+
+      for (const method of [
+        'audio.setStreamMixSettings',
+        'audio.saveStreamMixSettings',
+        'audio.updateStreamMixSettings',
+        'audio.setStreamMixCategories',
+        'audio.editStreamMix'
+      ]) {
+        await пробуем(method, method, new URLSearchParams({ mix_id: 'common', vibes: 'calm' }))
+      }
+
+      // А может, выбор передаётся прямо в запрос за треками.
+      await пробуем(
+        'getStreamMixAudios с vibes',
+        'audio.getStreamMixAudios',
+        new URLSearchParams({ mix_id: 'common', count: '5', vibes: 'calm' })
+      )
+      await пробуем(
+        'getStreamMixAudios с categories',
+        'audio.getStreamMixAudios',
+        new URLSearchParams({ mix_id: 'common', count: '5', categories: 'calm' })
+      )
+      vkOut.попыткиЗаписи = попытки
+
+      /*
+       * Слушается ли параметр на самом деле, или сервис его просто глотает.
+       * Считаем долю кириллицы в именах исполнителей: если «langs» работает,
+       * между «русским» и «иностранным» разница обязана быть разительной.
+       */
+      const доляКириллицы = async (langs?: string): Promise<{ треков: number; русских: string }> => {
+        // Микс отдаёт по три трека за раз, поэтому набираем несколькими
+        // заходами: на трёх треках любая доля — случайность, а не признак.
+        const all: any[] = []
+        for (let i = 0; i < 8; i += 1) {
+          const params = new URLSearchParams({ mix_id: 'common', count: '30' })
+          if (langs) params.set('langs', langs)
+          const items = await vk.call('audio.getStreamMixAudios', params)
+          if (Array.isArray(items)) all.push(...items)
+          await wait(400)
+        }
+        const рус = all.filter((i: any) => /[а-яё]/i.test(String(i?.artist ?? ''))).length
+        return { треков: all.length, русских: all.length ? Math.round((рус / all.length) * 100) + '%' : '—' }
+      }
+
+      vkOut.влияетЛиПараметр = {
+        безПараметра: await доляКириллицы(),
+        русский: await доляКириллицы('ru'),
+        иностранный: await доляКириллицы('international')
+      }
+    }
+    report.vk = vkOut
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/** Настройка волны в окне: есть ли она, где надо, и доходит ли до станции. */
+async function runTunerProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'tuner' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1280, 820)
+    setSettings({ theme: 'dark', waveService: 'yandex', homeLayout: 'calm' })
+    await wait(2500)
+    const run = async <T>(code: string): Promise<T> =>
+      (await window.webContents.executeJavaScript(code)) as T
+
+    await run<boolean>(
+      `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Главная'));
+        if (b) b.click(); return true })()`
+    )
+    await wait(2500)
+
+    const найтиКнопку = `[...document.querySelectorAll('.wave button')].find((b) => (b.title ?? '').includes('Настроить волну'))`
+    report.уЯндекса = await run(`Boolean(${найтиКнопку})`)
+
+    // Открываем и смотрим, что внутри.
+    await run<boolean>(`(() => { const b = ${найтиКнопку}; if (!b) return false; b.click(); return true })()`)
+    await wait(900)
+    report.внутри = await run(
+      `[...document.querySelectorAll('.tuner__row')].map((r) => ({
+        группа: r.querySelector('.tuner__label')?.textContent,
+        варианты: [...r.querySelectorAll('.seg > button')].map((b) => b.textContent),
+        выбрано: r.querySelector('.seg > button[aria-pressed="true"]')?.textContent
+      }))`
+    )
+    save(join(out, 'tuner.png'), (await window.webContents.capturePage()).toPNG())
+
+    // Меняем настроение и проверяем, что станция это приняла.
+    const { waveTuning } = await import('./sources/registry')
+    const было = await waveTuning('yandex')
+    const сейчас = было?.values.moodEnergy
+    const другое = было?.groups
+      .find((g) => g.key === 'moodEnergy')
+      ?.choices.find((c) => c.id !== сейчас)?.id
+    report.меняем = { было: сейчас, на: другое }
+
+    await run<boolean>(
+      `(() => {
+        const row = [...document.querySelectorAll('.tuner__row')].find((r) => r.querySelector('.tuner__label')?.textContent === 'Настроение')
+        if (!row) return false
+        const b = [...row.querySelectorAll('.seg > button')].find((n) => n.getAttribute('aria-pressed') !== 'true')
+        if (!b) return false
+        b.click(); return true
+      })()`
+    )
+    await wait(2500)
+    const стало = await waveTuning('yandex')
+    report.уСтанции = { стало: стало?.values.moodEnergy, изменилось: стало?.values.moodEnergy !== сейчас }
+
+    // Возвращаем как было — чужую волну замер портить не должен.
+    if (сейчас) {
+      const { setWaveTuning } = await import('./sources/registry')
+      report.вернулиОбратно = await setWaveTuning('yandex', { moodEnergy: сейчас })
+    }
+
+    // У VK настраивать нечем — кнопки быть не должно.
+    setSettings({ waveService: 'vk' })
+    await wait(2500)
+    report.уVK = await run(`Boolean(${найтиКнопку})`)
+
     report.ok = true
   } catch (error) {
     report.error = error instanceof Error ? error.message : String(error)

@@ -13,6 +13,7 @@ import { SessionExpiredError, type Source, type WaveEvent } from './types'
 import { localPlaylists, localPlaylistTracks } from '../library/playlists'
 import { notifyLibraryChanged } from '../library/changed'
 import type { JamSeed } from '@shared/jam'
+import type { WaveTuning } from '@shared/wave'
 import { matchKey, pickTwin } from '../library/match'
 import { lrclibLyrics } from '../lyrics/lrclib'
 import { getSettings } from '../state/settings'
@@ -361,6 +362,37 @@ export function prefetchWave(
     ids.filter((id) => sources[id].isConnected()).map((id) => sources[id].prefetchWave(cursors[id]))
   ).then(() => undefined)
   return waveAhead
+}
+
+/**
+ * Чем можно подкрутить волну выбранного сервиса.
+ *
+ * У «обеих» настройки не показываются: станции две, набор у каждой свой, и
+ * один переключатель на двоих означал бы, что половина выбора куда-то делась.
+ */
+export async function waveTuning(choice: WaveChoice): Promise<WaveTuning | null> {
+  if (choice === 'both') return null
+  const source = sources[choice]
+  if (!source.isConnected()) return null
+  try {
+    return await source.waveTuning()
+  } catch {
+    return null
+  }
+}
+
+export async function setWaveTuning(
+  choice: WaveChoice,
+  values: Record<string, string>
+): Promise<boolean> {
+  if (choice === 'both') return false
+  const source = sources[choice]
+  if (!source.isConnected()) return false
+  try {
+    return await source.setWaveTuning(values)
+  } catch {
+    return false
+  }
 }
 
 /** Станция вокруг трека — у того сервиса, из которого он пришёл. */

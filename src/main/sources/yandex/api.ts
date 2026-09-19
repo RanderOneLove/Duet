@@ -177,6 +177,41 @@ export class YandexApi {
     }
   }
 
+  /** Настройки личной волны и то, что станция считает допустимым. */
+  async stationSettings(): Promise<{
+    values: Record<string, string>
+    allowed: Record<string, string[]>
+  } | null> {
+    const info = await this.get<any[]>('/rotor/station/user:onyourwave/info')
+    const first = info?.[0]
+    if (!first) return null
+    const rest = first.station?.restrictions2 ?? {}
+    const allowed: Record<string, string[]> = {}
+    for (const [key, value] of Object.entries(rest)) {
+      const list = (value as any)?.possibleValues
+      if (Array.isArray(list)) {
+        allowed[key] = list.map((item: any) => String(item?.value ?? item?.name ?? item))
+      }
+    }
+    return { values: (first.settings2 ?? {}) as Record<string, string>, allowed }
+  }
+
+  /**
+   * Записать настройки станции.
+   *
+   * Только целиком и только как JSON: форма получает 415, а одно поле без
+   * остальных — 400. Значение, которого нет в списке допустимых, станция тоже
+   * отвергает четырёхсотым, поэтому посылать надо ровно то, что она назвала.
+   */
+  async setStationSettings(values: Record<string, string>): Promise<boolean> {
+    const response = await fetch(`${BASE}/rotor/station/user:onyourwave/settings3`, {
+      method: 'POST',
+      headers: { ...this.headers(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(values)
+    })
+    return response.ok
+  }
+
   /**
    * Порция со станции, построенной вокруг одного трека.
    *

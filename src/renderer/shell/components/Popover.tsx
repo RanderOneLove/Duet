@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 interface Props {
   /** What sits in the bar; the panel hangs off it. */
@@ -15,6 +16,14 @@ interface Props {
   align?: 'up' | 'down'
   /** Панель по умолчанию шириной со список; узкому содержимому нужен свой класс. */
   panelClass?: string
+  /**
+   * Рисовать панель вне своего места в разметке.
+   *
+   * Нужно там, где вокруг кнопки стоит подрезка: плита волны скругляет углы и
+   * прячет вылезающее свечение, а заодно срезала бы и панель. Портал уносит её
+   * в конец документа, где резать некому, а место она получает по кнопке.
+   */
+  portal?: boolean
   children: (close: () => void) => ReactNode
 }
 
@@ -31,15 +40,22 @@ export function Popover({
   active,
   align = 'up',
   panelClass,
+  portal,
   children
 }: Props): JSX.Element {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const floating = useRef<HTMLDivElement>(null)
+  const [spot, setSpot] = useState<{ top: number; left: number } | null>(null)
 
   useEffect(() => {
     if (!open) return
     const onDown = (event: MouseEvent): void => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false)
+      const target = event.target as Node
+      // Панель в портале лежит вне кнопки, и щелчок по ней иначе считался бы
+      // щелчком мимо.
+      if (root.current?.contains(target) || floating.current?.contains(target)) return
+      setOpen(false)
     }
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') setOpen(false)
@@ -52,6 +68,18 @@ export function Popover({
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
+
+  /*
+   * Место панели считается по кнопке в момент открытия: она стоит внутри
+   * прокручиваемого экрана, и запоминать его заранее было бы враньём.
+   */
+  useEffect(() => {
+    if (!open || !portal) return
+    const button = root.current?.querySelector('button')
+    if (!button) return
+    const box = button.getBoundingClientRect()
+    setSpot({ top: Math.round(box.bottom + 8), left: Math.round(box.left) })
+  }, [open, portal])
 
   return (
     <div className="pop" ref={root}>
@@ -69,7 +97,7 @@ export function Popover({
         {label && <span className="truncate pop__label">{label}</span>}
       </button>
 
-      {open && (
+      {open && !portal && (
         <div
           className={`pop__panel pop__panel--${align} ${panelClass ?? ''}`}
           role="dialog"
@@ -78,6 +106,22 @@ export function Popover({
           {children(() => setOpen(false))}
         </div>
       )}
+
+      {open &&
+        portal &&
+        spot &&
+        createPortal(
+          <div
+            ref={floating}
+            className={`pop__panel pop__panel--floating ${panelClass ?? ''}`}
+            style={{ top: spot.top, left: spot.left }}
+            role="dialog"
+            aria-label={title}
+          >
+            {children(() => setOpen(false))}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }
