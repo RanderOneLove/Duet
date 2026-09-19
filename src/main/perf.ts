@@ -67,6 +67,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'stations') return runStationsProbe()
   if (PROBE === 'trackwave') return runTrackWaveProbe()
   if (PROBE === 'tint') return runTintProbe()
+  if (PROBE === 'motion2') return runMotion2Probe()
   if (PROBE === 'listsave') return runListSaveProbe()
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
@@ -3586,6 +3587,127 @@ async function runTintProbe(): Promise<void> {
     )
     save(join(out, 'tint-downloads.png'), (await window.webContents.capturePage()).toPNG())
 
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Новое движение: доходит ли выбор до стилей и играет ли уход плеера.
+ *
+ * Спрашивается вычисленный стиль, а не разметка и не настройки: записать
+ * значение — половина дела, а видно ли его — как раз вторая.
+ */
+async function runMotion2Probe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'motion2' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1280, 820)
+    setSettings({
+      theme: 'dark',
+      motion: 'lively',
+      motionWave: 'liquid',
+      motionScreens: 'materialize',
+      likeBurst: true,
+      accentFromCover: true,
+      playerLayout: 'split'
+    })
+    await wait(1200)
+    const run = async <T>(code: string): Promise<T> =>
+      (await window.webContents.executeJavaScript(code)) as T
+
+    const queue = (await likedTracks()).filter((t) => t.available && t.coverUrl).slice(0, 4)
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    await wait(2500)
+
+    // ---- «Вам нравится»: обложка последнего лайкнутого ----
+    await run<boolean>(
+      `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Вам нравится'));
+        if (b) b.click(); return true })()`
+    )
+    await wait(2200)
+    report.обложкаИзбранного = await run(
+      `(() => { const img = document.querySelector('.liked-hero__cover');
+        return { есть: Boolean(img), настоящая: Boolean(img?.currentSrc || img?.src) } })()`
+    )
+
+    // ---- «вода» на обложке волны ----
+    await run<boolean>(
+      `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Главная'));
+        if (b) b.click(); return true })()`
+    )
+    await wait(2500)
+    report.водаНаВолне = await run(
+      `(() => { const g = document.querySelector('.wave__glow');
+        if (!g) return 'нет слоя'
+        const s = getComputedStyle(g)
+        return { имя: s.animationName, длительность: s.animationDuration } })()`
+    )
+
+    // ---- переход между экранами ----
+    report.переходЭкранов = await run(
+      `(() => { const n = document.querySelector('.app__screen');
+        return n ? getComputedStyle(n).animationName : 'нет' })()`
+    )
+
+    // ---- сердечки ----
+    const искры = await run<{ приСнятии: number; появились: number; ушли: number }>(
+      `(async () => {
+        const like = document.querySelector('.dock__like')
+        if (!like) return { появились: -1, ушли: -1, приСнятии: -1 }
+        // Трек из избранного: первое нажатие снимает сердечко — искр быть не
+        // должно, второе возвращает — тогда и проверяем.
+        like.click()
+        await new Promise((r) => setTimeout(r, 150))
+        const приСнятии = document.querySelectorAll('.likeburst__spark').length
+        await new Promise((r) => setTimeout(r, 900))
+        like.click()
+        await new Promise((r) => setTimeout(r, 150))
+        const появились = document.querySelectorAll('.likeburst__spark').length
+        await new Promise((r) => setTimeout(r, 1400))
+        const ушли = document.querySelectorAll('.likeburst__spark').length
+        return { приСнятии, появились, ушли }
+      })()`
+    )
+    report.сердечки = искры
+    report.цветСердечек = await run(
+      `getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()`
+    )
+
+    // ---- уход полноэкранного плеера ----
+    await run<boolean>(
+      `(() => { const b = document.querySelector('.dock__track'); if (!b) return false; b.click(); return true })()`
+    )
+    await wait(1500)
+    const уход = await run<{ остался: boolean; анимация: string; снят: boolean }>(
+      `(async () => {
+        const close = document.querySelector('.fullplayer__header button')
+        if (!close) return { остался: false, анимация: 'нет кнопки', снят: false }
+        close.click()
+        await new Promise((r) => setTimeout(r, 90))
+        const node = document.querySelector('.fullplayer')
+        const анимация = node ? getComputedStyle(node).animationName : 'нет'
+        const остался = Boolean(node)
+        await new Promise((r) => setTimeout(r, 600))
+        return { остался, анимация, снят: !document.querySelector('.fullplayer') }
+      })()`
+    )
+    report.уходПлеера = уход
+
+    save(join(out, 'motion2.png'), (await window.webContents.capturePage()).toPNG())
     report.ok = true
   } catch (error) {
     report.error = error instanceof Error ? error.message : String(error)

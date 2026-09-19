@@ -285,11 +285,12 @@ function AppearancePane({ settings, onChange }: Pick<Props, 'settings' | 'onChan
             options={[
               { id: 'still', label: 'Неподвижно' },
               { id: 'breathe', label: 'Дыхание' },
-              { id: 'drift', label: 'Дрейф' }
+              { id: 'drift', label: 'Дрейф' },
+              { id: 'liquid', label: 'Вода' }
             ]}
           />
         </Row>
-        <Row label="Переход между экранами" hint="Когда переключаетесь между разделами" last>
+        <Row label="Переход между экранами" hint="Когда переключаетесь между разделами">
           <Segmented
             value={settings.motionScreens}
             disabled={settings.motion === 'off' || (settings.motion === 'system' && systemQuiet)}
@@ -297,8 +298,19 @@ function AppearancePane({ settings, onChange }: Pick<Props, 'settings' | 'onChan
             options={[
               { id: 'none', label: 'Без него' },
               { id: 'fade', label: 'Проявление' },
-              { id: 'slide', label: 'Подъём' }
+              { id: 'slide', label: 'Подъём' },
+              { id: 'materialize', label: 'Из вещества' }
             ]}
+          />
+        </Row>
+        <Row
+          label="Сердечки при «нравится»"
+          hint="Разлетаются в цвете того, что играет — если акцент берётся с обложки"
+          last
+        >
+          <Toggle
+            value={settings.likeBurst}
+            onChange={(value) => onChange({ likeBurst: value })}
           />
         </Row>
       </Card>

@@ -77,10 +77,10 @@ export type MotionLevel = 'system' | 'off' | 'calm' | 'lively'
 export type PlayerAnimation = 'sheet' | 'zoom' | 'fade'
 
 /** Живёт ли обложка в «Моей волне». */
-export type WaveAnimation = 'still' | 'breathe' | 'drift'
+export type WaveAnimation = 'still' | 'breathe' | 'drift' | 'liquid'
 
 /** Переход между экранами приложения. */
-export type ScreenAnimation = 'none' | 'fade' | 'slide'
+export type ScreenAnimation = 'none' | 'fade' | 'slide' | 'materialize'
 
 /** Что делает двойной щелчок по мини-плееру. */
 export type MiniDoubleClick = 'expand' | 'openPlayer' | 'nothing'
@@ -146,6 +146,14 @@ export interface Settings {
   playerTintFromCover: boolean
   /** Высота строк в списках. */
   density: Density
+  /**
+   * Сердечки, разлетающиеся при нажатии «нравится».
+   *
+   * Единственное движение без работы, кроме радости, — поэтому и отдельный
+   * выключатель: остальное в интерфейсе объясняет, откуда что взялось, а это
+   * просто приятно.
+   */
+  likeBurst: boolean
   /** Каким показывать главный экран. */
   homeLayout: HomeLayout
   /** Каким показывать полноэкранный плеер. */
@@ -280,6 +288,7 @@ export const DEFAULT_SETTINGS: Settings = {
   accentFromCover: false,
   playerTintFromCover: true,
   density: 'normal',
+  likeBurst: true,
   homeLayout: 'calm',
   playerLayout: 'split',
   homeBlocks: DEFAULT_HOME_BLOCKS,

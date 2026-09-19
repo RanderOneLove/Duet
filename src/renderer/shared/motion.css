@@ -48,6 +48,51 @@
 /* ---- полноэкранный плеер ------------------------------------------------- */
 
 /*
+ * Уход — тот же путь, только назад.
+ *
+ * Если что-то появилось снизу, оно и уходит вниз: иначе связь между жестом и
+ * результатом теряется, и закрытие читается как сбой, а не как ответ. Кривая
+ * зеркальная въездной, чтобы обратная дорога совпадала с прямой.
+ */
+:root:not([data-motion='off']) .fullplayer.is-closing,
+:root:not([data-motion='off']) .ambient.is-closing {
+  animation: player-out var(--t-base) var(--ease-out) forwards;
+  pointer-events: none;
+}
+
+:root[data-anim-player='zoom'] .fullplayer.is-closing,
+:root[data-anim-player='zoom'] .ambient.is-closing {
+  transform-origin: 50% 65%;
+  animation: player-out-zoom var(--t-base) var(--ease-out) forwards;
+}
+
+:root[data-anim-player='fade'] .fullplayer.is-closing,
+:root[data-anim-player='fade'] .ambient.is-closing {
+  animation: player-out-fade var(--t-base) var(--ease-out) forwards;
+}
+
+@keyframes player-out {
+  to {
+    opacity: 0;
+    transform: translateY(3%) scale(0.985);
+  }
+}
+
+@keyframes player-out-zoom {
+  to {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+@keyframes player-out-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+
+/*
  * Три способа появиться, и все — «снизу вверх» по смыслу: плеер открывают из
  * панели внизу окна, туда же он и уходит. «Раскрытие» растёт из обложки, к
  * которой человек и тянулся, поэтому у него своя точка отсчёта.
@@ -131,6 +176,50 @@
   animation: wave-drift 32s ease-in-out infinite alternate;
 }
 
+/*
+ * «Вода»: обложка не дышит и не плывёт, а переливается.
+ *
+ * Одного движения для этого мало — ровное колебание читается механикой. Здесь
+ * их три с разными периодами, и они не совпадают: масштаб, наклон и сдвиг
+ * расходятся, отчего картинка всё время немного другая и никогда не
+ * повторяется на глаз. Периоды взяты долгие нарочно — колебание около пяти
+ * секунд утомляет, а это фон, на который смотрят минутами.
+ */
+:root[data-anim-wave='liquid'] .wave__glow,
+:root[data-anim-wave='liquid'] .fullplayer__glow {
+  animation: liquid-a 29s ease-in-out infinite alternate,
+    liquid-b 41s ease-in-out infinite alternate;
+}
+
+/* В плеере «во всё окно» переливаются оба пятна, каждое по-своему. */
+:root[data-anim-wave='liquid'] .ambient__blob--a {
+  animation: liquid-a 23s ease-in-out infinite alternate;
+}
+
+:root[data-anim-wave='liquid'] .ambient__blob--b {
+  animation: liquid-b 37s ease-in-out infinite alternate;
+}
+
+@keyframes liquid-a {
+  from {
+    transform: scale(1.04) translate3d(-1.5%, 1%, 0) rotate(-1.2deg);
+  }
+  to {
+    transform: scale(1.16) translate3d(2%, -1.5%, 0) rotate(1.4deg);
+  }
+}
+
+@keyframes liquid-b {
+  from {
+    filter: blur(0px) saturate(112%);
+    opacity: 0.46;
+  }
+  to {
+    filter: blur(7px) saturate(138%);
+    opacity: 0.62;
+  }
+}
+
 @keyframes wave-breathe {
   0%,
   100% {
@@ -173,6 +262,30 @@
 
 :root[data-anim-screens='slide'] .app__screen {
   animation: screen-slide var(--t-base) var(--ease);
+}
+
+/*
+ * «Проявление вещества»: экран не выцветает из ничего, а собирается.
+ *
+ * Размытие уходит вместе с приближением — так появляется материя, а не
+ * прозрачность. Стекло в интерфейсе устроено так же, и переход между экранами
+ * этому не противоречит.
+ */
+:root[data-anim-screens='materialize'] .app__screen {
+  animation: screen-materialize var(--t-base) var(--ease);
+}
+
+@keyframes screen-materialize {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(1.015);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
 }
 
 @keyframes screen-fade {

@@ -33,6 +33,8 @@ export function LikedScreen(props: Props): JSX.Element {
     if (idx >= 0) props.onPlay(idx)
   }
 
+  const newestCover = props.tracks.find((track) => track.coverUrl)?.coverUrl ?? null
+
   const hours = Math.floor(totalDurationMs / 3600000)
   const minutes = Math.floor((totalDurationMs % 3600000) / 60000)
   const durationText = hours > 0 ? `${hours} ч ${minutes} мин` : `${minutes} мин`
@@ -40,7 +42,14 @@ export function LikedScreen(props: Props): JSX.Element {
   return (
     <div className="screen">
       <div className="liked-hero">
-        <div className="liked-hero__art" />
+        {/*
+          Обложка — та, что лайкнули последней: списки обоих сервисов идут
+          новыми вперёд. Градиент под ней остаётся на случай, когда обложки нет
+          или список ещё пуст, — плитка не должна быть дырой.
+        */}
+        <div className="liked-hero__art">
+          {newestCover && <img src={newestCover} alt="" className="liked-hero__cover" />}
+        </div>
         <div className="liked-hero__info">
           <div className="liked-hero__kicker muted">ПЛЕЙЛИСТ</div>
           <h1 className="liked-hero__title">Вам нравится</h1>

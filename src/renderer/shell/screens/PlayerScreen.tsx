@@ -16,6 +16,8 @@ import { AmbientPlayer } from './AmbientPlayer'
 
 interface Props {
   state: PlayerState
+  /** Плеер уходит: разыгрывается обратный путь, потом его снимут. */
+  closing?: boolean
   onClose: () => void
   downloaded: boolean
   settings: Settings
@@ -28,6 +30,7 @@ interface Props {
 /** Wireframe 2d: the full-screen player with the queue beside it. */
 export function PlayerScreen({
   state,
+  closing,
   onClose,
   downloaded,
   settings,
@@ -59,6 +62,7 @@ export function PlayerScreen({
     return (
       <AmbientPlayer
         state={state}
+        closing={closing}
         settings={settings}
         playlists={playlists}
         onClose={onClose}
@@ -69,7 +73,7 @@ export function PlayerScreen({
   }
 
   return (
-    <div className={`fullplayer fullplayer--${settings.playerLayout}`}>
+    <div className={`fullplayer fullplayer--${settings.playerLayout} ${closing ? 'is-closing' : ''}`}>
       {/* The current cover, blurred, carries the screen's colour. */}
       {track?.coverUrl && (
         <div className="fullplayer__glow" style={{ backgroundImage: `url("${track.coverUrl}")` }} />

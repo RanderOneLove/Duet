@@ -311,6 +311,8 @@
 }
 
 .dock__like {
+  /* Искры рисуются внутри кнопки, поэтому ей нужна своя система координат. */
+  position: relative;
   width: 34px;
   height: 34px;
   border-radius: 50%;

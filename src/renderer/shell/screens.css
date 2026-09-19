@@ -162,12 +162,21 @@
 }
 
 .liked-hero__art {
+  position: relative;
   width: 140px;
   height: 140px;
   border-radius: var(--r-xl);
   background: linear-gradient(135deg, var(--accent), var(--art-to));
   box-shadow: var(--shadow-float);
   flex: none;
+  overflow: hidden;
+}
+
+.liked-hero__cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .liked-hero__info {

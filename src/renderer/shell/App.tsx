@@ -28,6 +28,7 @@ import { DownloadsScreen } from './screens/DownloadsScreen'
 import { useAsync } from './useLibrary'
 import type { ServiceFilter } from './useServiceFilter'
 import { useUpdate } from './useUpdate'
+import { useClosing } from './useClosing'
 import { JamGuestContext } from './JamContext'
 import { useAppearance } from '../shared/useAppearance'
 import { accentFromImage } from '../shared/accent'
@@ -117,6 +118,12 @@ export function App(): JSX.Element {
   }, [settings.accentFromCover, coverUrl])
 
   useAppearance(settings, coverAccent)
+
+  /*
+   * Сколько длится прощание с плеером. Ноль, когда движение выключено, — тогда
+   * он просто исчезает, как и раньше, и ждать нечего.
+   */
+  const playerShown = useClosing(fullPlayer, settings.motion === 'off' ? 0 : 260)
 
   /*
    * Тот же цвет — трею и мини-плееру.
@@ -630,9 +637,11 @@ export function App(): JSX.Element {
           />
         </main>
       </div>
-      {fullPlayer && (
+      {/* Плеер уходит тем же путём, каким пришёл, а не пропадает. */}
+      {playerShown.mounted && (
         <PlayerScreen
           state={player}
+          closing={playerShown.closing}
           onClose={() => setFullPlayer(false)}
           downloaded={currentTrack(player) ? downloadedIds.has(currentTrack(player)!.id) : false}
           settings={settings}

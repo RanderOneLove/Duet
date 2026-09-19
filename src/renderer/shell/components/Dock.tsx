@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { artistLine, type Playlist } from '@shared/domain'
 import type { Settings } from '@shared/types'
 import { currentTrack, type PlayerState } from '@shared/player'
@@ -8,6 +9,7 @@ import { Heart, HeartOff, Next, Pause, Play, Prev, Repeat, RepeatOne, Shuffle } 
 import { SeekBar } from './SeekBar'
 import { OutputPicker, PlaylistPicker, SleepPicker } from './PlayerExtras'
 import { VolumeButton } from './VolumeButton'
+import { LikeBurst } from './LikeBurst'
 import { Cover } from './Cover'
 
 interface Props {
@@ -31,6 +33,7 @@ interface Props {
  * тянется через всю панель, — так её видно целиком вместе со временем.
  */
 export function Dock({ state, settings, playlists, queueCount, onOpenPlayer }: Props): JSX.Element {
+  const [burst, setBurst] = useState(0)
   const position = useSmoothPosition(state)
   const track = currentTrack(state)
 
@@ -51,9 +54,15 @@ export function Dock({ state, settings, playlists, queueCount, onOpenPlayer }: P
         className={`dock__like ${track?.liked ? 'dock__like--on' : ''}`}
         disabled={!track}
         title={track?.liked ? 'Убрать из избранного' : 'В избранное'}
-        onClick={() => window.shell.command({ type: 'toggleLike' })}
+        onClick={() => {
+          // Искры только когда добавляют, а не когда убирают: радоваться
+          // снятому сердечку не за что.
+          if (settings.likeBurst && !track?.liked) setBurst((n) => n + 1)
+          window.shell.command({ type: 'toggleLike' })
+        }}
       >
         <Heart size={15} />
+        <LikeBurst fire={burst} />
       </button>
 
       {/* Кнопка появляется, только когда сервис играющего трека умеет её

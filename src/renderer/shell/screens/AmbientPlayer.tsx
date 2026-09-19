@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Playlist, Track } from '@shared/domain'
 import type { Settings } from '@shared/types'
 import { artistLine } from '@shared/domain'
@@ -24,9 +25,12 @@ import { Lyrics } from '../components/Lyrics'
 import { SeekBar } from '../components/SeekBar'
 import { VolumeButton } from '../components/VolumeButton'
 import { PlayerExtras } from '../components/PlayerExtras'
+import { LikeBurst } from '../components/LikeBurst'
 
 interface Props {
   state: PlayerState
+  /** Уходит: разыгрывается обратный путь, потом снимут. */
+  closing?: boolean
   settings: Settings
   playlists: Playlist[]
   onClose: () => void
@@ -47,17 +51,19 @@ interface Props {
  */
 export function AmbientPlayer({
   state,
+  closing,
   settings,
   playlists,
   onClose,
   onSimilar,
   onOpenQueue
 }: Props): JSX.Element {
+  const [burst, setBurst] = useState(0)
   const position = useSmoothPosition(state)
   const track = currentTrack(state)
 
   return (
-    <div className="ambient on-media">
+    <div className={`ambient on-media ${closing ? 'is-closing' : ''}`}>
       {/* Две «лавовые» сферы из цветов обложки: фон живёт, но ни на что не
           претендует — там нет ни текста, ни границ. */}
       {track?.coverUrl && (
@@ -104,9 +110,13 @@ export function AmbientPlayer({
           className={`dock__like ${track?.liked ? 'dock__like--on' : ''}`}
           disabled={!track}
           title={track?.liked ? 'Убрать из избранного' : 'В избранное'}
-          onClick={() => window.shell.command({ type: 'toggleLike' })}
+          onClick={() => {
+            if (settings.likeBurst && !track?.liked) setBurst((n) => n + 1)
+            window.shell.command({ type: 'toggleLike' })
+          }}
         >
           <Heart size={15} />
+          <LikeBurst fire={burst} />
         </button>
         {state.canDislike && (
           <button
