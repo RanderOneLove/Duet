@@ -2604,18 +2604,27 @@ async function runJamProbe(): Promise<void> {
   const { join } = await import('node:path')
   const report: Record<string, unknown> = { probe: 'jam' }
 
+  /*
+   * По умолчанию ретранслятор поднимается свой: проверяется поведение, и
+   * чужой сервер для этого не нужен. DUET_RELAY=<адрес> переключает проверку
+   * на настоящий — это уже про то, доехало ли обновление до сервера.
+   */
+  const live = process.env['DUET_RELAY'] ?? null
   const port = 8801
-  const relay = spawn(process.execPath, [join(app.getAppPath(), 'server/relay.mjs')], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: String(port), HOST: '127.0.0.1' },
-    stdio: 'ignore'
-  })
+  const relay = live
+    ? null
+    : spawn(process.execPath, [join(app.getAppPath(), 'server/relay.mjs')], {
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: String(port), HOST: '127.0.0.1' },
+        stdio: 'ignore'
+      })
 
   try {
+    report.ретранслятор = live ?? `свой на ${port}`
     await wait(900)
     const { ensureInvite } = await import('./together/host')
     const { sayToHost, jamLink } = await import('./together/jam')
 
-    setSettings({ relayUrl: `http://127.0.0.1:${port}`, listenTogether: true })
+    setSettings({ relayUrl: live ?? `http://127.0.0.1:${port}`, listenTogether: true })
     const { code } = ensureInvite()
 
     // Ведущему надо что-то играть: без этого сессии на ретрансляторе нет.
@@ -2734,7 +2743,6 @@ async function runJamProbe(): Promise<void> {
     }
 
     // ---- как это выглядит ----
-    setSettings({ relayUrl: 'https://rander.pro/duet' })
     await command({ type: 'openJam' }).catch(() => undefined)
     const window = getMainWindow()
     if (window) {
@@ -2772,7 +2780,7 @@ async function runJamProbe(): Promise<void> {
     report.error = error instanceof Error ? error.message : String(error)
   }
 
-  relay.kill()
+  relay?.kill()
   writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
   app.exit(0)
 }

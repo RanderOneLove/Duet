@@ -89,6 +89,10 @@ const env = { ...process.env, DUET_PERF: report }
 const probeAt = process.argv.indexOf('--probe')
 if (probeAt >= 0) env.DUET_PROBE = process.argv[probeAt + 1] ?? 'probe'
 // Снимки складываются рядом с отчётом, чтобы их можно было просто открыть.
+// --relay <адрес>: гонять проверку против настоящего ретранслятора, а не
+// поднятого рядом. Нужно после обновления сервера — убедиться, что доехало.
+const relayAt = process.argv.indexOf('--relay')
+if (relayAt >= 0) env.DUET_RELAY = process.argv[relayAt + 1] ?? ''
 env.DUET_SHOTS = join(work, 'shots')
 env.DUET_MINI_BOUNDS = join(work, 'mini-bounds.json')
 // Электрон, запущенный из npm-скрипта, иначе стартует как обычный Node.
