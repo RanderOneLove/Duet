@@ -251,6 +251,12 @@ export class VkSource implements Source {
    * call returns the next few tracks and the caller needs no cursor.
    */
   async wave(): Promise<Track[]> {
+    // Та же договорённость, что и у Яндекса: взятое ради показа достаётся
+    // плееру, а не выбрасывается — станция отдаёт треки один раз.
+    if (this.waveAhead && this.waveBatch.length > 0) {
+      this.waveAhead = false
+      return this.waveBatch
+    }
     if (!this.client) throw new SessionExpiredError('vk')
 
     const data = await this.client.getSectionsWithBlocks(this.accountId || undefined)
@@ -268,8 +274,20 @@ export class VkSource implements Source {
     this.waveBatch = items
       .map((item: any) => this.mapRawAudio(item, false))
       .filter((track) => !disliked.has(track.nativeId))
+    this.waveAhead = false
     return this.waveBatch
   }
+
+  /** Спросить порцию заранее — чтобы было что показать, не отнимая у плеера. */
+  async prefetchWave(): Promise<Track[]> {
+    if (this.waveBatch.length > 0) return this.waveBatch
+    const tracks = await this.wave()
+    this.waveAhead = true
+    return tracks
+  }
+
+  /** Порция взята для показа и ещё не досталась плееру. */
+  private waveAhead = false
 
   lastWave(): Track[] {
     return this.waveBatch

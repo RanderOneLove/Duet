@@ -48,6 +48,7 @@ import {
   wave,
   wavePreview
 } from './sources/registry'
+import { prefetchWave } from './sources/registry'
 import { createTray, destroyTray } from './tray'
 import {
   checkForUpdates,
@@ -185,6 +186,17 @@ function start(): void {
 
   void restoreSources().then(async () => {
     mark('sourcesRestored')
+    /*
+     * Порция волны берётся заранее, чтобы Главная не встречала пустой плитой
+     * без обложки и без «далее». Спрошенное достанется плееру, когда нажмут
+     * «Слушать», — станция ничего от этого не теряет.
+     *
+     * Именно здесь, а не при запуске: до восстановления сессий сервисы ещё не
+     * подключены, и спрашивать некого. Ответа не ждём — пусть идёт своим
+     * чередом, а показ его дождётся сам.
+     */
+    void prefetchWave(getSettings().waveService, getSettings().waveCursors)
+
     await restoreSession()
     // Read the library now rather than when a screen first asks for it: the
     // walk takes seconds, and doing it during startup means Home and Liked
@@ -259,7 +271,7 @@ function registerIpc(): void {
   ipcMain.handle(IPC.libLyrics, (_event, track: Track): Promise<Lyrics | null> => lyrics(track))
   ipcMain.handle(IPC.libSearch, (_event, query: string): Promise<SearchResult> => search(query))
   ipcMain.handle(IPC.libWave, (_event, choice: WaveChoice): Promise<Track[]> => wave(choice))
-  ipcMain.handle(IPC.libWavePreview, (_event, choice: WaveChoice): Track[] => wavePreview(choice))
+  ipcMain.handle(IPC.libWavePreview, (_event, choice: WaveChoice): Promise<Track[]> => wavePreview(choice))
   ipcMain.handle(IPC.libSetLiked, async (_event, track: Track, liked: boolean) => {
     await setLiked(track, liked)
   })

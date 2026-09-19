@@ -343,7 +343,40 @@ async function oneWave(service: ServiceId, afterNativeId?: string): Promise<Trac
  * тянет треки, чтобы их показать, отбирает их у плеера и сбивает станции
  * отчётность о прослушанном.
  */
-export function wavePreview(choice: WaveChoice): Track[] {
+/**
+ * Спросить у станций по порции заранее, для показа на Главной.
+ *
+ * Зовётся один раз на запуск: плита волны без обложки и без «далее» выглядит
+ * сломанной, а узнать, что будет играть, можно только спросив. Спрошенное не
+ * пропадает — `wave` отдаст плееру ровно его.
+ */
+let waveAhead: Promise<void> | null = null
+
+export function prefetchWave(
+  choice: WaveChoice,
+  cursors: Partial<Record<ServiceId, string>> = {}
+): Promise<void> {
+  const ids = choice === 'both' ? order : [choice]
+  waveAhead = Promise.allSettled(
+    ids.filter((id) => sources[id].isConnected()).map((id) => sources[id].prefetchWave(cursors[id]))
+  ).then(() => undefined)
+  return waveAhead
+}
+
+export async function wavePreview(choice: WaveChoice): Promise<Track[]> {
+  /*
+   * Дожидаемся порции, если её уже пошли брать.
+   *
+   * Экран спрашивает раньше, чем приходит ответ, и без этого ожидания плита
+   * оставалась бы пустой до первого же повода перерисоваться — а его может и
+   * не случиться. Своего запроса здесь по-прежнему нет: показ не должен
+   * отнимать треки у плеера.
+   */
+  if (waveAhead) await waveAhead
+  return waveNow(choice)
+}
+
+function waveNow(choice: WaveChoice): Track[] {
   if (choice !== 'both') {
     const source = sources[choice]
     return source.isConnected() ? source.lastWave() : []

@@ -43,6 +43,14 @@ export interface Source {
    */
   lastWave(): Track[]
   /**
+   * Взять порцию заранее — чтобы Главной было что показать.
+   *
+   * Отличается от `wave` обещанием: взятое здесь не пропадает, а достаётся
+   * плееру, когда тот попросит. Иначе показ отнимал бы у станции по порции на
+   * каждый запуск, а показанное «далее» никогда бы не заиграло.
+   */
+  prefetchWave(afterNativeId?: string): Promise<Track[]>
+  /**
    * Report how a radio track went. Yandex's station will not advance without
    * this; VK's mix moves on its own and ignores it.
    */

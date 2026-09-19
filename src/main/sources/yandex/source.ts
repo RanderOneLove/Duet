@@ -215,12 +215,38 @@ export class YandexSource implements Source {
   }
 
   async wave(afterNativeId?: string): Promise<Track[]> {
+    /*
+     * Взятая заранее порция отдаётся как есть.
+     *
+     * Станция выдаёт треки один раз: спросил — считай, что она их уже отдала,
+     * и следующий вопрос принесёт другие. Поэтому порция, взятая ради показа
+     * на Главной, не выбрасывается, а достаётся плееру — иначе показанное
+     * «далее» никогда бы не заиграло, а станция теряла бы по порции на каждый
+     * запуск приложения.
+     */
+    if (this.waveAhead && this.waveBatch.length > 0) {
+      this.waveAhead = false
+      return this.waveBatch
+    }
+
     const { api } = this.require()
     const batch = await api.wave(afterNativeId)
     this.waveBatchId = batch.batchId
     this.waveBatch = batch.tracks.map((track) => this.toDomain(track, false))
+    this.waveAhead = false
     return this.waveBatch
   }
+
+  /** Спросить порцию заранее — чтобы было что показать, не отнимая у плеера. */
+  async prefetchWave(afterNativeId?: string): Promise<Track[]> {
+    if (this.waveBatch.length > 0) return this.waveBatch
+    const tracks = await this.wave(afterNativeId)
+    this.waveAhead = true
+    return tracks
+  }
+
+  /** Порция взята для показа и ещё не досталась плееру. */
+  private waveAhead = false
 
   lastWave(): Track[] {
     return this.waveBatch

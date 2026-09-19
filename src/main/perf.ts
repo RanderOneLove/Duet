@@ -63,6 +63,8 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'flaws') return runFlawsProbe()
   if (PROBE === 'wavesave') return runWaveSaveProbe()
   if (PROBE === 'waveresume') return runWaveResumeProbe()
+  if (PROBE === 'wavehero') return runWaveHeroProbe()
+  if (PROBE === 'listsave') return runListSaveProbe()
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
   if (PROBE === 'updbtn') return runUpdateButtonProbe()
@@ -3146,6 +3148,97 @@ async function runFlawsProbe(): Promise<void> {
     )
     save(join(out, 'flaw-ambient-top.png'), (await window.webContents.capturePage()).toPNG())
 
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/** Что видно в плите волны сразу после запуска, до всякого нажатия. */
+async function runWaveHeroProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'wavehero' }
+
+  try {
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1280, 820)
+    // Ждём ровно то, что ждёт человек: окно показалось и главная нарисовалась.
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    await wait(3500)
+
+    const осмотр = `(() => {
+      const hero = document.querySelector('.wave')
+      if (!hero) return { нет: 'плиты' }
+      const glow = hero.querySelector('.wave__glow')
+      const art = hero.querySelector('.wave__art img, .wave__art')
+      const chips = [...hero.querySelectorAll('.wave__nextitem')].map((n) => n.textContent.trim())
+      return {
+        обложкаФон: glow ? 'есть' : 'нет',
+        обложкаКартинка: art ? (art.tagName === 'IMG' ? 'настоящая' : 'заглушка') : 'нет',
+        подпись: hero.querySelector('.wave__sub')?.textContent?.trim().slice(0, 60) ?? 'нет',
+        далее: chips,
+        далееПусто: chips.length === 0
+      }
+    })()`
+
+    report.сразуПослеЗапуска = await run(window, осмотр)
+    report.состояниеПлеера = {
+      станция: getPlayer().waveService,
+      вОчереди: getPlayer().queue.length,
+      курсор: getPlayer().index
+    }
+    save(join(out, 'wavehero.png'), (await window.webContents.capturePage()).toPNG())
+
+    /*
+     * Обещание показа: нажатие «Слушать» должно дать ровно те треки, что
+     * показаны. Иначе показанное «далее» — враньё, а станция теряет порцию.
+     */
+    const показано = (report.сразуПослеЗапуска as { далее: string[] }).далее
+    void command({ type: 'playWave', service: getSettings().waveService })
+    await waitFor(() => getPlayer().playing, 60_000).catch(() => undefined)
+    await wait(1500)
+    const заиграло = getPlayer().queue.slice(0, 5).map((t) => t.title)
+    report.показанноеЗаиграло = {
+      показывали: показано,
+      вОчереди: заиграло,
+      совпало: показано.every((name) => заиграло.includes(name))
+    }
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+async function run<T>(window: Electron.BrowserWindow, code: string): Promise<T> {
+  return (await window.webContents.executeJavaScript(code)) as T
+}
+
+/** Первый заход другого рода: слушали обычный список, не волну. */
+async function runListSaveProbe(): Promise<void> {
+  const report: Record<string, unknown> = { probe: 'listsave' }
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const queue = (await likedTracks()).filter((t) => t.available).slice(0, 5)
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    await wait(2500)
+    report.игралоПередЗакрытием = {
+      станция: getPlayer().waveService,
+      трек: getPlayer().queue[getPlayer().index]?.title
+    }
+    saveSessionNow()
+    await wait(600)
     report.ok = true
   } catch (error) {
     report.error = error instanceof Error ? error.message : String(error)
