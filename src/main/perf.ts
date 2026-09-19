@@ -64,6 +64,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'wavesave') return runWaveSaveProbe()
   if (PROBE === 'waveresume') return runWaveResumeProbe()
   if (PROBE === 'wavehero') return runWaveHeroProbe()
+  if (PROBE === 'stations') return runStationsProbe()
   if (PROBE === 'listsave') return runListSaveProbe()
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
@@ -3245,4 +3246,197 @@ async function runListSaveProbe(): Promise<void> {
   }
   writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
   app.exit(0)
+}
+
+/**
+ * Что сервисы умеют помимо одной «Моей волны»: настройки станции, другие
+ * станции и радио по треку. Вопрос выяснялся бы догадками, а тут он решается
+ * одним заходом в те же точки, которыми пользуются их собственные клиенты.
+ */
+async function runStationsProbe(): Promise<void> {
+  const report: Record<string, unknown> = { probe: 'stations' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const liked = (await likedTracks()).filter((t) => t.available)
+    const ya = liked.find((t) => t.service === 'yandex')
+    const vk = liked.find((t) => t.service === 'vk')
+    report.наЧёмПробуем = { яндекс: ya?.title ?? 'нет', vk: vk?.title ?? 'нет' }
+
+    // ---- Яндекс ----
+    const { YandexSource } = await import('./sources/yandex/source')
+    const source = new YandexSource() as unknown as {
+      restore: () => Promise<unknown>
+      isConnected: () => boolean
+      api: { get: <T>(p: string) => Promise<T>; post: <T>(p: string, b: URLSearchParams) => Promise<T> }
+    }
+    await source.restore()
+
+    const yandex: Record<string, unknown> = { подключён: source.isConnected() }
+    if (source.isConnected()) {
+      const api = (source as unknown as { api: any }).api
+      const ask = async (name: string, path: string): Promise<void> => {
+        try {
+          const data = await api.get(path)
+          yandex[name] = trim(data)
+        } catch (error) {
+          yandex[name] = `отказ: ${error instanceof Error ? error.message : String(error)}`
+        }
+      }
+
+      // Точные значения, а не форма: по ним и строится выбор в окне.
+      try {
+        const list = (await api.get('/rotor/stations/list')) as any[]
+        yandex.станций = list.length
+        yandex.примерыСтанций = list.slice(0, 12).map((s: any) => ({
+          id: `${s.station?.id?.type}:${s.station?.id?.tag}`,
+          имя: s.station?.name
+        }))
+        const own = list.find((s: any) => s.station?.id?.tag === 'onyourwave')
+        yandex.ограниченияСвоейВолны = own?.restrictions2
+        yandex.сейчасСтоит = own?.settings2
+      } catch (error) {
+        yandex.станций = `отказ: ${error instanceof Error ? error.message : String(error)}`
+      }
+
+      // Допустимые значения лежат в info самой станции, а не в общем списке.
+      try {
+        const info = (await api.get('/rotor/station/user:onyourwave/info')) as any[]
+        yandex.сейчасСтоит = info?.[0]?.settings2
+        yandex.допустимо = info?.[0]?.restrictions2
+      } catch (error) {
+        yandex.допустимо = `отказ: ${error instanceof Error ? error.message : String(error)}`
+      }
+
+      /*
+       * Настройки станция принимает только как JSON: форма получает 415.
+       * Своих настроек не меняем — посылаем те же, что уже стоят.
+       */
+      try {
+        const info = (await api.get('/rotor/station/user:onyourwave/info')) as any[]
+        const now = info?.[0]?.settings2 ?? {}
+        const raw = await fetch('https://api.music.yandex.net/rotor/station/user:onyourwave/settings3', {
+          method: 'POST',
+          headers: {
+            ...(source as unknown as { api: { headers: () => Record<string, string> } }).api.headers(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(now)
+        })
+        yandex.настройкиПринимаются = { статус: raw.status, отправили: now }
+      } catch (error) {
+        yandex.настройкиПринимаются = `отказ: ${error instanceof Error ? error.message : String(error)}`
+      }
+
+      await ask('свояВолна', '/rotor/station/user:onyourwave/info')
+      const считать = async (name: string, path: string): Promise<void> => {
+        try {
+          const data = (await api.get(path)) as any
+          const seq = Array.isArray(data?.sequence) ? data.sequence : []
+          yandex[name] = {
+            треков: seq.length,
+            первые: seq.slice(0, 3).map((i: any) => i?.track?.title),
+            естьBatchId: Boolean(data?.batchId)
+          }
+        } catch (error) {
+          yandex[name] = `отказ: ${error instanceof Error ? error.message : String(error)}`
+        }
+      }
+      if (ya) await считать('станцияПоТреку', `/rotor/station/track:${ya.nativeId}/tracks?settings2=true`)
+      await считать('станцияПоЖанру', '/rotor/station/genre:rock/tracks?settings2=true')
+    }
+    report.яндекс = yandex
+
+    // ---- VK ----
+    const { VkSource } = await import('./sources/vk/source')
+    const vkSource = new VkSource() as unknown as {
+      restore: () => Promise<unknown>
+      isConnected: () => boolean
+      client: { getSectionsWithBlocks: (id?: string) => Promise<any> } | null
+      call: (method: string, params: URLSearchParams) => Promise<any>
+      accountId: string
+    }
+    await vkSource.restore()
+
+    const vkOut: Record<string, unknown> = { подключён: vkSource.isConnected() }
+    if (vkSource.isConnected()) {
+      try {
+        const data = await vkSource.client!.getSectionsWithBlocks(vkSource.accountId || undefined)
+        vkOut.миксы = (data.audioMixes ?? []).map((m: any) => ({
+          id: m.id,
+          название: m.titles?.common,
+          поля: Object.keys(m)
+        }))
+      } catch (error) {
+        vkOut.миксы = `отказ: ${error instanceof Error ? error.message : String(error)}`
+      }
+
+      try {
+        const data = await vkSource.call('audio.getStreamMixSettings', new URLSearchParams({ mix_id: 'common' }))
+        vkOut.категорииНастройки = (data?.settings?.mix_categories ?? []).map((c: any) => ({
+          ключ: c.id ?? c.key ?? c.type,
+          выбрано: c.selected ?? c.selected_ids ?? null,
+          варианты: (c.items ?? c.options ?? c.values ?? []).map((o: any) => ({
+            id: o.id ?? o.value,
+            имя: o.title ?? o.name,
+            выбран: o.is_selected ?? o.selected ?? false
+          }))
+        }))
+      } catch (error) {
+        vkOut.категорииНастройки = `ошибка: ${error instanceof Error ? error.message : String(error)}`
+      }
+
+      for (const method of [
+        'audio.getStreamMixSettings',
+        'audio.setStreamMixSettings',
+        'audio.getStreamMixes',
+        'audio.getStreamMixInfo'
+      ]) {
+        try {
+          const data = await vkSource.call(method, new URLSearchParams({ mix_id: 'common' }))
+          vkOut[method] = data === null ? 'метод отказал' : trim(data)
+        } catch (error) {
+          vkOut[method] = `ошибка: ${error instanceof Error ? error.message : String(error)}`
+        }
+      }
+
+      if (vk) {
+        try {
+          const items = (
+            await vkSource.call(
+              'audio.getRecommendations',
+              new URLSearchParams({ target_audio: vk.nativeId, count: '10' })
+            )
+          )?.items
+          vkOut.радиоПоТреку = Array.isArray(items)
+            ? { треков: items.length, первые: items.slice(0, 3).map((i: any) => i.title) }
+            : 'не отдал'
+        } catch (error) {
+          vkOut.радиоПоТреку = `ошибка: ${error instanceof Error ? error.message : String(error)}`
+        }
+      }
+    }
+    report.vk = vkOut
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/** Ответы сервисов огромные; в отчёт идёт только форма, а не всё содержимое. */
+function trim(value: unknown, depth = 0): unknown {
+  if (Array.isArray(value)) {
+    return depth >= 2 ? `массив из ${value.length}` : value.slice(0, 4).map((v) => trim(v, depth + 1))
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value as Record<string, unknown>).slice(0, 14)) {
+      out[k] = depth >= 2 ? typeof v : trim(v, depth + 1)
+    }
+    return out
+  }
+  return typeof value === 'string' && value.length > 60 ? value.slice(0, 60) + '…' : value
 }
