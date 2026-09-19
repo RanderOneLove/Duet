@@ -297,9 +297,21 @@ function WaveHero({
   const upNext = live ? live.next : wave.tracks.slice(0, 4)
 
   return (
-    <section className={`on-media wave wave--${service} ${compact ? 'wave--compact' : ''}`}>
+    <section
+      className={`on-media wave wave--${service} ${compact ? 'wave--compact' : ''} ${
+        cover ? '' : 'wave--nocover'
+      }`}
+    >
       {/* The current cover, blurred, carries the plate's colour. */}
       {cover && <div className="wave__glow" style={{ backgroundImage: `url("${cover}")` }} />}
+
+      {/*
+        Та же обложка, но резкая и во всю плиту.
+        Видна только в виде «обложка во весь экран» — там она и есть то, ради
+        чего этот вид выбирают. В остальных видах плита низкая, и растягивать
+        по ней картинку не за чем.
+      */}
+      {cover && <div className="wave__photo" style={{ backgroundImage: `url("${cover}")` }} />}
 
       <div className="wave__inner">
         <Cover url={cover} seed="wave" className="wave__art" />

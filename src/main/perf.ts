@@ -67,6 +67,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'stations') return runStationsProbe()
   if (PROBE === 'tuning') return runTuningProbe()
   if (PROBE === 'tuner') return runTunerProbe()
+  if (PROBE === 'coverhome') return runCoverHomeProbe()
   if (PROBE === 'trackwave') return runTrackWaveProbe()
   if (PROBE === 'tint') return runTintProbe()
   if (PROBE === 'motion2') return runMotion2Probe()
@@ -3931,6 +3932,69 @@ async function runTunerProbe(): Promise<void> {
     setSettings({ waveService: 'vk' })
     await wait(2500)
     report.уVK = await run(`Boolean(${найтиКнопку})`)
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/** Вид «обложка во весь экран»: занимает ли место с толком. */
+async function runCoverHomeProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'coverhome' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1280, 820)
+    setSettings({ theme: 'dark', homeLayout: 'cover', waveService: 'yandex' })
+    await wait(1500)
+    const run = async <T>(code: string): Promise<T> =>
+      (await window.webContents.executeJavaScript(code)) as T
+
+    // Волна должна играть — тогда у плиты есть настоящая обложка.
+    const queue = (await likedTracks()).filter((t) => t.available && t.coverUrl).slice(0, 4)
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    await wait(2000)
+    void command({ type: 'playWave', service: 'yandex' })
+    await waitFor(() => getPlayer().waveService !== null, 60_000).catch(() => undefined)
+    await wait(3500)
+
+    await run<boolean>(
+      `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Главная'));
+        if (b) b.click(); return true })()`
+    )
+    await wait(2500)
+
+    report.плита = await run(
+      `(() => {
+        const wave = document.querySelector('.wave')
+        const photo = document.querySelector('.wave__photo')
+        const box = document.querySelector('.app__content')
+        if (!wave || !box) return { нет: 'плиты' }
+        const w = wave.getBoundingClientRect()
+        return {
+          высотаПлиты: Math.round(w.height),
+          высотаОкна: Math.round(box.getBoundingClientRect().height),
+          доляЭкрана: Math.round((w.height / box.getBoundingClientRect().height) * 100) + '%',
+          обложкаВоВсюПлиту: photo ? getComputedStyle(photo).opacity : 'нет слоя',
+          картинка: photo ? getComputedStyle(photo).backgroundImage.slice(0, 40) : 'нет',
+          плиткаСпрятана: getComputedStyle(document.querySelector('.wave__art')).display === 'none',
+          виднолиЧтоНиже: Math.round(box.getBoundingClientRect().height - w.height) + 'px под ней'
+        }
+      })()`
+    )
+    save(join(out, 'cover-home.png'), (await window.webContents.capturePage()).toPNG())
 
     report.ok = true
   } catch (error) {
