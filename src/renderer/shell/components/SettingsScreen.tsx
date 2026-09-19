@@ -433,6 +433,21 @@ function PlaybackPane({
         </Row>
       </Card>
 
+      <Group label="ТЕКСТЫ ПЕСЕН" />
+      <Card>
+        <Row
+          label="Искать в открытой базе"
+          hint="Когда слов нет ни у VK, ни у Яндекса — спросить LRCLIB. Наружу уходит только исполнитель, название и длительность"
+          last
+        >
+          <Toggle value={settings.openLyrics} onChange={(v) => onChange({ openLyrics: v })} />
+        </Row>
+      </Card>
+      <p className="muted settings__note">
+        Слова ищутся по очереди: сервис трека, потом второй сервис про ту же песню, потом база.
+        Размеченный текст всегда важнее простого — подсветка в такт дороже, чем то, кто её дал.
+      </p>
+
       <Group label="ЗАПУСК" />
       <Card>
         <Row label="Запускать вместе с Windows">

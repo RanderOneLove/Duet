@@ -12,7 +12,9 @@ import { EMPTY_SEARCH } from '@shared/domain'
 import { SessionExpiredError, type Source, type WaveEvent } from './types'
 import { localPlaylists, localPlaylistTracks } from '../library/playlists'
 import { notifyLibraryChanged } from '../library/changed'
-import { matchKey } from '../library/match'
+import { matchKey, pickTwin } from '../library/match'
+import { lrclibLyrics } from '../lyrics/lrclib'
+import { getSettings } from '../state/settings'
 import { YandexSource } from './yandex/source'
 import { VkSource } from './vk/source'
 
@@ -158,10 +160,88 @@ export async function similarTracks(track: Track): Promise<Track[]> {
 }
 
 /** The words for a track, from the service it came from. */
+/**
+ * Текст песни, откуда бы он ни нашёлся.
+ *
+ * Сервисы знают слова далеко не ко всему, и знают разное: у одного текст есть,
+ * у другого той же песни нет. Поэтому спрашиваем по очереди — сперва свой
+ * сервис, потом второй про тот же трек, и только потом открытую базу.
+ * Размеченный текст при этом ценнее простого: если у своего сервиса нашёлся
+ * текст без меток, а у соседа с метками, победит сосед.
+ */
 export async function lyrics(track: Track): Promise<Lyrics | null> {
+  const own = sources[track.service].isConnected() ? await safeLyrics(track.service, track) : null
+  if (own?.lines.length) return own
+
+  const twin = await findTwin(track)
+  const other = twin ? await safeLyrics(twin.service, twin) : null
+  if (other?.lines.length) return other
+
+  if (getSettings().openLyrics) {
+    const open = await lrclibLyrics(track)
+    if (open?.lines.length) return open
+    // Простой текст из базы берём только если у сервисов не нашлось и такого.
+    if (!own && !other && open) return open
+  }
+
+  return own ?? other
+}
+
+async function safeLyrics(service: ServiceId, track: Track): Promise<Lyrics | null> {
+  try {
+    return await sources[service].lyrics(track)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Тот же трек у другого сервиса.
+ *
+ * Нужен в двух местах: когда текста нет у своего сервиса и когда играть надо,
+ * а свой сервис не подключён или трек в нём недоступен. Ответ держится в
+ * памяти — и найденный, и ненайденный: поиск стоит обращения к сервису, а
+ * спрашивают об одном и том же треке по многу раз.
+ */
+const TWIN_TTL_MS = 30 * 60 * 1000
+const twins = new Map<string, { at: number; track: Track | null }>()
+
+export async function findTwin(track: Track): Promise<Track | null> {
+  const target = order.find((id) => id !== track.service && sources[id].isConnected())
+  if (!target) return null
+
+  const key = `${target}:${matchKey(track)}:${Math.round(track.durationMs / 1000)}`
+  const known = twins.get(key)
+  if (known && Date.now() - known.at < TWIN_TTL_MS) return known.track
+
+  let found: Track | null = null
+  try {
+    const query = `${track.artists.join(' ')} ${track.title}`.trim()
+    const result = await sources[target].search(query)
+    found = pickTwin(track, result.tracks)
+  } catch {
+    // Поиск не удался — это не повод падать там, откуда нас позвали.
+  }
+
+  twins.set(key, { at: Date.now(), track: found })
+  return found
+}
+
+/**
+ * Каким треком отвечать на просьбу его проиграть.
+ *
+ * Трек может прийти из чужой очереди, из совместного прослушивания или просто
+ * оказаться недоступным в своём сервисе. Раньше это заканчивалось тишиной и
+ * сообщением; теперь та же песня ищется у второго сервиса, и играет она.
+ * Возвращается именно трек, а не ссылка: дальше по нему будут и лайк, и текст,
+ * и подпись в Discord — всё это должно указывать на то, что звучит.
+ */
+export async function playableTrack(track: Track): Promise<Track> {
   const source = sources[track.service]
-  if (!source.isConnected()) return null
-  return source.lyrics(track)
+  if (source.isConnected() && track.available) return track
+
+  const twin = await findTwin(track)
+  return twin ?? track
 }
 
 export async function artistTracks(service: ServiceId, nativeId: string): Promise<Track[]> {

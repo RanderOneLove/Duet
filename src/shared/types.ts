@@ -194,6 +194,15 @@ export interface Settings {
   /** Put the machine to sleep when the sleep timer runs out. */
   sleepSuspendsPc: boolean
   /**
+   * Искать тексты в открытой базе LRCLIB, когда их нет ни у VK, ни у Яндекса.
+   *
+   * Наружу уходит «исполнитель, название, длительность» — ни аккаунта, ни
+   * того, что слушали раньше. Выключатель здесь потому, что это единственное
+   * место, где приложение обращается к кому-то, кроме двух сервисов и
+   * ретранслятора: такое человек должен видеть, а не обнаруживать.
+   */
+  openLyrics: boolean
+  /**
    * Смотреть, не вышла ли новая версия, и скачивать её заранее.
    *
    * Включено: обновление ставится при выходе из приложения, так что человек
@@ -273,6 +282,7 @@ export const DEFAULT_SETTINGS: Settings = {
   recentSearches: [],
   vkDisliked: [],
   sleepSuspendsPc: false,
+  openLyrics: true,
   autoUpdate: true,
   listenTogether: false,
   relayUrl: 'https://rander.pro/duet',

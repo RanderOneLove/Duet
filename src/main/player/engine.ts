@@ -12,6 +12,7 @@ import {
   canDislike,
   dislike,
   isServiceConnected,
+  playableTrack,
   resolveStream,
   setLiked,
   wave,
@@ -628,7 +629,7 @@ async function drainFollowed(): Promise<void> {
 
 /** Принять состояние ведущего и привести своё воспроизведение к нему. */
 async function applyOneFollowed(shared: SharedState): Promise<void> {
-  const track = shared.track
+  let track = shared.track
   if (!track) {
     controlAudio({ type: 'pause' })
     return
@@ -640,19 +641,18 @@ async function applyOneFollowed(shared: SharedState): Promise<void> {
 
   if (current?.id !== track.id) {
     /*
-     * Трек сервиса, к которому мы не подключены, не подменяет собой то, что
-     * звучит. Раньше очередь и подпись переключались, а звук оставался
-     * прежним: на экране Яндекс, в наушниках всё ещё VK.
+     * Ведущий может слушать из сервиса, к которому мы не подключены. Раньше это
+     * был тупик: очередь и подпись переключались, а звук оставался прежним — на
+     * экране Яндекс, в наушниках всё ещё VK. Теперь та же песня ищется у своего
+     * сервиса, и следование продолжается.
      */
-    if (!isServiceConnected(track.service)) {
-      patch({
-        followError: `${track.service === 'vk' ? 'VK' : 'Яндекс'} не подключён — «${track.title}» не заиграет`
-      })
-      return
-    }
-    if (!track.available) {
-      patch({ followError: `«${track.title}» недоступен в вашем аккаунте` })
-      return
+    if (!isServiceConnected(track.service) || !track.available) {
+      const twin = await playableTrack(track)
+      if (twin.id === track.id) {
+        patch({ followError: `«${track.title}» не нашёлся у вашего сервиса — пропускаем` })
+        return
+      }
+      track = twin
     }
     patch({ queue: [track], index: 0, waveService: null, followError: null })
     await loadCurrent(shared.playing, Math.max(0, target))
@@ -910,8 +910,27 @@ async function prefetchNext(): Promise<void> {
 
 /** Resolve the current track's stream and hand it to the audio host. */
 async function loadCurrent(autoplay: boolean, startAtMs = 0): Promise<void> {
-  const track = state.queue[state.index]
+  let track = state.queue[state.index]
   if (!track) return
+
+  /*
+   * Трек своего сервиса может быть недоступен, а чужой — прийти из совместного
+   * прослушивания или из чужой очереди. Раньше и то и другое кончалось тишиной
+   * с сообщением; теперь та же песня ищется у второго сервиса.
+   *
+   * Подменяется строка очереди, а не одна ссылка на поток: дальше по этому
+   * треку пойдут и лайк, и текст, и подпись в Discord, и все они должны
+   * указывать на то, что звучит на самом деле.
+   */
+  if (!track.available || !isServiceConnected(track.service)) {
+    const playable = await playableTrack(track)
+    if (playable.id !== track.id) {
+      const queue = [...state.queue]
+      queue[state.index] = playable
+      patch({ queue })
+      track = playable
+    }
+  }
 
   hasStartedPlayingThisTrack = false
   const token = ++loadToken

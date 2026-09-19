@@ -57,6 +57,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'vkban') return runVkBanProbe()
   if (PROBE === 'together') return runTogetherProbe()
   if (PROBE === 'selfjoin') return runSelfJoinProbe()
+  if (PROBE === 'enrich') return runEnrichProbe()
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
   if (PROBE === 'updbtn') return runUpdateButtonProbe()
@@ -2495,6 +2496,91 @@ async function runSelfJoinProbe(): Promise<void> {
 
     void command({ type: 'stopFollowing' })
     setSettings({ listenTogether: false })
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Находится ли та же песня у второго сервиса и откуда приходят слова.
+ *
+ * Берутся настоящие треки из фонотеки: выдуманные пары «исполнитель —
+ * название» ничего не скажут о том, как сервисы пишут одно и то же на самом
+ * деле, а вся затея держится именно на этом.
+ */
+async function runEnrichProbe(): Promise<void> {
+  const report: Record<string, unknown> = { probe: 'enrich' }
+
+  try {
+    const { findTwin, lyrics, playableTrack } = await import('./sources/registry')
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+
+    const liked = await likedTracks()
+    const vkTracks = liked.filter((t) => t.service === 'vk').slice(0, 6)
+    const yaTracks = liked.filter((t) => t.service === 'yandex').slice(0, 6)
+    report.взято = { изVK: vkTracks.length, изЯндекса: yaTracks.length }
+
+    // ---- двойники ----
+    const пары: string[] = []
+    for (const track of [...vkTracks, ...yaTracks]) {
+      const started = Date.now()
+      const twin = await findTwin(track)
+      пары.push(
+        `${track.service} «${track.title}» — ${track.artists.join(', ')} → ` +
+          (twin
+            ? `${twin.service} «${twin.title}», расхождение ${Math.abs(
+                twin.durationMs - track.durationMs
+              )} мс, ${Date.now() - started} мс`
+            : `не нашёлся (${Date.now() - started} мс)`)
+      )
+    }
+    report.двойники = пары
+    report.найденоДвойников = пары.filter((line) => !line.includes('не нашёлся')).length
+
+    // Второй заход по тем же трекам должен быть мгновенным: ответ запомнен.
+    const снова = Date.now()
+    for (const track of vkTracks) await findTwin(track)
+    report.повторныйПоискМс = Date.now() - снова
+
+    /*
+     * Слова — дважды: с открытой базой и без неё. Иначе не различить, откуда
+     * взялись метки времени, а это и есть вопрос: путь «спросить второй сервис»
+     * должен работать сам по себе, без всякой базы.
+     */
+    const опиши = (got: Awaited<ReturnType<typeof lyrics>>): string =>
+      got ? (got.lines.length > 0 ? `${got.lines.length} строк с метками` : 'без меток') : 'нет'
+
+    const тексты: string[] = []
+    const образцы = [...vkTracks.slice(0, 4), ...yaTracks.slice(0, 4)]
+    for (const track of образцы) {
+      setSettings({ openLyrics: false })
+      const безБазы = await lyrics(track)
+      setSettings({ openLyrics: true })
+      const сБазой = await lyrics(track)
+      тексты.push(
+        `${track.service} «${track.title}»: сервисы — ${опиши(безБазы)}, с базой — ${опиши(сБазой)}`
+      )
+    }
+    report.тексты = тексты
+    report.метокДобавилиСервисы = тексты.filter((l) => l.includes('сервисы — ') && !l.includes('сервисы — нет') && !l.includes('сервисы — без меток')).length
+    report.базаПомоглаТам = тексты.filter((l) => (l.includes('сервисы — нет') || l.includes('сервисы — без меток')) && l.includes('с базой — ') && !l.includes('с базой — нет') && !l.includes('с базой — без меток')).length
+
+    // ---- чем ответит плеер на недоступный трек ----
+    const victim = vkTracks[0]
+    if (victim) {
+      const broken = { ...victim, available: false }
+      const playable = await playableTrack(broken)
+      report.недоступныйТрек = {
+        было: `${victim.service} «${victim.title}»`,
+        стало: `${playable.service} «${playable.title}»`,
+        подменили: playable.id !== victim.id
+      }
+    }
+
     report.ok = true
   } catch (error) {
     report.error = error instanceof Error ? error.message : String(error)
