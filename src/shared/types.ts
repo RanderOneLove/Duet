@@ -194,6 +194,15 @@ export interface Settings {
   /** Put the machine to sleep when the sleep timer runs out. */
   sleepSuspendsPc: boolean
   /**
+   * Через сколько секунд текст сам возвращается к поющейся строке.
+   *
+   * Отсчёт начинается, когда человек листает текст руками: пока он читает, что
+   * будет дальше, подтягивать его обратно к строке — значит вырывать страницу
+   * из рук. Ноль отключает возврат совсем: текст останется там, где его
+   * оставили, до следующей песни.
+   */
+  lyricsHoldSec: number
+  /**
    * Искать тексты в открытой базе LRCLIB, когда их нет ни у VK, ни у Яндекса.
    *
    * Наружу уходит «исполнитель, название, длительность» — ни аккаунта, ни
@@ -290,6 +299,7 @@ export const DEFAULT_SETTINGS: Settings = {
   recentSearches: [],
   vkDisliked: [],
   sleepSuspendsPc: false,
+  lyricsHoldSec: 10,
   openLyrics: true,
   autoUpdate: true,
   listenTogether: false,

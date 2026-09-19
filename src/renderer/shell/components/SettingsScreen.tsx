@@ -438,9 +438,26 @@ function PlaybackPane({
         <Row
           label="Искать в открытой базе"
           hint="Когда слов нет ни у VK, ни у Яндекса — спросить LRCLIB. Наружу уходит только исполнитель, название и длительность"
-          last
         >
           <Toggle value={settings.openLyrics} onChange={(v) => onChange({ openLyrics: v })} />
+        </Row>
+        <Row
+          label="Возврат к поющейся строке"
+          hint={
+            settings.lyricsHoldSec === 0
+              ? 'Пролистали руками — текст останется там до конца песни'
+              : `Пролистали руками — текст вернётся к строке через ${settings.lyricsHoldSec} с`
+          }
+          last
+        >
+          <input
+            type="range"
+            min={0}
+            max={60}
+            step={1}
+            value={settings.lyricsHoldSec}
+            onChange={(event) => onChange({ lyricsHoldSec: Number(event.target.value) })}
+          />
         </Row>
       </Card>
       <p className="muted settings__note">

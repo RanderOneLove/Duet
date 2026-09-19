@@ -1,16 +1,33 @@
-import type { Track } from '@shared/domain'
+import type { Playlist, Track } from '@shared/domain'
+import type { Settings } from '@shared/types'
 import { artistLine } from '@shared/domain'
 import { currentTrack, type PlayerState } from '@shared/player'
 import { formatTime, ratio } from '../../shared/format'
 import { ServiceBadge } from '../../shared/ServiceLogo'
 import { useSmoothPosition } from '../../shared/useSmoothPosition'
-import { Close, Next, Pause, Play, Prev, Repeat, RepeatOne, Shuffle, Sparkle } from '../../shared/Icons'
+import {
+  Close,
+  Heart,
+  HeartOff,
+  Next,
+  Pause,
+  Play,
+  Prev,
+  Repeat,
+  RepeatOne,
+  Shuffle,
+  Sparkle
+} from '../../shared/Icons'
 import { Cover } from '../components/Cover'
 import { Lyrics } from '../components/Lyrics'
 import { SeekBar } from '../components/SeekBar'
+import { VolumeButton } from '../components/VolumeButton'
+import { PlayerExtras } from '../components/PlayerExtras'
 
 interface Props {
   state: PlayerState
+  settings: Settings
+  playlists: Playlist[]
   onClose: () => void
   onSimilar: (track: Track) => void
   onOpenQueue: () => void
@@ -27,7 +44,14 @@ interface Props {
  * Управление собрано в одну стеклянную плиту внизу — её видно всегда, потому
  * что прятать транспорт в плеере значит заставлять человека его искать.
  */
-export function AmbientPlayer({ state, onClose, onSimilar, onOpenQueue }: Props): JSX.Element {
+export function AmbientPlayer({
+  state,
+  settings,
+  playlists,
+  onClose,
+  onSimilar,
+  onOpenQueue
+}: Props): JSX.Element {
   const position = useSmoothPosition(state)
   const track = currentTrack(state)
 
@@ -59,6 +83,7 @@ export function AmbientPlayer({ state, onClose, onSimilar, onOpenQueue }: Props)
           track={track}
           positionMs={position}
           big
+          holdSec={settings.lyricsHoldSec}
           onSeek={(at) => window.shell.command({ type: 'seek', positionMs: at })}
         />
       </div>
@@ -72,6 +97,31 @@ export function AmbientPlayer({ state, onClose, onSimilar, onOpenQueue }: Props)
       </div>
 
       <footer className="ambient__dock glass">
+        {/* Сердечко и «не нравится» — там же, где и в обычной панели: это не
+            украшение плеера, а то, ради чего в него заглядывают. */}
+        <button
+          className={`dock__like ${track?.liked ? 'dock__like--on' : ''}`}
+          disabled={!track}
+          title={track?.liked ? 'Убрать из избранного' : 'В избранное'}
+          onClick={() => window.shell.command({ type: 'toggleLike' })}
+        >
+          <Heart size={15} />
+        </button>
+        {state.canDislike && (
+          <button
+            className="dock__like"
+            disabled={!track}
+            title={
+              track?.service === 'vk'
+                ? 'Не нравится — больше не попадётся в волне'
+                : 'Не нравится — убрать из рекомендаций'
+            }
+            onClick={() => window.shell.command({ type: 'dislike' })}
+          >
+            <HeartOff size={15} />
+          </button>
+        )}
+
         <button
           className={`togglebtn ${state.shuffle ? 'togglebtn--on' : ''}`}
           title="Перемешать"
@@ -128,6 +178,15 @@ export function AmbientPlayer({ state, onClose, onSimilar, onOpenQueue }: Props)
             <Sparkle size={13} /> Похожее
           </button>
         )}
+
+        <PlayerExtras
+          state={state}
+          settings={settings}
+          playlists={playlists}
+          tracks={track ? [track] : []}
+          align="up"
+        />
+        <VolumeButton state={state} align="up" />
       </footer>
     </div>
   )

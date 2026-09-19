@@ -9,7 +9,7 @@ import { getSettings, setSettings } from './state/settings'
 import { ACCENTS, DEFAULT_HOME_BLOCKS } from '@shared/types'
 import { discordStats } from './discord'
 import { getPlayer } from './player/engine'
-import { albumTracks, artistTracks, home, likedTracks, playlists, search } from './sources/registry'
+import { albumTracks, artistTracks, home, likedTracks, lyrics, playlists, search } from './sources/registry'
 import { getMainWindow } from './windows/mainWindow'
 import { createMiniPlayer, hideMiniPlayer, showMiniPlayer } from './windows/miniPlayer'
 
@@ -59,6 +59,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'selfjoin') return runSelfJoinProbe()
   if (PROBE === 'enrich') return runEnrichProbe()
   if (PROBE === 'jam') return runJamProbe()
+  if (PROBE === 'ambient') return runAmbientProbe()
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
   if (PROBE === 'updbtn') return runUpdateButtonProbe()
@@ -2788,4 +2789,127 @@ async function runJamProbe(): Promise<void> {
 /** Подсказка сравнения: имя до переключения. */
 function игралоDo(name: string | undefined): string | undefined {
   return name
+}
+
+/**
+ * Плеер «во всё окно»: что в плите и как ведёт себя текст.
+ *
+ * Прокрутку проверяем не глазами, а числом: где стоит полоса до того, как её
+ * тронули, где сразу после, и вернулась ли она к поющейся строке, когда вышел
+ * срок. Иначе про задержку нельзя сказать ничего, кроме «вроде работает».
+ */
+async function runAmbientProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+
+  const report: Record<string, unknown> = { probe: 'ambient' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1280, 820)
+    setSettings({ playerLayout: 'ambient', theme: 'dark', lyricsHoldSec: 4 })
+    await wait(1200)
+
+    const run = async <T>(code: string): Promise<T> =>
+      (await window.webContents.executeJavaScript(code)) as T
+
+    // Нужен трек со словами и метками, иначе прокрутку нечем проверять.
+    const liked = (await likedTracks()).filter((t) => t.available)
+    let picked: (typeof liked)[number] | null = null
+    for (const track of liked.slice(0, 12)) {
+      const words = await lyrics(track)
+      if (words && words.lines.length > 12) {
+        picked = track
+        break
+      }
+    }
+    if (!picked) throw new Error('не нашёл трека с размеченным текстом')
+    report.трек = `${picked.title} — ${picked.artists.join(', ')}`
+
+    void command({ type: 'playQueue', tracks: [picked], startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    // Уходим в середину песни: там строки уже идут, и есть куда прокручивать.
+    void command({ type: 'seek', positionMs: Math.round(picked.durationMs * 0.45) })
+    await wait(1500)
+
+    await run<boolean>(
+      `(() => { const b = document.querySelector('.dock__track'); if (!b) return false; b.click(); return true })()`
+    )
+    await wait(2500)
+
+    // ---- что в плите ----
+    report.вПлите = await run<string[]>(
+      `[...document.querySelectorAll('.ambient__dock > *')].map((n) => n.title || n.textContent.trim() || n.className)`
+    )
+    report.плитаНеВылезает = await run<boolean>(
+      `(() => { const d = document.querySelector('.ambient__dock'); return d.scrollWidth <= d.clientWidth + 1 })()`
+    )
+
+    save(join(out, 'ambient-dock.png'), (await window.webContents.capturePage()).toPNG())
+
+    // ---- почему не едет ----
+    report.разбор = await run(
+      `(() => {
+        const list = document.querySelector('.ambient__stage .lyrics')
+        const stage = document.querySelector('.ambient__stage')
+        if (!list || !stage) return { нет: !list ? 'списка' : 'сцены' }
+        let p = list.parentElement, найден = null
+        while (p) {
+          const o = getComputedStyle(p).overflowY
+          if (o === 'auto' || o === 'scroll') { найден = p.className; break }
+          p = p.parentElement
+        }
+        return {
+          строкСМетками: list.querySelectorAll('[data-line]').length,
+          подсвечена: list.querySelector('.lyrics__line--on')?.dataset.line ?? 'нет',
+          высотаСписка: Math.round(list.scrollHeight),
+          высотаСцены: Math.round(stage.clientHeight),
+          прокручиваемоеСцены: Math.round(stage.scrollHeight),
+          ктоПрокручивает: найден,
+          overflowСцены: getComputedStyle(stage).overflowY
+        }
+      })()`
+    )
+
+    // ---- прокрутка текста ----
+    const где = `Math.round(document.querySelector('.ambient__stage').scrollTop)`
+    const самаЕдет = await run<boolean>(
+      `(async () => { const a = document.querySelector('.ambient__stage').scrollTop;
+        await new Promise((r) => setTimeout(r, 6000));
+        return Math.abs(document.querySelector('.ambient__stage').scrollTop - a) > 5 })()`
+    )
+    report.самаЕдетЗаПесней = самаЕдет
+
+    // Человек крутит колесо и уводит текст в начало.
+    await run<boolean>(
+      `(() => { const s = document.querySelector('.ambient__stage');
+        s.dispatchEvent(new WheelEvent('wheel', { deltaY: -400, bubbles: true }));
+        s.scrollTop = 0; return true })()`
+    )
+    await wait(1800)
+    const держится = await run<number>(где)
+    await wait(4200)
+    const вернулась = await run<number>(где)
+
+    report.прокрутка = {
+      увелиРуками: 0,
+      черезПолторыСекунды: держится,
+      черезШестьСекунд: вернулась,
+      держитПокаЧитают: держится < 40,
+      вернуласьПослеЗадержки: вернулась > 40
+    }
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
 }

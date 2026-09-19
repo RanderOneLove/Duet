@@ -76,6 +76,8 @@ export function PlayerScreen({
     return (
       <AmbientPlayer
         state={state}
+        settings={settings}
+        playlists={playlists}
         onClose={onClose}
         onSimilar={onSimilar}
         onOpenQueue={() => setTab('queue')}
@@ -256,6 +258,7 @@ export function PlayerScreen({
           {tab === 'queue' ? <QueueList state={state} /> : <Lyrics
               track={track}
               positionMs={position}
+              holdSec={settings.lyricsHoldSec}
               onSeek={(at) => window.shell.command({ type: 'seek', positionMs: at })}
             />}
 
