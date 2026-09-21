@@ -22,6 +22,15 @@ export interface Source {
   restore(): Promise<Account | null>
 
   likedTracks(): Promise<Track[]>
+  /** Забыть запомненное и перечитать фонотеку заново. */
+  refreshLibrary(): Promise<Track[]>
+  /**
+   * Показанному списку верить нельзя: обход падал или он просто постарел.
+   *
+   * Нужно почасовой проверке — она обходит заново только то, что того стоит,
+   * а не дёргает оба сервиса без повода.
+   */
+  likedSuspect(): boolean
   playlists(): Promise<Playlist[]>
   playlistTracks(nativeId: string): Promise<Track[]>
   albumTracks(nativeId: string): Promise<Track[]>

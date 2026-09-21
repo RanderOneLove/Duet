@@ -1,4 +1,5 @@
 import type { ServiceId, Track, WaveChoice } from './domain'
+import type { JamQueueItem } from './jam'
 
 /** How the queue advances when a track ends. */
 export type RepeatMode = 'off' | 'all' | 'one'
@@ -58,6 +59,20 @@ export interface PlayerState {
   jamGuest: boolean
   /** Сколько человек слушает вместе с вами — 0, когда вы никого не ведёте. */
   listeners: number
+  /**
+   * Кто предложил трек, по его идентификатору.
+   *
+   * Живёт у ведущего: очередь у него своя, полная, а не хватает ей только
+   * имён. Участник получает имена уже внутри `jamQueue`.
+   */
+  jamCredits: Record<string, string>
+  /**
+   * Ближайшие треки общей сессии — для того, у кого своей очереди нет.
+   *
+   * Участник не ведёт очередь: он видит чужую. Ведущему это поле не нужно, у
+   * него есть `queue`.
+   */
+  jamQueue: JamQueueItem[]
   /** Set when the current track failed to load, cleared on the next track. */
   error: string | null
   /** Wall clock at which positionMs was sampled, for smooth interpolation. */
@@ -86,6 +101,8 @@ export const EMPTY_PLAYER: PlayerState = {
   jamOpen: false,
   jamGuest: false,
   listeners: 0,
+  jamCredits: {},
+  jamQueue: [],
   error: null,
   sampledAt: 0
 }

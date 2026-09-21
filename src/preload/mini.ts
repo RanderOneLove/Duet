@@ -1,11 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '@shared/ipc'
 import type { Settings } from '@shared/types'
-import type { PlayerCommand, PlayerState, PlayerUpdate } from '@shared/player'
+import type { PlayerCommand, PlayerUpdate } from '@shared/player'
 
 /** The mini player's surface: read the player state, send transport. */
 const api = {
-  getPlayer: (): Promise<PlayerState> => ipcRenderer.invoke(IPC.playerGet),
+  getPlayer: (): Promise<PlayerUpdate> => ipcRenderer.invoke(IPC.playerGetMini),
   getSettings: (): Promise<Settings> => ipcRenderer.invoke(IPC.settingsGet),
 
   command: (input: PlayerCommand): void => ipcRenderer.send(IPC.playerCommand, input),

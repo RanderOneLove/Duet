@@ -446,6 +446,10 @@ input {
   background: var(--accent);
   color: var(--on-accent);
   box-shadow: var(--shadow-accent);
+  /* Подпись кнопки не переносится: «Скачать всё» в две строки — это уже не
+     кнопка, а абзац, и ряд от одной такой становится вдвое выше. Не влезает
+     ряд — переносится он, а не слова внутри кнопок. */
+  white-space: nowrap;
 }
 .pill:hover:not(:disabled) {
   background: var(--accent-hover);

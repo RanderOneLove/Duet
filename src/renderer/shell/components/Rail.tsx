@@ -1,6 +1,6 @@
-import { DuetMark, Download, Gear, Heart, Home, Library, Search } from '../../shared/Icons'
+import { DuetMark, Download, Gear, Heart, Home, Library, Radio, Search } from '../../shared/Icons'
 
-export type Route = 'home' | 'search' | 'library' | 'liked' | 'downloads' | 'settings'
+export type Route = 'home' | 'search' | 'library' | 'liked' | 'downloads' | 'jam' | 'settings'
 
 const NAV: { id: Route; label: string; icon: () => JSX.Element }[] = [
   { id: 'home', label: 'Главная', icon: () => <Home size={17} /> },
@@ -12,6 +12,8 @@ const NAV: { id: Route; label: string; icon: () => JSX.Element }[] = [
 
 interface Props {
   route: Route
+  /** Идёт ли общая сессия: пункт Jam появляется только вместе с ней. */
+  jam: boolean
   onNavigate: (route: Route) => void
 }
 
@@ -24,7 +26,7 @@ interface Props {
  * а не столбиком обрезанных названий. Смысл значка не теряется: у каждого есть
  * подсказка, а активный подсвечен плитой.
  */
-export function Rail({ route, onNavigate }: Props): JSX.Element {
+export function Rail({ route, jam, onNavigate }: Props): JSX.Element {
   return (
     <nav className="rail drag">
       <div className="rail__brand" title="Duet">
@@ -43,6 +45,20 @@ export function Rail({ route, onNavigate }: Props): JSX.Element {
           {item.icon()}
         </button>
       ))}
+
+      {/* Постоянного места Jam не занимает: без сессии этот значок вёл бы на
+          пустой экран и только сбивал бы с толку. */}
+      {jam && (
+        <button
+          className="railitem railitem--live nodrag"
+          title="Duet Jam — общая сессия"
+          aria-label="Duet Jam"
+          aria-current={route === 'jam' ? 'page' : undefined}
+          onClick={() => onNavigate('jam')}
+        >
+          <Radio size={17} />
+        </button>
+      )}
 
       <div className="rail__spacer" />
 

@@ -57,6 +57,8 @@ const api = {
   similarTracks: (track: Track): Promise<Track[]> => ipcRenderer.invoke(IPC.libSimilar, track),
   lyrics: (track: Track): Promise<Lyrics | null> => ipcRenderer.invoke(IPC.libLyrics, track),
   search: (query: string): Promise<SearchResult> => ipcRenderer.invoke(IPC.libSearch, query),
+  /** Перечитать фонотеку обоих сервисов и дождаться конца. */
+  refreshLibrary: (): Promise<void> => ipcRenderer.invoke(IPC.libRefresh),
   waveTuning: (choice: WaveChoice): Promise<WaveTuning | null> =>
     ipcRenderer.invoke(IPC.libWaveTuning, choice),
   setWaveTuning: (choice: WaveChoice, values: Record<string, string>): Promise<boolean> =>

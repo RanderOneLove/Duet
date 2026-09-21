@@ -1,6 +1,6 @@
 import DiscordRPC from 'discord-rpc'
 import { getPlayer, onPlayerChanged } from './player/engine'
-import { getSettings } from './state/settings'
+import { getSettings, onSettingsChanged } from './state/settings'
 import type { PlayerState } from '@shared/player'
 import { currentTrack } from '@shared/player'
 import { SERVICE_META } from '@shared/domain'
@@ -28,7 +28,7 @@ const clientId = '1549024887643840612'
  * сыгранном. Поэтому отправка идёт не чаще, чем раз в эти секунды, а то, что
  * не успело уйти, отправляется следом одним последним состоянием.
  */
-const MIN_GAP_MS = 3000
+const MIN_GAP_MS = 4000
 
 /** Ниже этого расхождения часы Discord и трек считаются согласованными. */
 const DRIFT_TOLERANCE_MS = 1200
@@ -37,10 +37,28 @@ const DRIFT_TOLERANCE_MS = 1200
 const RECONNECT_BASE_MS = 5000
 const RECONNECT_MAX_MS = 60_000
 
+/**
+ * Discord держит `details` и `state` в пределах 128 знаков и не принимает
+ * строку короче двух. Трек без исполнителя — обычное дело для загрузок VK, и
+ * раньше он рвал живую связь: отказ на негодную нагрузку считался обрывом.
+ */
+const FIELD_MAX = 128
+const FIELD_MIN = 2
+
+/** Сколько отказов подряд считать поводом переподключиться. */
+const FAILURES_BEFORE_RECONNECT = 3
+
 let rpc: DiscordRPC.Client | null = null
 let connected = false
 let attempt = 0
 let reconnectTimer: NodeJS.Timeout | null = null
+let failures = 0
+/*
+ * Связи нет, пока её не попросят. Начальное «выключено» — не про настройку, а
+ * про то, что `applySetting` сравнивает желаемое с нынешним: начни он с
+ * «включено», первый же вызов решил бы, что всё уже сделано, и не подключился.
+ */
+let stopped = true
 
 /** Что уже отправлено, чтобы не отправлять то же самое. */
 let lastTrackId: string | undefined
@@ -53,21 +71,73 @@ let pendingTimer: NodeJS.Timeout | null = null
 /** Счётчики для `npm run perf`: видно, что ограничитель действительно держит. */
 let sentCount = 0
 let heldCount = 0
+let failCount = 0
 
 export function discordStats(): {
   sent: number
   held: number
+  failed: number
   connected: boolean
   /** Трек, который сейчас висит в статусе, — по нему видно, отстал ли он. */
   showing: string | null
 } {
-  return { sent: sentCount, held: heldCount, connected, showing: lastTrackId ?? null }
+  return {
+    sent: sentCount,
+    held: heldCount,
+    failed: failCount,
+    connected,
+    showing: lastTrackId ?? null
+  }
 }
 
 export function initDiscordRPC(): void {
   DiscordRPC.register(clientId)
-  connect()
+  applySetting(getSettings().discordPresence)
+  onSettingsChanged((settings) => applySetting(settings.discordPresence))
   onPlayerChanged(consider)
+}
+
+/**
+ * Выключатель в настройках: статус — это имя трека, уходящее наружу, и
+ * отказаться от него человек должен уметь, не выходя из приложения.
+ */
+function applySetting(on: boolean): void {
+  if (on === !stopped) return
+  if (on) {
+    stopped = false
+    connect()
+  } else {
+    stopDiscordRPC()
+  }
+}
+
+/** Закрыть связь и снять таймеры — при выходе и по выключателю. */
+export function stopDiscordRPC(): void {
+  stopped = true
+  if (reconnectTimer) clearTimeout(reconnectTimer)
+  reconnectTimer = null
+  if (pendingTimer) clearTimeout(pendingTimer)
+  pendingTimer = null
+  connected = false
+  const client = rpc
+  rpc = null
+  if (!client) return
+  // Статус переживает закрытие приложения, если его не убрать явно.
+  void Promise.resolve(client.clearActivity())
+    .catch(() => undefined)
+    .then(() => discard(client))
+}
+
+/**
+ * Проводить клиента насовсем.
+ *
+ * Снять обработчики обязательно: без этого «disconnected» от давно мёртвого
+ * клиента приходил позже и гасил `connected` у уже живого — статус пропадал
+ * без всякой причины, а восстановиться мог только при смене трека.
+ */
+function discard(client: DiscordRPC.Client): void {
+  client.removeAllListeners()
+  void Promise.resolve(client.destroy()).catch(() => undefined)
 }
 
 /**
@@ -79,37 +149,54 @@ export function initDiscordRPC(): void {
  * поднятым, так что обновления уходили в никуда.
  */
 function connect(): void {
+  if (stopped) return
   const client = new DiscordRPC.Client({ transport: 'ipc' })
   rpc = client
 
+  // Каждый обработчик сперва убеждается, что он от нынешнего клиента: старые
+  // события приходят и после замены, и раньше они ломали новую связь.
+  const mine = (): boolean => rpc === client && !stopped
+
   client.on('ready', () => {
+    if (!mine()) return
     connected = true
     attempt = 0
+    failures = 0
     // После переподключения Discord ничего о нас не помнит.
     forget()
     consider(getPlayer())
   })
 
   client.on('disconnected', () => {
+    if (!mine()) return
+    connected = false
+    scheduleReconnect()
+  })
+
+  // Без этого обработчика ошибка транспорта роняла бы весь процесс.
+  client.on('error', () => {
+    if (!mine()) return
     connected = false
     scheduleReconnect()
   })
 
   client.login({ clientId }).catch(() => {
+    if (!mine()) return
     connected = false
     scheduleReconnect()
   })
 }
 
 function scheduleReconnect(): void {
-  if (reconnectTimer) return
+  if (stopped || reconnectTimer) return
   const delay = Math.min(RECONNECT_MAX_MS, RECONNECT_BASE_MS * 2 ** attempt)
   attempt += 1
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null
     // Старого клиента надо закрыть, иначе каналы копятся.
-    void rpc?.destroy().catch(() => undefined)
+    const old = rpc
     rpc = null
+    if (old) discard(old)
     connect()
   }, delay)
 }
@@ -156,23 +243,38 @@ function consider(state: PlayerState): void {
   }, wait)
 }
 
+/** Строка, которую Discord точно примет: не пустая и не длиннее допустимого. */
+function field(value: string, fallback: string): string {
+  const text = value.trim() || fallback
+  if (text.length <= FIELD_MAX) {
+    return text.length >= FIELD_MIN ? text : text.padEnd(FIELD_MIN, ' ')
+  }
+  return `${text.slice(0, FIELD_MAX - 1).trimEnd()}…`
+}
+
 function send(state: PlayerState): void {
   if (!rpc || !connected) return
+  const client = rpc
 
   const track = currentTrack(state)
   sentCount += 1
+  // Ограничитель считает попытки, а не удачи: иначе неудачная отправка
+  // разрешила бы следующую немедленно, и Discord заглушил бы нас за частоту.
   lastSentAt = Date.now()
-  lastTrackId = track?.id
-  lastPlaying = state.playing
 
   if (!state.playing || !track) {
-    lastStart = 0
-    void rpc.clearActivity().catch(() => undefined)
+    void Promise.resolve(client.clearActivity())
+      .then(() => {
+        if (rpc !== client) return
+        lastTrackId = undefined
+        lastPlaying = false
+        lastStart = 0
+      })
+      .catch(noteFailure)
     return
   }
 
   const start = Date.now() - state.positionMs
-  lastStart = start
 
   // Длительность берётся у декодера, а не у каталога: у VK каталожная цифра
   // регулярно расходится с настоящей, и тогда ползунок Discord отмеряет
@@ -204,13 +306,13 @@ function send(state: PlayerState): void {
 
   // Через сырой запрос, потому что обёртка discord-rpc не умеет выставлять
   // тип активности 2 (Listening) — а именно он рисует полосу воспроизведения.
-  void (rpc as unknown as { request: (name: string, args: unknown) => Promise<unknown> })
+  void (client as unknown as { request: (name: string, args: unknown) => Promise<unknown> })
     .request('SET_ACTIVITY', {
       pid: process.pid,
       activity: {
         type: 2,
-        details: track.title,
-        state: artistLine(track),
+        details: field(track.title, 'Без названия'),
+        state: field(artistLine(track), 'Без исполнителя'),
         timestamps: {
           start: Math.round(start),
           // Без длительности Discord показывает просто «идёт время»; с ней —
@@ -219,7 +321,7 @@ function send(state: PlayerState): void {
         },
         assets: {
           large_image: largeImageKey,
-          large_text: track.album || track.title,
+          large_text: field(track.album || track.title, serviceName),
           small_image: SERVICE_ICON[track.service] ?? 'default',
           small_text: serviceName
         },
@@ -230,9 +332,39 @@ function send(state: PlayerState): void {
         instance: false
       }
     })
-    .catch(() => {
-      // Discord мог закрыться между проверкой и отправкой.
-      connected = false
-      scheduleReconnect()
+    .then(() => {
+      if (rpc !== client) return
+      failures = 0
+      /*
+       * Подпись «это уже показано» ставится только теперь. Раньше она
+       * ставилась до отправки, и пропавшее обновление считалось доставленным:
+       * статус застывал на прошлом треке до следующей смены.
+       */
+      lastTrackId = track.id
+      lastPlaying = state.playing
+      lastStart = start
     })
+    .catch(noteFailure)
+}
+
+/**
+ * Отказ — ещё не обрыв.
+ *
+ * Discord отвечает отказом и на живой связи: на негодную нагрузку, на слишком
+ * частые обновления. Раньше любой такой отказ считался обрывом, пауза до
+ * следующей попытки удваивалась и застревала на минуте — статус пропадал до
+ * перезапуска. Теперь связь рвётся только после нескольких отказов подряд, а
+ * настоящий обрыв и так придёт событием.
+ */
+function noteFailure(): void {
+  failCount += 1
+  failures += 1
+  // Следующее сравнение в `consider` не должно решить, что всё уже отправлено.
+  lastTrackId = undefined
+  lastPlaying = undefined
+  lastStart = 0
+  if (failures < FAILURES_BEFORE_RECONNECT) return
+  failures = 0
+  connected = false
+  scheduleReconnect()
 }

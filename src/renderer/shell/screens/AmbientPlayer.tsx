@@ -9,6 +9,9 @@ import { useSmoothPosition } from '../../shared/useSmoothPosition'
 import {
   Close,
   Heart,
+  Maximize,
+  Minimize,
+  TrayDown,
   HeartOff,
   Next,
   Pause,
@@ -26,6 +29,7 @@ import { SeekBar } from '../components/SeekBar'
 import { VolumeButton } from '../components/VolumeButton'
 import { PlayerExtras } from '../components/PlayerExtras'
 import { LikeBurst } from '../components/LikeBurst'
+import { useIdle } from '../useIdle'
 
 interface Props {
   state: PlayerState
@@ -49,6 +53,9 @@ interface Props {
  * Управление собрано в одну стеклянную плиту внизу — её видно всегда, потому
  * что прятать транспорт в плеере значит заставлять человека его искать.
  */
+/** Сколько покоя считать «на экран не смотрят». */
+const IDLE_MS = 3000
+
 export function AmbientPlayer({
   state,
   closing,
@@ -61,9 +68,16 @@ export function AmbientPlayer({
   const [burst, setBurst] = useState(0)
   const position = useSmoothPosition(state)
   const track = currentTrack(state)
+  /*
+   * Верхняя строка уходит в покое: этот вид — про слова песни во весь экран, и
+   * служебная полоса над ними нужна ровно тогда, когда за ней потянулись.
+   * Нижняя плита остаётся всегда — прятать транспорт значит заставлять его
+   * искать. При выключенном движении не прячется ничего.
+   */
+  const hidden = useIdle(IDLE_MS, settings.motion !== 'off')
 
   return (
-    <div className={`ambient on-media ${closing ? 'is-closing' : ''}`}>
+    <div className={`ambient on-media ${closing ? 'is-closing' : ''} ${hidden ? 'ambient--bare' : ''}`}>
       {/* Две «лавовые» сферы из цветов обложки: фон живёт, но ни на что не
           претендует — там нет ни текста, ни границ. */}
       {track?.coverUrl && (
@@ -74,8 +88,10 @@ export function AmbientPlayer({
       )}
       <div className="ambient__veil" />
 
-      <header className="ambient__top">
-        <button className="iconbtn nodrag" title="Свернуть (Esc)" onClick={onClose}>
+      {/* Полоса скрыта, но не снята: она остаётся под курсором, и кнопки
+          возвращаются от того же движения, которым к ним тянутся. */}
+      <header className="ambient__top" aria-hidden={hidden}>
+        <button className="iconbtn nodrag" title="Свернуть плеер (Esc)" onClick={onClose}>
           <Close />
         </button>
         <div className="ambient__kicker">
@@ -83,6 +99,26 @@ export function AmbientPlayer({
           {track && <ServiceBadge service={track.service} />}
         </div>
         <span className="ambient__spacer" />
+        {/* Тот же набор, что и у обычного полноэкранного: этот вид занимает
+            окно целиком, и без них свернуть или закрыть его нечем. */}
+        <div className="wincontrols nodrag">
+          <button title="Свернуть окно" onClick={() => window.shell.minimize()}>
+            <Minimize />
+          </button>
+          <button title="Развернуть на весь экран" onClick={() => window.shell.maximizeToggle()}>
+            <Maximize />
+          </button>
+          <button title="Свернуть в трей" onClick={() => window.shell.hideToTray()}>
+            <TrayDown />
+          </button>
+          <button
+            className="wincontrols__close"
+            title="Закрыть в трей"
+            onClick={() => window.shell.hideToTray()}
+          >
+            <Close />
+          </button>
+        </div>
       </header>
 
       <div className="ambient__stage">

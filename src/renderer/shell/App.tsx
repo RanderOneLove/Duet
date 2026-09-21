@@ -25,6 +25,7 @@ import { LibraryScreen } from './screens/LibraryScreen'
 import { PlaylistScreen } from './screens/PlaylistScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
 import { DownloadsScreen } from './screens/DownloadsScreen'
+import { JamScreen } from './screens/JamScreen'
 import { useAsync } from './useLibrary'
 import type { ServiceFilter } from './useServiceFilter'
 import { useUpdate } from './useUpdate'
@@ -230,8 +231,16 @@ export function App(): JSX.Element {
       search.reload()
       playlistTracks.reload()
       home.reload()
+      /*
+       * «Моя коллекция» тоже слушает: без этого она держала самый первый ответ
+       * до конца сеанса. Виднее всего это стало на обложках, которые
+       * дочитываются в фоне, — Главная их показывала, коллекция нет, — но
+       * касалось и всего прочего: созданный плейлист и переименованный
+       * появлялись там только после перезапуска.
+       */
+      playlists.reload()
     })
-  }, [liked.reload, search.reload, playlistTracks.reload, home.reload])
+  }, [liked.reload, search.reload, playlistTracks.reload, home.reload, playlists.reload])
 
   const connect = useCallback(async (id: ServiceId) => {
     const next = await window.shell.connect(id)
@@ -276,8 +285,18 @@ export function App(): JSX.Element {
         return
       }
       setRoute(next)
+      /*
+       * Закрываются все наложенные экраны, а не два из четырёх.
+       *
+       * Похожее и страница исполнителя рисуются поверх маршрута и проверяются
+       * раньше него, поэтому, оставшись открытыми, они оставались и на экране:
+       * значок в колонке нажимался, маршрут менялся, а человек продолжал
+       * смотреть на то же самое — колонка выглядела сломанной.
+       */
       setOpenPlaylist(null)
       setOpenAlbum(null)
+      setOpenSimilar(null)
+      setOpenArtist(null)
     },
     [route, openPlaylist, openAlbum, openArtist, openSimilar]
   )
@@ -335,6 +354,25 @@ export function App(): JSX.Element {
   const showConnect = connectedCount === 0 && !skippedConnect
 
   /** Что сейчас на экране — по этому и понятно, что экран сменился. */
+  /*
+   * Когда показывать экран Jam.
+   *
+   * Сессия идёт — очевидно. Но и одного включённого «Слушать вместе» довольно:
+   * это и есть согласие делиться, а без видимого входа сессию не найти — ровно
+   * на это и была жалоба. Пока не включено, значка нет: постоянное место в
+   * колонке под то, чем не пользуются, — плохой обмен.
+   */
+  const jamLive = player.jamOpen || player.following !== null || settings.listenTogether
+
+  /*
+   * Сессия кончилась, пока мы на её экране — уводим на Главную. Иначе человек
+   * остаётся смотреть на страницу того, чего больше нет, и вернуться ему
+   * нечем: пункт в колонке исчезает вместе с сессией.
+   */
+  useEffect(() => {
+    if (!jamLive && route === 'jam') setRoute('home')
+  }, [jamLive, route])
+
   const screenKey = [
     showConnect ? 'connect' : route,
     openSimilar?.id,
@@ -367,6 +405,7 @@ export function App(): JSX.Element {
           onDownload={toggleDownload}
           onDownloadAll={downloadAll}
           onSimilar={showSimilar}
+          saveAs={`Похоже на «${openSimilar.title}»`}
           empty={{
             title: 'Похожего не нашлось',
             hint: `${openSimilar.service === 'vk' ? 'VK' : 'Яндекс'} не знает, на что похож этот трек — так бывает с редкими записями.`
@@ -505,6 +544,8 @@ export function App(): JSX.Element {
             onSimilar={showSimilar}
           />
         )
+      case 'jam':
+        return <JamScreen state={player} settings={settings} onChange={patchSettings} />
       case 'liked':
         return (
           <LikedScreen
@@ -596,7 +637,7 @@ export function App(): JSX.Element {
     <JamGuestContext.Provider value={player.jamGuest}>
     <div className="app">
       <div className="app__body">
-        <Rail route={route} onNavigate={navigate} />
+        <Rail route={route} jam={jamLive} onNavigate={navigate} />
         <main className="app__main">
           <TopBar
             query={query}
@@ -633,6 +674,7 @@ export function App(): JSX.Element {
             settings={settings}
             playlists={playlists.data}
             queueCount={player.queue.length}
+            onOpenJam={jamLive ? () => navigate('jam') : undefined}
             onOpenPlayer={() => setFullPlayer(true)}
           />
         </main>

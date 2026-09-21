@@ -18,6 +18,13 @@ const MAX_PAGES = 60
 const PAGE_CONCURRENCY = 4
 /** How long the cached library stays good before it is walked again. */
 const LIKED_TTL_MS = 5 * 60 * 1000
+/*
+ * Порог для фоновой проверки. Пятиминутный срок жизни — про «показать
+ * посвежее при открытии экрана»; ходить в сеть с той же частотой, пока
+ * человек ничего не просит, незачем.
+ */
+const LIKED_STALE_MS = 45 * 60 * 1000
+
 /** Плейлисты меняются реже треков, поэтому и держатся дольше. */
 const LISTS_TTL_MS = 10 * 60 * 1000
 /**
@@ -92,7 +99,14 @@ export class VkSource implements Source {
     return this.walkLibrary(false)
   }
 
-  /** Обойти библиотеку целиком и запомнить её — в памяти и на диске. */
+  /**
+   * Обойти библиотеку целиком и запомнить её — в памяти и на диске.
+   *
+   * Неудачный обход ничего не заменяет. Прежний список, пусть и постаревший на
+   * несколько минут, ближе к правде, чем половина сегодняшнего: по обрезку
+   * пропадают лайки, пустеют экраны, и всё это переживает перезапуск, потому
+   * что обрезок ещё и лёг бы на диск.
+   */
   private walkLibrary(background: boolean): Promise<Track[]> {
     const known = this.liked?.tracks
     this.likedInFlight = this.pagedAudioGet({ owner_id: this.accountId || '' }, true)
@@ -100,15 +114,48 @@ export class VkSource implements Source {
         this.liked = { at: Date.now(), tracks }
         this.indexLiked(tracks)
         writeList('liked', 'vk', tracks)
+        this.likedBroken = false
         // Фоновый обход никто не ждёт, поэтому об изменениях надо сказать —
         // иначе экран останется с прошлым списком до следующего запуска.
         if (background && listChanged(known, tracks)) notifyLibraryChanged()
         return tracks
       })
+      .catch((error) => {
+        /*
+         * Помечаем, что показанному верить нельзя: следующая проверка обойдёт
+         * заново, не дожидаясь, пока истечёт обычный срок годности.
+         */
+        this.likedBroken = true
+        if (known) return known
+        throw error
+      })
       .finally(() => {
         this.likedInFlight = null
       })
     return this.likedInFlight
+  }
+
+  /** Обход не удался, и показанный список может быть неполным. */
+  private likedBroken = false
+
+  /**
+   * Перечитать фонотеку по требованию: кнопка «обновить» и фоновая проверка.
+   *
+   * Прежний список нарочно остаётся на месте: он — запасной вариант, если
+   * обход снова не удастся (см. `walkLibrary`). Указатель лайков пересобирает
+   * сам обход, когда закончит удачей.
+   */
+  async refreshLibrary(): Promise<Track[]> {
+    this.lists = null
+    // Обход уже идёт — второй той же фонотеке ничего не добавит.
+    if (this.likedInFlight) return this.likedInFlight
+    return this.walkLibrary(true)
+  }
+
+  /** Стоит ли пересобрать список: обход падал или список давно не обновлялся. */
+  likedSuspect(): boolean {
+    if (this.likedBroken) return true
+    return this.liked ? Date.now() - this.liked.at > LIKED_STALE_MS : false
   }
 
   /**
@@ -156,7 +203,7 @@ export class VkSource implements Source {
     liked: boolean,
     method = 'audio.get'
   ): Promise<Track[]> {
-    const first = await this.audioGetPage(base, 0, liked, method)
+    const first = await this.pageWithRetries(base, 0, liked, method)
     const pages = Math.min(Math.ceil(first.total / PAGE_SIZE), MAX_PAGES)
     if (pages <= 1) return first.tracks
 
@@ -167,14 +214,36 @@ export class VkSource implements Source {
         const page = next
         next += 1
         if (page >= pages) return
-        rest[page - 1] = (await this.audioGetPage(base, page * PAGE_SIZE, liked, method)).tracks
+        rest[page - 1] = (await this.pageWithRetries(base, page * PAGE_SIZE, liked, method)).tracks
       }
     }
+    // Промах любой страницы валит весь обход: неполная фонотека, выданная за
+    // полную, хуже, чем прежняя — по ней пропадают лайки и пустеют экраны.
     await Promise.all(Array.from({ length: Math.min(PAGE_CONCURRENCY, pages - 1) }, worker))
 
-    return [...first.tracks, ...rest.flat()]
+    const tracks = [...first.tracks, ...rest.flat()]
+    /*
+     * Сверка с тем, сколько сервис обещал. Расхождение бывает и без ошибок —
+     * трек удалили, пока мы шли по страницам, — поэтому допуск, а не строгое
+     * равенство. Но если недостаёт заметной доли, это не жизнь библиотеки, а
+     * потерянные страницы.
+     */
+    const expected = Math.min(first.total, MAX_PAGES * PAGE_SIZE)
+    if (expected > 0 && tracks.length < expected * 0.9) {
+      throw new Error(`VK отдал ${tracks.length} треков из ${expected} — обход неполный`)
+    }
+    return tracks
   }
 
+  /**
+   * Одна страница выдачи.
+   *
+   * Неудачный ответ — это ошибка, а не пустая страница. Раньше здесь стояло
+   * `res.success ? items : []`, и отказ сервиса превращался в ноль треков без
+   * единого признака беды: обход складывал такие страницы как ни в чём не
+   * бывало, обрезок объявлялся фонотекой, по нему перестраивался указатель
+   * лайков — и сердечки у треков VK пропадали до следующего удачного обхода.
+   */
   private async audioGetPage(
     base: Record<string, string>,
     offset: number,
@@ -184,11 +253,39 @@ export class VkSource implements Source {
     if (!this.client) throw new SessionExpiredError('vk')
     const params = new URLSearchParams({ ...base, count: String(PAGE_SIZE), offset: String(offset) })
     const res = (await this.client.request<any>(method as any, params)) as any
-    const items: any[] = res.success ? (res.data?.response?.items ?? []) : []
+    if (!res?.success) {
+      throw new Error(`VK не отдал страницу с ${offset}: ${JSON.stringify(res?.error ?? {}).slice(0, 120)}`)
+    }
+    const items: any[] = res.data?.response?.items ?? []
     return {
       tracks: items.map((item) => this.mapRawAudio(item, liked)),
       total: Number(res.data?.response?.count ?? items.length)
     }
+  }
+
+  /**
+   * Та же страница, но с парой повторов.
+   *
+   * Отказы у VK почти всегда мгновенные и случайные — на второй попытке
+   * страница приходит. Сдаваться на первой значило бы терять фонотеку из-за
+   * секундной заминки сети.
+   */
+  private async pageWithRetries(
+    base: Record<string, string>,
+    offset: number,
+    liked: boolean,
+    method: string
+  ): Promise<{ tracks: Track[]; total: number }> {
+    let last: unknown = null
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await this.audioGetPage(base, offset, liked, method)
+      } catch (error) {
+        last = error
+        await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)))
+      }
+    }
+    throw last instanceof Error ? last : new Error('VK не отдал страницу')
   }
 
   async artistTracks(nativeId: string): Promise<Track[]> {

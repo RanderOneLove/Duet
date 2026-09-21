@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import type { Track } from '@shared/domain'
 import { TrackList } from '../components/TrackList'
 import { useFiltered, type ServiceFilter } from '../useServiceFilter'
-import { Download, Play, Shuffle } from '../../shared/Icons'
+import { Download, Play, Shuffle, Update } from '../../shared/Icons'
 
 interface Props {
   /** Выбор сервиса общий на всё окно и приходит из титульной строки. */
@@ -21,6 +22,18 @@ interface Props {
 /** Wireframe 2b: liked tracks from both services in one list. */
 export function LikedScreen(props: Props): JSX.Element {
   const filteredTracks = useFiltered(props.tracks, props.filter)
+  const [refreshing, setRefreshing] = useState(false)
+
+  /*
+   * Ручное обновление: сервисы иногда отдают список не целиком, и тогда часть
+   * лайков просто не видна. Само оно чинится фоновой проверкой, но ждать её
+   * человеку незачем — здесь то же самое, но сейчас.
+   */
+  const refresh = (): void => {
+    if (refreshing) return
+    setRefreshing(true)
+    void window.shell.refreshLibrary().finally(() => setRefreshing(false))
+  }
 
   const vkCount = props.tracks.filter((t) => t.service === 'vk').length
   const yaCount = props.tracks.length - vkCount
@@ -83,6 +96,15 @@ export function LikedScreen(props: Props): JSX.Element {
               onClick={() => props.onDownloadAll(filteredTracks)}
             >
               <Download size={14} /> Скачать всё
+            </button>
+            <button
+              className="pill pill--outline"
+              title="Перечитать фонотеку обоих сервисов"
+              disabled={refreshing}
+              onClick={refresh}
+            >
+              {refreshing ? <span className="spinner" /> : <Update size={14} />}
+              {refreshing ? 'Обновляем…' : 'Обновить'}
             </button>
           </div>
         </div>

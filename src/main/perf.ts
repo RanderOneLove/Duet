@@ -68,6 +68,13 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'tuning') return runTuningProbe()
   if (PROBE === 'tuner') return runTunerProbe()
   if (PROBE === 'coverhome') return runCoverHomeProbe()
+  if (PROBE === 'minisync') return runMiniSyncProbe()
+  if (PROBE === 'library') return runLibraryProbe()
+  if (PROBE === 'discord') return runDiscordProbe()
+  if (PROBE === 'chrome') return runChromeProbe()
+  if (PROBE === 'covers') return runCoversProbe()
+  if (PROBE === 'saveas') return runSaveAsProbe()
+  if (PROBE === 'head') return runHeadProbe()
   if (PROBE === 'trackwave') return runTrackWaveProbe()
   if (PROBE === 'tint') return runTintProbe()
   if (PROBE === 'motion2') return runMotion2Probe()
@@ -2725,13 +2732,80 @@ async function runJamProbe(): Promise<void> {
     const доДобавления = getPlayer().queue.length
     const кандидат = queue[3]!
     await command({ type: 'jamAdd', tracks: [кандидат] })
-    await wait(4500)
+    await wait(9000)
     report.гостьДобавил = {
       трек: кандидат.title,
       очередьБыла: доДобавления,
       очередьСтала: getPlayer().queue.length,
       сообщение: getPlayer().followError
     }
+
+    /*
+     * Главное, чего не было: участник видит очередь и автора.
+     *
+     * `jamQueue` приходит по тому же потоку, что и «какой трек играет», а
+     * `jamCredits` ведущий заполняет из просьбы. Раз ведущий и гость здесь одно
+     * приложение, видно оба конца сразу.
+     */
+    report.очередьУчастника = {
+      треков: getPlayer().jamQueue.length,
+      первый: getPlayer().jamQueue[0]?.title,
+      авторПервого: getPlayer().jamQueue[0]?.by ?? null,
+      добавленныйВидно: getPlayer().jamQueue.some((item) => item.title === кандидат.title),
+      // Имя, прошедшее весь путь: ведущий → ретранслятор → очередь участника.
+      авторыВОчереди: getPlayer()
+        .jamQueue.map((item) => item.by)
+        .filter(Boolean)
+    }
+    report.авторыУВедущего = getPlayer().jamCredits
+    report.идентификаторыОчереди = getPlayer().jamQueue.map((item) => `${item.id}~${item.by ?? '—'}`)
+    const { publishStats } = await import('./together/host')
+    report.публикация = publishStats()
+
+    /*
+     * Что лежит у ретранслятора в той сессии, куда ведущий пишет сейчас.
+     *
+     * Код на время гостевой части подменён — иначе сработает защита «по своей
+     * же ссылке идти некуда», — и ведущий публикует уже туда. Поэтому смотреть
+     * надо на нынешний код, а не на тот, по которому слушает гость: у гостя
+     * состояние от момента подмены и старее по построению.
+     */
+    report.уРетранслятора = await (async (): Promise<unknown> => {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 4000)
+      try {
+        const code = getSettings().togetherCode
+        const response = await fetch(`${getSettings().relayUrl}/s/${encodeURIComponent(code)}`, {
+          headers: { Accept: 'text/event-stream' },
+          signal: controller.signal
+        })
+        const reader = response.body!.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        for (let i = 0; i < 20; i += 1) {
+          const { value, done } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const line = buffer
+            .split(String.fromCharCode(10))
+            .find((l) => l.startsWith('data:'))
+          if (!line) continue
+          const shared = JSON.parse(line.slice(5).trim()) as {
+            next?: { id: string; by?: string }[]
+          }
+          void reader.cancel()
+          return (shared.next ?? []).map((item) => `${item.id}~${item.by ?? '—'}`)
+        }
+        return 'состояния не пришло'
+      } catch (error) {
+        return `не вышло: ${String(error)}`
+      } finally {
+        clearTimeout(timer)
+      }
+    })()
+    report.идентификаторыУВедущего = getPlayer()
+      .queue.slice(getPlayer().index + 1)
+      .map((track) => track.id)
 
     const доПереключения = getPlayer().queue[getPlayer().index]?.title
     await command({ type: 'next' })
@@ -2768,24 +2842,26 @@ async function runJamProbe(): Promise<void> {
       window.setSize(1280, 820)
       await wait(1200)
       const run = async (code: string): Promise<unknown> => window.webContents.executeJavaScript(code)
-      await run(
-        `(() => { const b = [...document.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Настройки'));
-          if (b) b.click(); return true })()`
+
+      // Дорога на экран сессии — строка состояния в плите, а не настройки.
+      report.дорогаИзПлиты = await run(
+        `(() => { const link = document.querySelector('.dock__follow-link');
+          if (!link || link.disabled) return false; link.click(); return true })()`
       )
       await wait(900)
-      await run(
-        `(() => { const n = [...document.querySelectorAll('.settings__navitem')].find((b) => b.textContent.includes('Воспроизведение'));
-          if (n) n.click(); return true })()`
+      report.экранОткрылся = await run(`document.querySelector('.jam') !== null`)
+      report.наЭкране = await run(
+        `(() => { const rows = [...document.querySelectorAll('.jam__item')];
+          return {
+            роль: document.querySelector('.jam__heroinfo > .muted:last-child')?.textContent ?? null,
+            вОчереди: rows.length,
+            подписи: rows.slice(0, 3).map((r) => r.querySelector('.jam__by')?.textContent ?? null),
+            ссылок: document.querySelectorAll('.jam__link').length
+          }
+        })()`
       )
-      await wait(900)
-      await run(
-        `(() => { const node = document.querySelector('.together'); const box = document.querySelector('.app__content');
-          if (!node || !box) return false;
-          box.scrollTop += node.getBoundingClientRect().top - box.getBoundingClientRect().top - 90; return true })()`
-      )
-      await wait(700)
-      save(j(out, 'jam-card.png'), (await window.webContents.capturePage()).toPNG())
-      report.снимок = j(out, 'jam-card.png')
+      save(j(out, 'jam-screen.png'), (await window.webContents.capturePage()).toPNG())
+      report.снимок = j(out, 'jam-screen.png')
     }
 
     report.ok = true
@@ -3995,6 +4071,856 @@ async function runCoverHomeProbe(): Promise<void> {
       })()`
     )
     save(join(out, 'cover-home.png'), (await window.webContents.capturePage()).toPNG())
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Плита показывает то же, что играет, и сердечко в ней загорается сразу.
+ *
+ * Очередь нарочно заводится не с первого трека: обе ошибки прятались именно
+ * в этом — плита рисовала `queue[0]`, и пока играл первый трек, разницы было
+ * не видно.
+ */
+async function runMiniSyncProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'minisync' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    setSettings({ miniVariant: 'card', theme: 'dark' })
+
+    const queue = (await likedTracks()).filter((t) => t.available).slice(0, 6)
+    if (queue.length < 4) throw new Error('мало доступных треков')
+    // Играет третий: первый трек очереди — заведомо другой.
+    void command({ type: 'playQueue', tracks: queue, startIndex: 2 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    await wait(1500)
+
+    const mini = createMiniPlayer()
+    showMiniPlayer()
+    await wait(2500)
+
+    const вПлите = async (): Promise<Record<string, unknown>> =>
+      (await mini.webContents.executeJavaScript(
+        `(() => {
+          const title = document.querySelector('.mini__title, .minicard__title, [class*="title"]')
+          const heart = document.querySelector('[title*="избранн"], [class*="like"]')
+          return {
+            трек: title ? title.textContent.trim() : 'не нашёл подписи',
+            сердечкоГорит: heart ? heart.className.includes('--on') || heart.getAttribute('aria-pressed') === 'true' : null,
+            классСердечка: heart ? heart.className : 'нет'
+          }
+        })()`
+      )) as Record<string, unknown>
+
+    const играет = () => getPlayer().queue[getPlayer().index]
+    report.первыйВОчереди = queue[0]?.title
+    report.играет = играет()?.title
+    const показ = await вПлите()
+    report.показываетПлита = показ.трек
+    report.тотЖеТрек = показ.трек === играет()?.title
+
+    // ---- сердечко ----
+    const былоЛайкнуто = играет()?.liked
+    report.былоЛайкнуто = былоЛайкнуто
+    // Снимаем и возвращаем, чтобы в обоих случаях увидеть переход.
+    void command({ type: 'toggleLike' })
+    await wait(2500)
+    const после = await вПлите()
+    report.послеПереключения = {
+      вДвижке: играет()?.liked,
+      вПлите: после.сердечкоГорит,
+      совпало: играет()?.liked === после.сердечкоГорит,
+      трекНеМенялся: после.трек === играет()?.title
+    }
+
+    // Возвращаем как было — чужую фонотеку замер портить не должен.
+    if (играет()?.liked !== былоЛайкнуто) {
+      void command({ type: 'toggleLike' })
+      await wait(2000)
+    }
+    report.вернулиКакБыло = играет()?.liked === былоЛайкнуто
+
+    save(join(out, 'minisync.png'), (await mini.webContents.capturePage()).toPNG())
+    hideMiniPlayer()
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Неполный список — самая тихая из поломок: экран выглядит обычно, просто
+ * лайков в нём меньше, чем есть. Проба нарочно ломает вторую страницу VK и
+ * смотрит, что из этого выйдет.
+ */
+async function runLibraryProbe(): Promise<void> {
+  const { statSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const { VkSource } = await import('./sources/vk/source')
+  const { refreshLibrary } = await import('./sources/registry')
+  const report: Record<string, unknown> = { probe: 'library' }
+
+  const файлКэша = join(app.getPath('userData'), 'liked-vk.json')
+  const метка = (): number => {
+    try {
+      return statSync(файлКэша).mtimeMs
+    } catch {
+      return 0
+    }
+  }
+  const прототип = VkSource.prototype as unknown as Record<string, unknown>
+  const целое = прототип['audioGetPage']
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const счёт = async (): Promise<number> =>
+      (await likedTracks()).filter((t) => t.service === 'vk').length
+
+    const было = await счёт()
+    const меткаДо = метка()
+    report.былоТреков = было
+    if (было < 300) {
+      throw new Error(`в фонотеке VK всего ${было} треков — мало для обхода по 200 на страницу`)
+    }
+
+    // ---- ломаем вторую страницу ----
+    прототип['audioGetPage'] = async function (
+      this: unknown,
+      base: Record<string, string>,
+      offset: number,
+      liked: boolean,
+      method?: string
+    ): Promise<unknown> {
+      if (offset > 0) throw new Error('проба: страница нарочно не отдалась')
+      return (целое as (...a: unknown[]) => Promise<unknown>).call(this, base, offset, liked, method)
+    }
+
+    await refreshLibrary(true)
+    await wait(1500)
+    const послеСбоя = await счёт()
+    report.послеСбоя = {
+      треков: послеСбоя,
+      списокУцелел: послеСбоя === было,
+      кэшНеПерезаписан: метка() === меткаДо
+    }
+
+    // ---- чиним и обновляем ----
+    прототип['audioGetPage'] = целое
+    await refreshLibrary(true)
+    await wait(1500)
+    const послеПочинки = await счёт()
+    report.послеПочинки = {
+      треков: послеПочинки,
+      вернулось: послеПочинки === было,
+      кэшЗаписан: метка() > меткаДо
+    }
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    прототип['audioGetPage'] = целое
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Статус Discord: что уходит в него и переживает ли связь отказ.
+ *
+ * Проба перехватывает SET_ACTIVITY у самого клиента — так видно настоящую
+ * нагрузку, а не то, что мы собирались отправить, — и умеет отвечать на неё
+ * отказом, чтобы проверить главное: отказ не должен считаться обрывом.
+ */
+async function runDiscordProbe(): Promise<void> {
+  const DiscordRPC = (await import('discord-rpc')).default
+  const report: Record<string, unknown> = { probe: 'discord' }
+
+  const прототип = DiscordRPC.Client.prototype as unknown as Record<string, unknown>
+  const целое = прототип['request'] as (...a: unknown[]) => Promise<unknown>
+  let последняя: Record<string, unknown> | null = null
+  let отказов = 0
+
+  прототип['request'] = async function (
+    this: unknown,
+    name: string,
+    args: unknown
+  ): Promise<unknown> {
+    if (name === 'SET_ACTIVITY') {
+      последняя = (args as { activity?: Record<string, unknown> })?.activity ?? null
+      if (отказов > 0) {
+        отказов -= 1
+        throw new Error('проба: Discord нарочно отказал')
+      }
+    }
+    return целое.call(this, name, args)
+  }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    setSettings({ discordPresence: true })
+    const связь = await waitFor(() => discordStats().connected, 25_000).then(
+      () => true,
+      () => false
+    )
+    report.связьЕсть = связь
+    if (!связь) throw new Error('Discord не отвечает — запустите его и повторите')
+
+    const треки = (await likedTracks()).filter((t) => t.available).slice(0, 4)
+    if (треки.length < 3) throw new Error('мало доступных треков')
+
+    // ---- обычный трек ----
+    void command({ type: 'playQueue', tracks: треки, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    await wait(6000)
+    report.обычный = {
+      details: последняя?.['details'],
+      state: последняя?.['state'],
+      связь: discordStats().connected
+    }
+
+    // ---- трек без исполнителя ----
+    const безымянный = { ...треки[1]!, artists: [] }
+    void command({ type: 'playQueue', tracks: [безымянный], startIndex: 0 })
+    await wait(7000)
+    report.безИсполнителя = {
+      state: последняя?.['state'],
+      длинаНеНулевая: String(последняя?.['state'] ?? '').length >= 2,
+      связьУцелела: discordStats().connected
+    }
+
+    // ---- отказ на живой связи ----
+    const доОтказа = discordStats()
+    отказов = 2
+    void command({ type: 'playQueue', tracks: треки, startIndex: 2 })
+    await wait(7000)
+    const послеОтказа = discordStats()
+    report.послеОтказа = {
+      отказовЗасчитано: послеОтказа.failed - доОтказа.failed,
+      связьУцелела: послеОтказа.connected
+    }
+
+    // Следующая смена должна дойти: подпись после неудачи сброшена.
+    void command({ type: 'playQueue', tracks: треки, startIndex: 3 })
+    await wait(7000)
+    report.восстановилось = {
+      показывает: discordStats().showing,
+      этоПоследний: discordStats().showing === треки[3]?.id,
+      связь: discordStats().connected
+    }
+
+    // ---- выключатель ----
+    setSettings({ discordPresence: false })
+    await wait(2000)
+    report.выключено = discordStats().connected === false
+    setSettings({ discordPresence: true })
+    const вернулась = await waitFor(() => discordStats().connected, 20_000).then(
+      () => true,
+      () => false
+    )
+    report.включилиОбратно = вернулась
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    прототип['request'] = целое
+    setSettings({ discordPresence: true })
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Кнопки окна в «Во всё окно» и громкость в плите.
+ *
+ * Обе правки — про то, что видно, поэтому проверяются числами, а не глазами:
+ * прозрачность шапки до и после покоя, наличие кнопок, ширина ползунка при
+ * широком окне и его отсутствие при узком.
+ */
+async function runChromeProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'chrome' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1400, 860)
+    await wait(1200)
+    const run = async (code: string): Promise<unknown> => window.webContents.executeJavaScript(code)
+
+    setSettings({ playerLayout: 'ambient', motion: 'system' })
+    const queue = (await likedTracks()).filter((t) => t.available).slice(0, 3)
+    if (queue.length === 0) throw new Error('нечего играть')
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    await wait(1500)
+
+    // ---- громкость полоской на широком окне ----
+    report.широкоеОкно = await run(
+      `(() => {
+        const box = document.querySelector('.dock__volume')
+        const bar = document.querySelector('.dock__volume .vbar--wide')
+        const btn = [...document.querySelectorAll('.dock__right .togglebtn')]
+          .find((n) => (n.title ?? '').includes('Громкость'))
+        return {
+          полоскаЕсть: bar !== null,
+          ширинаПолоски: bar ? Math.round(bar.getBoundingClientRect().width) : 0,
+          блокЕсть: box !== null,
+          кнопкаГромкости: btn ? btn.title : null
+        }
+      })()`
+    )
+
+    // ---- узкое окно: снова кнопка, и раскрывается наведением ----
+    window.setSize(1000, 820)
+    await wait(900)
+    report.узкоеОкно = await run(
+      `(() => {
+        const bar = document.querySelector('.dock__volume .vbar--wide')
+        const btn = [...document.querySelectorAll('.dock__right button')]
+          .find((n) => (n.title ?? '').startsWith('Громкость'))
+        return { полоскаЕсть: bar !== null, кнопкаЕсть: btn !== null, раскрыта: btn?.getAttribute('aria-expanded') }
+      })()`
+    )
+
+    /*
+     * Наведение разыгрывается настоящими событиями мыши: синтетический
+     * pointerenter доказал бы только то, что обработчик висит, а не то, что
+     * он срабатывает от курсора.
+     */
+    const где = (await run(
+      `(() => {
+        const btn = [...document.querySelectorAll('.dock__right button')]
+          .find((n) => (n.title ?? '').startsWith('Громкость'))
+        if (!btn) return null
+        const box = btn.getBoundingClientRect()
+        return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+      })()`
+    )) as { x: number; y: number } | null
+    if (где) {
+      window.webContents.sendInputEvent({ type: 'mouseMove', x: где.x, y: где.y })
+      await wait(700)
+      report.наведение = await run(
+        `(() => {
+          const btn = [...document.querySelectorAll('.dock__right button')]
+            .find((n) => (n.title ?? '').startsWith('Громкость'))
+          return {
+            раскрыласьБезЩелчка: btn?.getAttribute('aria-expanded') === 'true',
+            ползунокВидно: document.querySelector('.pop__panel--vol .vbar') !== null
+          }
+        })()`
+      )
+      // Уводим курсор: панель должна закрыться сама, но не мгновенно.
+      window.webContents.sendInputEvent({ type: 'mouseMove', x: 40, y: 40 })
+      await wait(150)
+      const сразу = await run(
+        `(() => { const b = [...document.querySelectorAll('.dock__right button')]
+          .find((n) => (n.title ?? '').startsWith('Громкость')); return b?.getAttribute('aria-expanded') })()`
+      )
+      await wait(900)
+      const потом = await run(
+        `(() => { const b = [...document.querySelectorAll('.dock__right button')]
+          .find((n) => (n.title ?? '').startsWith('Громкость')); return b?.getAttribute('aria-expanded') })()`
+      )
+      report.уходКурсора = { сразуПослеУхода: сразу, черезСекунду: потом }
+    }
+
+    // ---- плеер «во всё окно»: кнопки окна и покой ----
+    window.setSize(1400, 860)
+    await wait(600)
+    await run(
+      `(() => { const b = document.querySelector('.dock__track'); if (b) b.click(); return true })()`
+    )
+    await wait(1500)
+    report.плеер = await run(
+      `(() => {
+        const top = document.querySelector('.ambient__top')
+        const wc = document.querySelectorAll('.ambient__top .wincontrols button')
+        return {
+          этоВоВсёОкно: document.querySelector('.ambient') !== null,
+          кнопокОкна: wc.length,
+          подписи: [...wc].map((b) => b.title),
+          прозрачностьШапки: top ? getComputedStyle(top).opacity : null
+        }
+      })()`
+    )
+    save(join(out, 'ambient-top.png'), (await window.webContents.capturePage()).toPNG())
+
+    // Покой: мышь не двигается, клавиши не нажимаются.
+    await wait(4200)
+    report.послеПокоя = await run(
+      `(() => {
+        const top = document.querySelector('.ambient__top')
+        const dock = document.querySelector('.ambient__dock')
+        return {
+          прозрачностьШапки: top ? getComputedStyle(top).opacity : null,
+          плитаНаМесте: dock ? getComputedStyle(dock).opacity : null,
+          высотаШапки: top ? Math.round(top.getBoundingClientRect().height) : null
+        }
+      })()`
+    )
+    save(join(out, 'ambient-idle.png'), (await window.webContents.capturePage()).toPNG())
+
+    // Движение мышью — шапка обязана вернуться.
+    window.webContents.sendInputEvent({ type: 'mouseMove', x: 700, y: 400 })
+    window.webContents.sendInputEvent({ type: 'mouseMove', x: 702, y: 402 })
+    await wait(800)
+    report.послеДвижения = await run(
+      `(() => { const top = document.querySelector('.ambient__top');
+        return top ? getComputedStyle(top).opacity : null })()`
+    )
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Обложки плейлистов, которых сервис не дал.
+ *
+ * Проверяется не «появилась картинка», а то, что появилась именно та: обложка
+ * сверяется с первым треком самого плейлиста. Заодно видно цену — сколько
+ * запросов ушло и сколько списков так и остались без обложки.
+ */
+async function runCoversProbe(): Promise<void> {
+  const report: Record<string, unknown> = { probe: 'covers' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const { playlists: listsOf, playlistTracks } = await import('./sources/registry')
+
+    /*
+     * Сперва — глазами окна, и только потом главным процессом.
+     *
+     * Порядок важен: первый же вызов `playlists()` заводит дочитывание, и,
+     * спроси мы главный процесс раньше, экран увидел бы уже готовое. А вся
+     * суть проверки в том, доезжает ли найденное до экрана: в прошлый раз в
+     * главном процессе обложки были, а в «Моей коллекции» — нет.
+     */
+    const window = getMainWindow()
+    if (window) {
+      const { writeFileSync: save, mkdirSync } = await import('node:fs')
+      const { join } = await import('node:path')
+      const out = process.env['DUET_SHOTS'] ?? '.'
+      mkdirSync(out, { recursive: true })
+      window.webContents.setBackgroundThrottling(false)
+      window.showInactive()
+      window.setSize(1400, 900)
+      await wait(1200)
+      const run = async (code: string): Promise<unknown> => window.webContents.executeJavaScript(code)
+      await run(
+        `(() => { const b = [...document.querySelectorAll('.railitem')]
+          .find((n) => (n.title ?? '') === 'Моя коллекция'); if (b) b.click(); return true })()`
+      )
+      await wait(1500)
+      const счётКарточек = `(() => ({
+        карточек: document.querySelectorAll('.card').length,
+        сОбложкой: document.querySelectorAll('img.card__art').length,
+        сЗаглушкой: document.querySelectorAll('.card__art:not(img)').length
+      }))()`
+      report.наЭкранеСразу = await run(счётКарточек)
+      save(join(out, 'covers-before.png'), (await window.webContents.capturePage()).toPNG())
+
+      // Экран не должен требовать перехода туда-сюда: он сам перечитывает.
+      for (let i = 0; i < 16; i += 1) {
+        await wait(1500)
+        const сейчас = (await run(счётКарточек)) as { сЗаглушкой: number }
+        if (сейчас.сЗаглушкой === 0) break
+      }
+      report.наЭкранеПотом = await run(счётКарточек)
+      save(join(out, 'covers-after.png'), (await window.webContents.capturePage()).toPNG())
+
+      /*
+       * Тот же вопрос, но без гадания о времени: меняется ли коллекция, пока
+       * на неё смотрят. Обложки дочитываются один раз за сеанс и к открытию
+       * экрана обычно уже готовы, поэтому проверяется сама подписка — новым
+       * плейлистом, заведённым прямо сейчас. До правки экран держал первый
+       * ответ до конца сеанса и этого бы не заметил.
+       */
+      const { createPlaylist, removePlaylist } = await import('./library/playlists')
+      const было = ((await run(счётКарточек)) as { карточек: number }).карточек
+      const id = await createPlaylist('Проба подписки')
+      await wait(2500)
+      const стало = ((await run(счётКарточек)) as { карточек: number }).карточек
+      await removePlaylist(id)
+      await wait(2500)
+      report.экранСлушает = {
+        было,
+        послеСоздания: стало,
+        появилсяБезПерехода: стало === было + 1,
+        послеУдаления: ((await run(счётКарточек)) as { карточек: number }).карточек
+      }
+    }
+
+    const before = await listsOf()
+    const пустые = before.filter((p) => !p.coverUrl)
+    report.сразу = {
+      всего: before.length,
+      безОбложки: пустые.length,
+      изНихПустых: пустые.filter((p) => p.trackCount === 0).length,
+      названия: пустые.slice(0, 6).map((p) => `${p.title} (${p.trackCount})`)
+    }
+
+    // Дочитывание идёт в фоне: ждём, пока число списков без обложки перестанет
+    // меняться, а не заранее угаданное время.
+    let сейчас = пустые.length
+    for (let i = 0; i < 20; i += 1) {
+      await wait(1500)
+      const снова = (await listsOf()).filter((p) => !p.coverUrl).length
+      if (снова === сейчас && i > 1) break
+      сейчас = снова
+    }
+
+    const after = await listsOf()
+    const появились = after.filter((p) => p.coverUrl && !before.find((b) => b.id === p.id)?.coverUrl)
+    report.послеДочитывания = {
+      безОбложки: after.filter((p) => !p.coverUrl).length,
+      обложекДобавилось: появились.length,
+      названия: появились.slice(0, 6).map((p) => p.title)
+    }
+
+    // Та ли это обложка: сверяем с первым треком, у которого она есть.
+    const проверка: unknown[] = []
+    for (const playlist of появились.slice(0, 4)) {
+      const первый = await playlistTracks(playlist.service, playlist.nativeId)
+      // Второе чтение того же списка: у подборок вроде «For you» состав
+      // меняется от запроса к запросу, и несовпадение тогда — не ошибка.
+      const второй = await playlistTracks(playlist.service, playlist.nativeId)
+      const обложка = (list: { coverUrl: string | null }[]): string | null =>
+        list.find((track) => track.coverUrl)?.coverUrl ?? null
+      проверка.push({
+        плейлист: playlist.title,
+        совпалаСПервымТреком: обложка(первый) === playlist.coverUrl,
+        списокПостоянен: обложка(первый) === обложка(второй),
+        естьСредиТреков: первый.some((track) => track.coverUrl === playlist.coverUrl)
+      })
+    }
+    report.сверка = проверка
+
+    // Второй заход не должен снова ходить в сеть: спрашиваем один раз.
+    const начало = Date.now()
+    await listsOf()
+    report.повторныйЗапросМс = Date.now() - начало
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * «Сохранить как плейлист» на экране похожего.
+ *
+ * Проверяется весь путь нажатия: подборка открывается из строки трека, кнопка
+ * нажимается в самом окне, а результат сверяется не с надписью на ней, а с
+ * тем, что легло в локальные плейлисты — то же число треков и те же
+ * идентификаторы.
+ */
+async function runSaveAsProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'saveas' }
+  let созданный: string | null = null
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const { localPlaylists, localPlaylistTracks } = await import('./library/playlists')
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1400, 900)
+    await wait(1200)
+    const run = async (code: string): Promise<unknown> => window.webContents.executeJavaScript(code)
+
+    // ---- дойти до похожего так, как это делает человек ----
+    await run(
+      `(() => { const b = [...document.querySelectorAll('.railitem')]
+        .find((n) => (n.title ?? '') === 'Вам нравится'); if (b) b.click(); return true })()`
+    )
+    await wait(2000)
+
+    /*
+     * Похожее есть не у каждого трека: у редких записей сервис отвечает
+     * пустотой, и это его право, а не наша поломка. Поэтому проба перебирает
+     * несколько треков подряд, пока не найдёт тот, у которого подборка есть.
+     */
+    let попыток = 0
+    let строк = 0
+    for (; попыток < 5 && строк === 0; попыток += 1) {
+      await run(
+        `(() => { const rows = [...document.querySelectorAll('.trackrow')];
+          const row = rows[${попыток}];
+          if (!row) return false;
+          const b = [...row.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Похожие'));
+          if (!b) return false; b.click(); return true })()`
+      )
+      for (let i = 0; i < 15; i += 1) {
+        await wait(1000)
+        строк = (await run(`document.querySelectorAll('.trackrow').length`)) as number
+        const пусто = (await run(`document.body.textContent.includes('Похожего не нашлось')`)) as boolean
+        if (строк > 0 || пусто) break
+      }
+      if (строк > 0) break
+      // Назад, к списку — пробовать следующий трек.
+      await run(
+        `(() => { const b = [...document.querySelectorAll('.screen__head button')]
+          .find((n) => (n.title ?? '') === 'Назад'); if (b) b.click(); return true })()`
+      )
+      await wait(1500)
+    }
+    report.попытокДоПодборки = попыток + 1
+    report.открылиПохожее = строк > 0
+
+    const наЭкране = (await run(
+      `(() => ({
+        заголовок: document.querySelector('.screen__title')?.textContent ?? null,
+        строк: document.querySelectorAll('.trackrow').length,
+        кнопка: [...document.querySelectorAll('.screen__head button')]
+          .map((b) => b.textContent.trim())
+          .find((t) => t.includes('плейлист')) ?? null
+      }))()`
+    )) as { заголовок: string | null; строк: number; кнопка: string | null }
+    report.наЭкране = наЭкране
+    if (наЭкране.строк === 0) throw new Error('похожее не собралось — нечего сохранять')
+    save(join(out, 'saveas-before.png'), (await window.webContents.capturePage()).toPNG())
+
+    const былоПлейлистов = localPlaylists().length
+
+    // ---- нажать ----
+    const надпись = `(() => { const b = [...document.querySelectorAll('.screen__head button')]
+      .find((n) => n.textContent.includes('Сохран'));
+      return b ? { текст: b.textContent.trim(), выключена: b.disabled } : null })()`
+    report.нажали = await run(
+      `(() => { const b = [...document.querySelectorAll('.screen__head button')]
+        .find((n) => n.textContent.includes('Сохранить как плейлист'));
+        if (!b || b.disabled) return false; b.click(); return true })()`
+    )
+    await wait(2500)
+    report.сразуПослеНажатия = await run(надпись)
+    // Через несколько секунд кнопка не должна «отпуститься» и пустить второй раз.
+    await wait(4500)
+    report.черезПятьСекунд = await run(надпись)
+    save(join(out, 'saveas-after.png'), (await window.webContents.capturePage()).toPNG())
+
+    // ---- сверить с тем, что легло на самом деле ----
+    const стало = localPlaylists()
+    const новый = стало.find((list) => list.title === наЭкране.заголовок)
+    созданный = новый?.nativeId ?? null
+    const треки = новый ? localPlaylistTracks(новый.nativeId) : []
+
+    /*
+     * Сверяем не числа, а сами треки.
+     *
+     * Список виртуализован: в разметке лежат только видимые строки, и считать
+     * их против длины плейлиста бессмысленно — в прошлый раз это дало ложное
+     * «не сходится» на совершенно правильном сохранении. Зато каждая видимая
+     * строка обязана найтись в сохранённом.
+     */
+    const видимые = (await run(
+      `[...document.querySelectorAll('.trackrow__title')].map((n) => n.textContent.trim())`
+    )) as string[]
+    const имена = new Set(треки.map((track) => track.title))
+    report.вКоллекции = {
+      плейлистовБыло: былоПлейлистов,
+      плейлистовСтало: стало.length,
+      имя: новый?.title ?? null,
+      имяКакНаЭкране: новый?.title === наЭкране.заголовок,
+      треков: треки.length,
+      видимыхСтрок: видимые.length,
+      всеВидимыеПопали: видимые.length > 0 && видимые.every((title) => имена.has(title)),
+      обложкаЕсть: Boolean(новый?.coverUrl)
+    }
+
+    // ---- коллекция должна увидеть его, не дожидаясь перехода ----
+    await run(
+      `(() => { const b = [...document.querySelectorAll('.railitem')]
+        .find((n) => (n.title ?? '') === 'Моя коллекция'); if (b) b.click(); return true })()`
+    )
+    await wait(1800)
+    report.виденВКоллекции = await run(
+      `[...document.querySelectorAll('.card')].some((c) => c.textContent.includes('Похоже на'))`
+    )
+
+    // ---- второй раз кнопка не должна дублировать подборку молча ----
+    // Проверяем до ухода с экрана: после него кнопки уже нет.
+    void 0
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    // Чужую коллекцию проба за собой убирает.
+    if (созданный) {
+      const { removePlaylist } = await import('./library/playlists')
+      await removePlaylist(созданный).catch(() => undefined)
+    }
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Ряд действий над списком: подписи не переносятся, а ряд — переносится.
+ *
+ * Меряется на трёх ширинах, потому что сломалось оно именно от ширины: на
+ * широком окне четыре кнопки стояли в строку, а на узком две из них ломали
+ * подпись пополам и становились вдвое выше соседних.
+ */
+async function runHeadProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'head' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1400, 900)
+    await wait(1200)
+    const run = async (code: string): Promise<unknown> => window.webContents.executeJavaScript(code)
+
+    // Экран похожего — тот самый, где кнопок четыре.
+    await run(
+      `(() => { const b = [...document.querySelectorAll('.railitem')]
+        .find((n) => (n.title ?? '') === 'Вам нравится'); if (b) b.click(); return true })()`
+    )
+    await wait(2000)
+    let строк = 0
+    for (let попытка = 0; попытка < 5 && строк === 0; попытка += 1) {
+      await run(
+        `(() => { const rows = [...document.querySelectorAll('.trackrow')];
+          const row = rows[${попытка}];
+          if (!row) return false;
+          const b = [...row.querySelectorAll('button')].find((n) => (n.title ?? '').includes('Похожие'));
+          if (!b) return false; b.click(); return true })()`
+      )
+      for (let i = 0; i < 15; i += 1) {
+        await wait(1000)
+        строк = (await run(`document.querySelectorAll('.trackrow').length`)) as number
+        const пусто = (await run(
+          `document.body.textContent.includes('Похожего не нашлось')`
+        )) as boolean
+        if (строк > 0 || пусто) break
+      }
+      if (строк > 0) break
+      await run(
+        `(() => { const b = [...document.querySelectorAll('.screen__head button')]
+          .find((n) => (n.title ?? '') === 'Назад'); if (b) b.click(); return true })()`
+      )
+      await wait(1500)
+    }
+    report.подборкаЕсть = строк > 0
+
+    const замер = `(() => {
+      const head = document.querySelector('.screen__head')
+      const pills = [...document.querySelectorAll('.screen__actions .pill')]
+      const одна = pills.map((p) => Math.round(p.getBoundingClientRect().height))
+      /*
+       * Перенеслась ли подпись — по самому тексту, а не по кнопке целиком:
+       * внутри неё ещё значок, и рамки его боксов к строкам отношения не
+       * имеют. Прошлый замер считал именно их и стабильно врал «в две строки».
+       */
+      const строки = pills.map((p) => {
+        const text = [...p.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim())
+        if (!text) return 1
+        const range = document.createRange()
+        range.selectNodeContents(text)
+        return range.getClientRects().length
+      })
+      return {
+        высотаШапки: head ? Math.round(head.getBoundingClientRect().height) : null,
+        кнопок: pills.length,
+        высотыКнопок: одна,
+        всеОдинаковой: одна.length > 0 && одна.every((h) => h === одна[0]),
+        самаяВысокая: Math.max(...одна, 0),
+        подписиВДвеСтроки: строки.filter((n) => n > 1).length,
+        /*
+         * Стоят ли кнопки в одну строку. Не по равенству верхних краёв:
+         * кнопки отличаются высотой на пиксель, при выравнивании по центру их
+         * верх расходится на полпикселя, и строгое сравнение объявляло
+         * переносом любой ряд. Перенос — это разница в целую кнопку.
+         */
+        вОднуСтроку:
+          pills.length === 0 ||
+          Math.max(...pills.map((p) => p.getBoundingClientRect().top)) -
+            Math.min(...pills.map((p) => p.getBoundingClientRect().top)) <
+            20,
+        окноНеЕдетВбок: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        /*
+         * Прижат ли ряд к правому краю. Сравнивается правый край самой правой
+         * кнопки с правым краем шапки: при переносе обе строки обязаны
+         * заканчиваться там же, где заканчивается экран.
+         */
+        правыеКрая: (() => {
+          const head = document.querySelector('.screen__head')
+          if (!head || pills.length === 0) return null
+          const край = head.getBoundingClientRect().right
+          const строки = new Map()
+          for (const p of pills) {
+            const box = p.getBoundingClientRect()
+            const ключ = Math.round(box.top / 20)
+            строки.set(ключ, Math.max(строки.get(ключ) ?? 0, box.right))
+          }
+          return [...строки.values()].map((right) => Math.round(край - right))
+        })()
+      }
+    })()`
+
+    for (const ширина of [1600, 1280, 1040, 940]) {
+      window.setSize(ширина, 900)
+      await wait(900)
+      report[`ширина${ширина}`] = await run(замер)
+      save(join(out, `head-${ширина}.png`), (await window.webContents.capturePage()).toPNG())
+    }
+
+    /*
+     * Совсем узко — это не узкое окно, а увеличенный экран.
+     *
+     * Меньше 940 точек окно не делается, и четыре кнопки туда ещё влезают.
+     * Зато при системном масштабе 125–150 % логической ширины остаётся куда
+     * меньше, и ряд ломается именно там. Масштаб страницы — та же ширина в
+     * точках CSS, поэтому им это и проверяется.
+     */
+    window.setSize(1040, 900)
+    for (const масштаб of [1.25, 1.5, 1.75]) {
+      window.webContents.setZoomFactor(масштаб)
+      await wait(900)
+      report[`масштаб${Math.round(масштаб * 100)}`] = await run(замер)
+      save(
+        join(out, `head-zoom${Math.round(масштаб * 100)}.png`),
+        (await window.webContents.capturePage()).toPNG()
+      )
+    }
+    window.webContents.setZoomFactor(1)
 
     report.ok = true
   } catch (error) {

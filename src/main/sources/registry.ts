@@ -12,6 +12,7 @@ import { EMPTY_SEARCH } from '@shared/domain'
 import { SessionExpiredError, type Source, type WaveEvent } from './types'
 import { localPlaylists, localPlaylistTracks } from '../library/playlists'
 import { notifyLibraryChanged } from '../library/changed'
+import { backfillCovers, forgetCovers, withKnownCovers } from '../library/covers'
 import type { JamSeed } from '@shared/jam'
 import type { WaveTuning } from '@shared/wave'
 import { matchKey, pickTwin } from '../library/match'
@@ -97,6 +98,7 @@ export async function connectSource(id: ServiceId): Promise<void> {
 export async function disconnectSource(id: ServiceId): Promise<void> {
   await sources[id].disconnect()
   errors.set(id, null)
+  forgetCovers(id)
   notify()
 }
 
@@ -118,6 +120,22 @@ export async function home(): Promise<HomeSection[]> {
   return sections
 }
 
+/**
+ * Перечитать фонотеку обоих сервисов.
+ *
+ * `force` — это кнопка «обновить»: спрашиваем всех подключённых, не разбирая,
+ * похоже ли что-то на беду. Без него — почасовая проверка: обходятся только
+ * те, чей список падал или постарел, иначе сеть дёргается зря.
+ */
+export async function refreshLibrary(force = false): Promise<void> {
+  const worth = order.filter(
+    (id) => sources[id].isConnected() && (force || sources[id].likedSuspect())
+  )
+  if (worth.length === 0) return
+  await Promise.allSettled(worth.map((id) => sources[id].refreshLibrary()))
+  notifyLibraryChanged()
+}
+
 export async function likedTracks(): Promise<Track[]> {
   const results = await eachConnected((source) => source.likedTracks())
   return interleave(results)
@@ -126,7 +144,15 @@ export async function likedTracks(): Promise<Track[]> {
 export async function playlists(): Promise<Playlist[]> {
   const results = await eachConnected((source) => source.playlists())
   // Ours first: they are the only ones the listener actually assembled.
-  return [...localPlaylists(), ...results.flat()]
+  const all = [...localPlaylists(), ...results.flat()]
+  /*
+   * Плейлист без обложки показывается обложкой первого своего трека — так же,
+   * как это делают локальные списки. Найденное подставляется сразу, а чего ещё
+   * не знаем — дочитывается в фоне: список не должен ждать сети ради картинки.
+   */
+  const shown = withKnownCovers(all)
+  backfillCovers(shown, (playlist) => playlistTracks(playlist.service, playlist.nativeId))
+  return shown
 }
 
 export async function playlistTracks(service: ServiceId | null, nativeId: string): Promise<Track[]> {

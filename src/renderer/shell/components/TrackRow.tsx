@@ -81,14 +81,17 @@ export function TrackRow({
           здесь: музыка одна на всех. */}
       {jamGuest && (
         <button
-          className="trackrow__dl"
-          title="Добавить в общую очередь"
+          className="trackrow__jam"
+          title="Предложить трек в общую очередь — он появится у всех участников"
           onClick={(event) => {
             event.stopPropagation()
             window.shell.command({ type: 'jamAdd', tracks: [track] })
           }}
         >
-          <PlaylistAdd size={14} />
+          <PlaylistAdd size={13} />
+          {/* С подписью, а не одним значком: среди четырёх одинаковых кружков
+              главное действие участника было неотличимо от остальных. */}
+          <span>В очередь</span>
         </button>
       )}
 

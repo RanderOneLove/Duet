@@ -10,6 +10,14 @@ export const IPC = {
   playerCommand: 'player:command',
   /** shell/mini → main: pull the current state on mount. */
   playerGet: 'player:get',
+  /**
+   * mini → main: состояние в том же виде, в каком его шлёт провод плиты.
+   *
+   * Отдельно от `playerGet` нарочно: общий отдаёт очередь целиком и настоящий
+   * номер в ней, а плита живёт с очередью из одного трека и номером ноль.
+   * Смешение этих двух видов и заставляло её показывать не тот трек.
+   */
+  playerGetMini: 'player:getMini',
 
   // ---- audio host (the hidden window that actually plays sound) ----
   /** main → host: load a stream url and start at an offset. */
@@ -52,6 +60,8 @@ export const IPC = {
   /** main → shell: the catalogue changed; re-read the lists. */
   libChanged: 'lib:changed',
   libSetLiked: 'lib:setLiked',
+  /** shell → main: перечитать фонотеку по просьбе человека. */
+  libRefresh: 'lib:refresh',
   /** shell → main: чем можно подкрутить волну и запись выбора. */
   libWaveTuning: 'lib:waveTuning',
   libSetWaveTuning: 'lib:setWaveTuning',

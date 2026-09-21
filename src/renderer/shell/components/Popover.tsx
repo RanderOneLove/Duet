@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+/** Сколько ждать перед раскрытием по наведению и перед закрытием после ухода. */
+const OPEN_MS = 120
+const CLOSE_MS = 300
+
 interface Props {
   /** What sits in the bar; the panel hangs off it. */
   icon: ReactNode
@@ -24,6 +28,15 @@ interface Props {
    * в конец документа, где резать некому, а место она получает по кнопке.
    */
   portal?: boolean
+  /**
+   * Раскрывать по наведению, а не только по щелчку.
+   *
+   * Годится там, где панель — это одна ручка, а не список решений: громкость
+   * хочется поправить движением, не целясь сперва в кнопку. Щелчок продолжает
+   * работать и закрепляет панель — открытую наведением её убирает уход
+   * курсора, закреплённую щелчком — второй щелчок.
+   */
+  hover?: boolean
   children: (close: () => void) => ReactNode
 }
 
@@ -41,9 +54,13 @@ export function Popover({
   align = 'up',
   panelClass,
   portal,
+  hover,
   children
 }: Props): JSX.Element {
   const [open, setOpen] = useState(false)
+  // Закреплённую щелчком панель уход курсора не закрывает.
+  const pinned = useRef(false)
+  const hoverTimer = useRef<number | null>(null)
   const root = useRef<HTMLDivElement>(null)
   const floating = useRef<HTMLDivElement>(null)
   const [spot, setSpot] = useState<{ top: number; left: number } | null>(null)
@@ -55,10 +72,14 @@ export function Popover({
       // Панель в портале лежит вне кнопки, и щелчок по ней иначе считался бы
       // щелчком мимо.
       if (root.current?.contains(target) || floating.current?.contains(target)) return
+      pinned.current = false
       setOpen(false)
     }
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape') {
+        pinned.current = false
+        setOpen(false)
+      }
     }
     // Capture, so a click on a control inside another popover closes this one.
     document.addEventListener('mousedown', onDown, true)
@@ -81,8 +102,39 @@ export function Popover({
     setSpot({ top: Math.round(box.bottom + 8), left: Math.round(box.left) })
   }, [open, portal])
 
+  useEffect(() => {
+    return () => {
+      if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current)
+    }
+  }, [])
+
+  /*
+   * Задержки разные с умыслом. Открытие ждёт недолго, но ждёт: иначе панель
+   * выскакивает от курсора, который просто шёл мимо к соседней кнопке.
+   * Закрытие ждёт дольше — пути от кнопки до ползунка хватает, чтобы курсор на
+   * мгновение оказался между ними, и панель не должна от этого исчезать.
+   */
+  const afterDelay = (ms: number, act: () => void): void => {
+    if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current)
+    hoverTimer.current = window.setTimeout(act, ms)
+  }
+
+  const hoverProps = hover
+    ? {
+        onPointerEnter: (event: { pointerType: string }) => {
+          // Касание — это не наведение: там раскрывать должен только щелчок.
+          if (event.pointerType === 'touch') return
+          afterDelay(OPEN_MS, () => setOpen(true))
+        },
+        onPointerLeave: () => {
+          if (pinned.current) return
+          afterDelay(CLOSE_MS, () => setOpen(false))
+        }
+      }
+    : {}
+
   return (
-    <div className="pop" ref={root}>
+    <div className="pop" ref={root} {...hoverProps}>
       <button
         className={
           label
@@ -91,7 +143,12 @@ export function Popover({
         }
         title={title}
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() =>
+          setOpen((value) => {
+            pinned.current = !value
+            return !value
+          })
+        }
       >
         {icon}
         {label && <span className="truncate pop__label">{label}</span>}

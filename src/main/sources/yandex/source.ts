@@ -11,6 +11,13 @@ import { matchKey } from '../../library/match'
 
 /** How long the cached library stays good before it is read again. */
 const LIKED_TTL_MS = 5 * 60 * 1000
+/*
+ * Порог для фоновой проверки. Пятиминутный срок жизни — про «показать
+ * посвежее при открытии экрана»; ходить в сеть с той же частотой, пока
+ * человек ничего не просит, незачем.
+ */
+const LIKED_STALE_MS = 45 * 60 * 1000
+
 /** Плейлисты меняются реже треков, поэтому и держатся дольше. */
 const LISTS_TTL_MS = 10 * 60 * 1000
 
@@ -119,13 +126,43 @@ export class YandexSource implements Source {
         this.liked = { at: Date.now(), tracks }
         this.indexLiked(tracks)
         writeList('liked', 'yandex', tracks)
+        this.likedBroken = false
         if (background && listChanged(known, tracks)) notifyLibraryChanged()
         return tracks
+      })
+      .catch((error) => {
+        // То же правило, что и у VK: неудачный обход ничего не заменяет.
+        this.likedBroken = true
+        if (known) return known
+        throw error
       })
       .finally(() => {
         this.likedInFlight = null
       })
     return this.likedInFlight
+  }
+
+  /** Обход не удался, и показанный список может быть неполным. */
+  private likedBroken = false
+
+  /**
+   * Перечитать фонотеку по требованию: кнопка «обновить» и фоновая проверка.
+   *
+   * Прежний список нарочно остаётся на месте: он — запасной вариант, если
+   * обход снова не удастся (см. `readLibrary`). Указатель лайков пересобирает
+   * сам обход, когда закончит удачей.
+   */
+  async refreshLibrary(): Promise<Track[]> {
+    this.lists = null
+    // Обход уже идёт — второй той же фонотеке ничего не добавит.
+    if (this.likedInFlight) return this.likedInFlight
+    return this.readLibrary(true)
+  }
+
+  /** Стоит ли пересобрать список: обход падал или список давно не обновлялся. */
+  likedSuspect(): boolean {
+    if (this.likedBroken) return true
+    return this.liked ? Date.now() - this.liked.at > LIKED_STALE_MS : false
   }
 
   /** Как и у VK: сохранённые плейлисты сразу, свежие следом. */

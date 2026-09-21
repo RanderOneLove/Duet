@@ -234,6 +234,22 @@ export interface Settings {
    * be a decision rather than a surprise.
    */
   listenTogether: boolean
+  /**
+   * Показывать в Discord, что играет.
+   *
+   * Включено по умолчанию — ради этого статус и делали, — но выключатель
+   * нужен: наружу уходит название трека, а при включённом «Слушать вместе» ещё
+   * и код приглашения, который видит каждый, кто видит профиль.
+   */
+  discordPresence: boolean
+  /**
+   * Имя, которым подписаны треки, добавленные в общую сессию.
+   *
+   * Пусто — подставляется имя пользователя системы: спрашивать его отдельно
+   * ради одной подписи не стоит, а «участник добавил» в очереди из троих
+   * бесполезно.
+   */
+  jamName: string
   /** The relay that passes «which track and from what second» along. */
   relayUrl: string
   /** The page that turns an invite link into a launch of the app. */
@@ -312,6 +328,8 @@ export const DEFAULT_SETTINGS: Settings = {
   openLyrics: true,
   autoUpdate: true,
   listenTogether: false,
+  discordPresence: true,
+  jamName: '',
   relayUrl: 'https://rander.pro/duet',
   joinPageUrl: 'https://randeronelove.github.io/Duet/',
   togetherCode: '',

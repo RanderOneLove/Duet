@@ -27,6 +27,7 @@ import { Segmented } from './Segmented'
 import { ColorPicker } from './ColorPicker'
 import { HomeBlocks } from './HomeBlocks'
 import { TogetherCard } from './TogetherCard'
+import { useMediaQuery } from '../../shared/useMediaQuery'
 import { DuetMark } from '../../shared/Icons'
 import type { UpdateState } from '@shared/updates'
 import { useUpdate } from '../useUpdate'
@@ -330,6 +331,15 @@ function AccountsPane({
   onDisconnect
 }: Pick<Props, 'connections' | 'onConnect' | 'onDisconnect'>): JSX.Element {
   const [busy, setBusy] = useState<ServiceId | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  /* То же, что кнопка в «Вам нравится»: заставить сервисы отдать списки заново,
+     когда прошлый обход оказался неполным. */
+  const refresh = (): void => {
+    if (refreshing) return
+    setRefreshing(true)
+    void window.shell.refreshLibrary().finally(() => setRefreshing(false))
+  }
 
   const run = async (id: ServiceId, action: (id: ServiceId) => Promise<void>): Promise<void> => {
     setBusy(id)
@@ -382,6 +392,18 @@ function AccountsPane({
           )}
         </div>
       ))}
+      <Group label="ФОНОТЕКА" />
+      <Card>
+        <Row
+          label="Обновить библиотеку"
+          hint="Перечитать «Вам нравится» и плейлисты обоих сервисов заново"
+        >
+          <button className="pill pill--outline pill--sm" disabled={refreshing} onClick={refresh}>
+            {refreshing ? 'Обновляем…' : 'Обновить'}
+          </button>
+        </Row>
+      </Card>
+
       <p className="muted settings__note">
         Вход выполняется в окне самого сервиса — приложение не видит логин и пароль и хранит только
         выданную сервисом сессию.
@@ -442,6 +464,20 @@ function PlaybackPane({
           last
         >
           <Toggle value={settings.preferDownloaded} onChange={(v) => onChange({ preferDownloaded: v })} />
+        </Row>
+      </Card>
+
+      <Group label="DISCORD" />
+      <Card>
+        <Row
+          label="Показывать, что играет"
+          hint="Название трека и исполнитель уходят в ваш профиль Discord. При включённом «Слушать вместе» туда же попадает ссылка-приглашение"
+          last
+        >
+          <Toggle
+            value={settings.discordPresence}
+            onChange={(v) => onChange({ discordPresence: v })}
+          />
         </Row>
       </Card>
 
@@ -858,21 +894,6 @@ function updateHint(update: UpdateState): string {
 }
 
 // ---- small building blocks -------------------------------------------------
-
-/** Следить за системной настройкой, а не спрашивать её один раз при открытии. */
-function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
-
-  useEffect(() => {
-    const media = window.matchMedia(query)
-    const update = (): void => setMatches(media.matches)
-    update()
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
-  }, [query])
-
-  return matches
-}
 
 function Group({ label }: { label: string }): JSX.Element {
   return <div className="settings__group muted">{label}</div>

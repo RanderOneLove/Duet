@@ -11,20 +11,21 @@ import type {
   Track,
   WaveChoice
 } from '@shared/domain'
-import type { PlayerCommand, PlayerState } from '@shared/player'
+import type { PlayerCommand, PlayerState, PlayerUpdate } from '@shared/player'
 import type { DownloadsState } from '@shared/downloads'
 import type { AudioEvent } from '../preload/audio'
 import { getSettings, onSettingsChanged, setSettings } from './state/settings'
 import { getHotkeyStatus, registerHotkeys, unregisterHotkeys } from './hotkeys'
 import {
   command,
+  createPlayerWire,
   getPlayer,
+  getPlayerForMini,
   handleAudioEvent,
   initPlayer,
   onPlayerChanged,
-  restoreSession,
-  createPlayerWire,
   reportListeners,
+  restoreSession,
   saveSessionNow
 } from './player/engine'
 import {
@@ -49,6 +50,8 @@ import {
   wavePreview
 } from './sources/registry'
 import { prefetchWave, setWaveTuning, waveTuning } from './sources/registry'
+import { refreshLibrary } from './sources/registry'
+import { stopWatchingLibrary, watchLibrary } from './library/watch'
 import type { WaveTuning } from '@shared/wave'
 import { createTray, destroyTray, setLiveAccent } from './tray'
 import {
@@ -98,7 +101,7 @@ import {
   showMiniPlayer,
   toggleMiniPlayer
 } from './windows/miniPlayer'
-import { initDiscordRPC } from './discord'
+import { initDiscordRPC, stopDiscordRPC } from './discord'
 import { mark, perfEnabled, runPerf } from './perf'
 
 // A second launch should surface the running app, not start a rival instance
@@ -148,6 +151,7 @@ function start(): void {
   initPlayer(settings.volume, settings.muted)
   initDiscordRPC()
   setupUpdates()
+  watchLibrary(window)
 
   // Hiding to the tray is exactly when the mini player earns its keep.
   const showsWhenAway = (): boolean => getSettings().miniShowWhen !== 'never'
@@ -239,6 +243,7 @@ function start(): void {
 function registerIpc(): void {
   // ---- player ----
   ipcMain.handle(IPC.playerGet, (): PlayerState => getPlayer())
+  ipcMain.handle(IPC.playerGetMini, (): PlayerUpdate => getPlayerForMini())
   ipcMain.on(IPC.playerCommand, (_event, input: PlayerCommand) => void command(input))
   ipcMain.on(IPC.audioEvent, (_event, event: AudioEvent) => handleAudioEvent(event))
 
@@ -292,6 +297,7 @@ function registerIpc(): void {
   ipcMain.handle(IPC.libSetLiked, async (_event, track: Track, liked: boolean) => {
     await setLiked(track, liked)
   })
+  ipcMain.handle(IPC.libRefresh, (): Promise<void> => refreshLibrary(true))
 
   // ---- downloads ----
   ipcMain.handle(IPC.downloadsGet, (): DownloadsState => getDownloads())
@@ -409,6 +415,8 @@ app.on('before-quit', () => {
   saveSessionNow()
   unregisterHotkeys()
   stopUpdates()
+  stopWatchingLibrary()
+  stopDiscordRPC()
   destroyMiniPlayer()
   destroyAudioHost()
   destroyTray()

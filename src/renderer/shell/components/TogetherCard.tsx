@@ -100,7 +100,7 @@ export function TogetherCard({ state, settings, onChange }: Props): JSX.Element 
           <span className="together__jam-title">Общая сессия</span>
           <span className="muted together__jam-hint">
             {state.jamOpen
-              ? 'По ссылке участника можно добавлять треки и переключать'
+              ? 'Очередь, участники и ссылки — на экране Duet Jam в боковой колонке'
               : 'Открыть, чтобы гости могли добавлять треки в очередь'}
           </span>
         </div>

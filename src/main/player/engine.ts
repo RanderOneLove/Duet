@@ -28,6 +28,7 @@ import type { SharedState } from '../together/host'
 import { flushSession, readSession, writeSession } from '../state/session'
 import { addDownloads, downloadedFile } from '../downloads/manager'
 import { mediaUrl } from '../downloads/protocol'
+import { userInfo } from 'node:os'
 import { getSettings, setSettings } from '../state/settings'
 
 /**
@@ -72,14 +73,36 @@ export function createPlayerWire(): (state: PlayerState) => PlayerUpdate {
  * большом проводе, только когда этот трек сменился.
  */
 export function createMiniWire(): (state: PlayerState) => PlayerUpdate {
-  let sentId: string | null = null
+  let sent: string | null = null
   return (state) => {
     const track = state.queue[state.index] ?? null
     const index = track ? 0 : -1
-    if (track?.id === sentId) return { ...state, queue: undefined, index }
-    sentId = track?.id ?? null
+    /*
+     * Сравнивается не номер трека, а его содержимое.
+     *
+     * По одному номеру лайк не доезжал: он меняет признак внутри того же
+     * трека, номер остаётся прежним, и провод считал, что посылать нечего.
+     * Сердечко в плите загоралось только со сменой песни.
+     */
+    const signature = track ? `${track.id}|${track.liked}|${track.available}` : null
+    if (signature === sent) return { ...state, queue: undefined, index }
+    sent = signature
     return { ...state, queue: track ? [track] : [], index }
   }
+}
+
+/**
+ * То же состояние, каким его видит плита, — для её первого запроса.
+ *
+ * Общий `getPlayer` отдавал очередь целиком и настоящий номер в ней, а провод
+ * шлёт очередь из одного трека и номер ноль. Плита складывала одно с другим и
+ * рисовала первый трек очереди вместо играющего — до ближайшей смены песни,
+ * после которой ноль снова становился верным. Поэтому первый запрос идёт через
+ * тот же провод: полной очереди у плиты не бывает никогда.
+ */
+export function getPlayerForMini(): PlayerUpdate {
+  const track = state.queue[state.index] ?? null
+  return { ...state, queue: track ? [track] : [], index: track ? 0 : -1 }
 }
 
 export function getPlayer(): PlayerState {
@@ -512,6 +535,7 @@ export async function command(input: PlayerCommand): Promise<void> {
       for (const track of input.tracks) {
         const ok = await sayToHost(code, followJamPass, {
           type: 'add',
+          from: jamName(),
           track: {
             title: track.title,
             artists: track.artists,
@@ -715,7 +739,7 @@ let applyingFollowed = false
 function leaveFollowing(): void {
   lastShared = null
   followJamPass = null
-  if (state.jamGuest) patch({ jamGuest: false })
+  if (state.jamGuest || state.jamQueue.length > 0) patch({ jamGuest: false, jamQueue: [] })
   stopFollowing()
   if (state.following || state.followError) patch({ following: null, followError: null })
 }
@@ -747,6 +771,23 @@ let followJamPass: string | null = null
  */
 let applyingJam = false
 
+/**
+ * Под каким именем участник подписывает добавленное.
+ *
+ * Имя пользователя системы — разумная замена: оно уже есть, его не надо
+ * спрашивать, и в очереди из нескольких человек оно различает их лучше, чем
+ * одинаковое «участник». Настройка его перекрывает.
+ */
+function jamName(): string {
+  const chosen = getSettings().jamName.trim()
+  if (chosen) return chosen.slice(0, 24)
+  try {
+    return (userInfo().username || 'участник').slice(0, 24)
+  } catch {
+    return 'участник'
+  }
+}
+
 function handleJamMessage(message: JamMessage): void {
   void (async () => {
     /*
@@ -769,7 +810,13 @@ function handleJamMessage(message: JamMessage): void {
         return
       }
       await command({ type: 'enqueueNext', tracks: [track] })
-      patch({ followError: `В очередь добавлено: «${track.title}»` })
+      // Имя предложившего — то, ради чего очередь вообще показывают: иначе
+      // общая сессия выглядит как очередь ведущего, в которую что-то падает.
+      const by = (message.from ?? '').trim() || 'участник'
+      patch({
+        jamCredits: { ...state.jamCredits, [track.id]: by },
+        followError: `${by} добавил: «${track.title}»`
+      })
     } finally {
       applyingJam = false
     }
@@ -795,6 +842,12 @@ let draining = false
 function applyFollowed(shared: SharedState): void {
   lastShared = shared
   pendingShared = shared
+  /*
+   * Очередь и число слушающих применяются сразу, не дожидаясь очереди на
+   * загрузку трека: это не воспроизведение, а то, что видно на экране, и
+   * добавленный кем-то трек должен появиться в списке тут же.
+   */
+  patch({ jamQueue: shared.next ?? [], listeners: shared.listeners ?? 0 })
   if (state.followError === RECONNECTING) patch({ followError: null })
   if (!draining) void drainFollowed()
 }
@@ -1240,6 +1293,19 @@ function patch(changes: Partial<PlayerState>): void {
     state.positionMs = 0
   }
   state.canDislike = current ? canDislike(current.service) : false
+
+  /*
+   * Имена предложивших живут ровно столько, сколько их треки в очереди.
+   * Иначе список рос бы весь сеанс и уезжал на диск вместе с сессией.
+   */
+  if (changes.queue && Object.keys(state.jamCredits).length > 0) {
+    const inQueue = new Set(state.queue.map((track) => track.id))
+    const kept = Object.entries(state.jamCredits).filter(([id]) => inQueue.has(id))
+    if (kept.length !== Object.keys(state.jamCredits).length) {
+      state.jamCredits = Object.fromEntries(kept)
+    }
+  }
+
   scheduleSave()
   for (const listener of listeners) listener(state)
 }

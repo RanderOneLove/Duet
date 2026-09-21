@@ -17,6 +17,8 @@ interface Props {
   settings: Settings
   playlists: Playlist[]
   queueCount: number
+  /** Есть, только пока идёт общая сессия: тогда строка состояния ведёт на её экран. */
+  onOpenJam?: () => void
   onOpenPlayer: () => void
 }
 
@@ -32,7 +34,14 @@ interface Props {
  * и сколько осталось до тишины. Полоса перемотки ушла под транспорт, а не
  * тянется через всю панель, — так её видно целиком вместе со временем.
  */
-export function Dock({ state, settings, playlists, queueCount, onOpenPlayer }: Props): JSX.Element {
+export function Dock({
+  state,
+  settings,
+  playlists,
+  queueCount,
+  onOpenJam,
+  onOpenPlayer
+}: Props): JSX.Element {
   const [burst, setBurst] = useState(0)
   const position = useSmoothPosition(state)
   const track = currentTrack(state)
@@ -86,22 +95,36 @@ export function Dock({ state, settings, playlists, queueCount, onOpenPlayer }: P
       <div className="dock__center">
         {/* Пока идём следом, об этом надо сказать прямо: иначе неработающая
             кнопка «дальше» выглядит поломкой, а не чужой очередью. */}
-        {state.following && (
+        {(state.following || state.jamOpen) && (
           <div className="dock__follow">
             <span className="dock__follow-dot" />
-            <span className="truncate">
+            {/* Строка ведёт на экран сессии: всё остальное про Jam — очередь,
+                ссылки, участники — живёт там, и дорога туда должна быть одна
+                и очевидная. */}
+            <button
+              className="dock__follow-link truncate"
+              disabled={!onOpenJam}
+              title="Открыть Duet Jam"
+              onClick={onOpenJam}
+            >
               {state.followError ??
                 (state.jamGuest
-                  ? 'Общая сессия — можно добавлять треки и переключать'
-                  : 'Слушаете вместе — переключает ведущий')}
-            </span>
-            <button
-              className="gbtn"
-              title="Перестать слушать вместе"
-              onClick={() => window.shell.command({ type: 'stopFollowing' })}
-            >
-              Отключиться
+                  ? 'Общая сессия — можно добавлять и переключать'
+                  : state.following
+                    ? 'Слушаете вместе — переключает ведущий'
+                    : state.listeners > 0
+                      ? `Вы ведёте сессию · ${state.listeners}`
+                      : 'Вы ведёте сессию')}
             </button>
+            {state.following && (
+              <button
+                className="gbtn"
+                title="Перестать слушать вместе"
+                onClick={() => window.shell.command({ type: 'stopFollowing' })}
+              >
+                Отключиться
+              </button>
+            )}
           </div>
         )}
 
