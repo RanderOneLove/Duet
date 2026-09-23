@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import type { Track } from '@shared/domain'
-import { JAM_QUEUE_LIMIT, type JamQueueItem } from '@shared/jam'
+import { JAM_QUEUE_LIMIT, type JamPerms, type JamQueueItem } from '@shared/jam'
 import type { PlayerState } from '@shared/player'
 import { getSettings, setSettings } from '../state/settings'
 
@@ -28,6 +28,12 @@ export interface SharedState {
   listeners?: number
   /** Открыта ли общая сессия: по ней участник понимает, можно ли добавлять. */
   jam?: boolean
+  /**
+   * Что ведущий разрешил участникам. Едет в каждом состоянии: переключатель
+   * ведущий может тронуть посреди сессии, и участник должен увидеть это сразу,
+   * а не нажимать на кнопку, которая перестала работать.
+   */
+  perms?: JamPerms
 }
 
 /**
@@ -79,7 +85,10 @@ export async function publish(state: PlayerState, force = false): Promise<void> 
     at: Date.now(),
     next,
     listeners,
-    jam: state.jamOpen
+    jam: state.jamOpen,
+    // Из настроек, а не из состояния: пока сами идём за кем-то, в состоянии
+    // лежат права того ведущего, а раздавать мы должны свои.
+    perms: { skip: settings.jamGuestsSkip, edit: settings.jamGuestsEdit }
   }
 
   /*
@@ -92,7 +101,8 @@ export async function publish(state: PlayerState, force = false): Promise<void> 
    * повторной: трек у участников появлялся, а «кто добавил» — нет.
    */
   const queueMark = next.map((item) => `${item.id}~${item.by ?? ''}`).join(',')
-  const signature = `${track?.id ?? ''}|${state.playing}|${queueMark}`
+  const permsMark = `${shared.perms?.skip ? 's' : ''}${shared.perms?.edit ? 'e' : ''}`
+  const signature = `${track?.id ?? ''}|${state.playing}|${queueMark}|${permsMark}`
   const stale = Date.now() - lastAt > HEARTBEAT_MS
   if (!force && signature === lastSent && !stale) return
 

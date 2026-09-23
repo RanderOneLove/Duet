@@ -250,6 +250,10 @@ export interface Settings {
    * бесполезно.
    */
   jamName: string
+  /** Участники могут переключать треки — «дальше» и «назад». */
+  jamGuestsSkip: boolean
+  /** Участники могут переставлять и убирать треки общей очереди. */
+  jamGuestsEdit: boolean
   /** The relay that passes «which track and from what second» along. */
   relayUrl: string
   /** The page that turns an invite link into a launch of the app. */
@@ -330,6 +334,8 @@ export const DEFAULT_SETTINGS: Settings = {
   listenTogether: false,
   discordPresence: true,
   jamName: '',
+  jamGuestsSkip: true,
+  jamGuestsEdit: true,
   relayUrl: 'https://rander.pro/duet',
   joinPageUrl: 'https://randeronelove.github.io/Duet/',
   togetherCode: '',

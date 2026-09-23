@@ -1,5 +1,5 @@
 import type { ServiceId, Track, WaveChoice } from './domain'
-import type { JamQueueItem } from './jam'
+import { DEFAULT_JAM_PERMS, type JamPerms, type JamQueueItem } from './jam'
 
 /** How the queue advances when a track ends. */
 export type RepeatMode = 'off' | 'all' | 'one'
@@ -73,6 +73,11 @@ export interface PlayerState {
    * него есть `queue`.
    */
   jamQueue: JamQueueItem[]
+  /**
+   * Что можно участникам. У ведущего — его же настройки, у участника —
+   * присланные ведущим: по ним гаснут кнопки, которые всё равно не сработают.
+   */
+  jamPerms: JamPerms
   /** Set when the current track failed to load, cleared on the next track. */
   error: string | null
   /** Wall clock at which positionMs was sampled, for smooth interpolation. */
@@ -103,6 +108,7 @@ export const EMPTY_PLAYER: PlayerState = {
   listeners: 0,
   jamCredits: {},
   jamQueue: [],
+  jamPerms: DEFAULT_JAM_PERMS,
   error: null,
   sampledAt: 0
 }
@@ -156,6 +162,14 @@ export type PlayerCommand =
   | { type: 'rotateJam' }
   /** Участник просит ведущего поставить трек в общую очередь. */
   | { type: 'jamAdd'; tracks: Track[] }
+  /**
+   * Переставить или убрать трек общей очереди — с экрана Jam.
+   *
+   * Одна команда на обе роли: ведущий выполняет её у себя, участник
+   * пересылает ведущему. Трек — по идентификатору, место — от играющего.
+   */
+  | { type: 'jamMove'; id: string; to: number }
+  | { type: 'jamRemove'; id: string }
   | { type: 'stopFollowing' }
   /** Jump to a position in the existing queue. */
   | { type: 'playIndex'; index: number }

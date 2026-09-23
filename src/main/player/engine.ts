@@ -23,13 +23,13 @@ import { startFollowing, stopFollowing } from '../together/follow'
 import { resetPublishing } from '../together/host'
 import { closeJam, openJam, rotateJam, sayToHost } from '../together/jam'
 import { resolveSeed } from '../sources/registry'
-import type { JamMessage } from '@shared/jam'
+import { DEFAULT_JAM_PERMS, type JamMessage, type JamPerms } from '@shared/jam'
 import type { SharedState } from '../together/host'
 import { flushSession, readSession, writeSession } from '../state/session'
 import { addDownloads, downloadedFile } from '../downloads/manager'
 import { mediaUrl } from '../downloads/protocol'
 import { userInfo } from 'node:os'
-import { getSettings, setSettings } from '../state/settings'
+import { getSettings, onSettingsChanged, setSettings } from '../state/settings'
 
 /**
  * Owns the queue and the transport. The audio host only knows about one url at
@@ -135,7 +135,39 @@ export function onPlayerChanged(listener: Listener): () => void {
 }
 
 export function initPlayer(volume: number, muted: boolean): void {
-  patch({ volume, muted, outputDeviceId: getSettings().outputDeviceId })
+  patch({ volume, muted, outputDeviceId: getSettings().outputDeviceId, jamPerms: ownPerms() })
+  /*
+   * Права участников — настройка ведущего, но публикуются они из состояния:
+   * так переключатель, тронутый посреди сессии, уходит участникам той же
+   * публикацией, что и всё остальное. Пока идём за чужой сессией, в
+   * состоянии лежат права того ведущего, и свои настройки их не перебивают.
+   */
+  onSettingsChanged(() => {
+    if (state.following) return
+    const perms = ownPerms()
+    if (perms.skip !== state.jamPerms.skip || perms.edit !== state.jamPerms.edit) {
+      patch({ jamPerms: perms })
+    }
+  })
+}
+
+function ownPerms(): JamPerms {
+  const settings = getSettings()
+  return { skip: settings.jamGuestsSkip, edit: settings.jamGuestsEdit }
+}
+
+/**
+ * Где в очереди ведущего лежит трек общей очереди — только среди ещё не
+ * сыгранных. Играющий и уже прозвучавшие участнику не принадлежат: убрать
+ * играющий значило бы переключить, а это другое право.
+ */
+function upcomingIndexOf(id: string): number {
+  return state.queue.findIndex((track, index) => index > state.index && track.id === id)
+}
+
+/** Номер места в очереди ведущего по «через сколько треков от играющего». */
+function slotAfterCurrent(to: number): number {
+  return Math.min(state.index + 1 + Math.max(0, to), state.queue.length - 1)
 }
 
 /**
@@ -206,6 +238,10 @@ export async function command(input: PlayerCommand): Promise<void> {
      * прослушивания. Поэтому кнопка не делает, а просит.
      */
     if (state.jamGuest && (input.type === 'next' || input.type === 'prev')) {
+      if (!state.jamPerms.skip) {
+        patch({ followError: 'Переключает ведущий — он оставил это за собой' })
+        return
+      }
       const passed = followJamPass
       const code = state.following
       void (async () => {
@@ -555,6 +591,64 @@ export async function command(input: PlayerCommand): Promise<void> {
       return
     }
 
+    case 'jamMove':
+    case 'jamRemove': {
+      /*
+       * Ведущий правит свою очередь сам. Проверять права ему незачем — это
+       * его музыка, — а вот место ищется так же, как для просьбы участника:
+       * по идентификатору и только среди того, что ещё не играло.
+       */
+      if (!state.following) {
+        const at = upcomingIndexOf(input.id)
+        if (at < 0) return
+        if (input.type === 'jamRemove') {
+          await command({ type: 'removeFromQueue', index: at })
+        } else {
+          await command({ type: 'moveInQueue', from: at, to: slotAfterCurrent(input.to) })
+        }
+        return
+      }
+
+      const code = state.following
+      if (!state.jamGuest || !followJamPass) {
+        patch({ followError: 'Менять очередь можно только по ссылке участника' })
+        return
+      }
+      if (!state.jamPerms.edit) {
+        patch({ followError: 'Очередь меняет ведущий — он оставил это за собой' })
+        return
+      }
+
+      /*
+       * Список у участника меняется сразу, не дожидаясь ответа ведущего.
+       * Иначе перетащенная строка на секунду возвращалась бы на старое
+       * место, пока ведущий не пришлёт новое состояние, — и перетаскивание
+       * выглядело бы так, будто не сработало. Если ведущий не согласится,
+       * следующее его состояние всё равно всё поправит.
+       */
+      const before = state.jamQueue
+      const moved = before.find((item) => item.id === input.id)
+      if (!moved) return
+      const rest = before.filter((item) => item.id !== input.id)
+      if (input.type === 'jamMove') {
+        rest.splice(Math.min(Math.max(0, input.to), rest.length), 0, moved)
+      }
+      patch({ jamQueue: rest })
+
+      const pass = followJamPass
+      const delivered = await sayToHost(
+        code,
+        pass,
+        input.type === 'jamMove'
+          ? { type: 'move', id: input.id, to: input.to, from: jamName() }
+          : { type: 'remove', id: input.id, from: jamName() }
+      )
+      if (!delivered) {
+        patch({ jamQueue: before, followError: 'Ведущий сейчас не на связи — просьба не дошла' })
+      }
+      return
+    }
+
     case 'clearQueue':
       unshuffled = null
       patch({ queue: [], index: -1, shuffle: false })
@@ -739,7 +833,11 @@ let applyingFollowed = false
 function leaveFollowing(): void {
   lastShared = null
   followJamPass = null
-  if (state.jamGuest || state.jamQueue.length > 0) patch({ jamGuest: false, jamQueue: [] })
+  const own = ownPerms()
+  const permsDiffer = own.skip !== state.jamPerms.skip || own.edit !== state.jamPerms.edit
+  if (state.jamGuest || state.jamQueue.length > 0 || permsDiffer) {
+    patch({ jamGuest: false, jamQueue: [], jamPerms: own })
+  }
   stopFollowing()
   if (state.following || state.followError) patch({ following: null, followError: null })
 }
@@ -798,8 +896,31 @@ function handleJamMessage(message: JamMessage): void {
      */
     applyingJam = true
     try {
+      /*
+       * Права проверяются здесь, у ведущего, а не только погашенной кнопкой
+       * у участника. Кнопка — вежливость; решает тот, чья очередь. Участник
+       * со старой версией приложения или с запоздавшим состоянием иначе
+       * переключил бы то, что ему уже запретили.
+       */
+      const perms = ownPerms()
       if (message.type === 'next' || message.type === 'prev') {
+        if (!perms.skip) return
         await command({ type: message.type })
+        return
+      }
+      if (message.type === 'move' || message.type === 'remove') {
+        if (!perms.edit) return
+        const at = upcomingIndexOf(message.id)
+        if (at < 0) return
+        const who = (message.from ?? '').trim() || 'участник'
+        const title = state.queue[at]?.title ?? ''
+        if (message.type === 'remove') {
+          await command({ type: 'removeFromQueue', index: at })
+          patch({ followError: `${who} убрал из очереди: «${title}»` })
+        } else {
+          await command({ type: 'moveInQueue', from: at, to: slotAfterCurrent(message.to) })
+          patch({ followError: `${who} переставил: «${title}»` })
+        }
         return
       }
       if (message.type !== 'add') return
@@ -847,7 +968,11 @@ function applyFollowed(shared: SharedState): void {
    * загрузку трека: это не воспроизведение, а то, что видно на экране, и
    * добавленный кем-то трек должен появиться в списке тут же.
    */
-  patch({ jamQueue: shared.next ?? [], listeners: shared.listeners ?? 0 })
+  patch({
+    jamQueue: shared.next ?? [],
+    listeners: shared.listeners ?? 0,
+    jamPerms: shared.perms ?? DEFAULT_JAM_PERMS
+  })
   if (state.followError === RECONNECTING) patch({ followError: null })
   if (!draining) void drainFollowed()
 }

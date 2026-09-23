@@ -29,6 +29,29 @@ export type JamMessage =
   | { type: 'add'; track: JamSeed; from?: string }
   | { type: 'next'; from?: string }
   | { type: 'prev'; from?: string }
+  /**
+   * Переставить трек в общей очереди.
+   *
+   * Трек называется идентификатором ведущего — участник видит именно его в
+   * присланной очереди, — а место отсчитывается от играющего: `to: 0` значит
+   * «следующим». Не номер в очереди ведущего: пока просьба шла, там могло
+   * что-то сдвинуться, а «через два трека» остаётся верным и тогда.
+   */
+  | { type: 'move'; id: string; to: number; from?: string }
+  | { type: 'remove'; id: string; from?: string }
+
+/**
+ * Что ведущий разрешил участникам. Добавлять можно всегда — ради этого сессию
+ * и открывают; остальное решает ведущий.
+ */
+export interface JamPerms {
+  /** «Дальше» и «назад» из плиты участника. */
+  skip: boolean
+  /** Переставлять и убирать треки общей очереди. */
+  edit: boolean
+}
+
+export const DEFAULT_JAM_PERMS: JamPerms = { skip: true, edit: true }
 
 /** Кто что сделал в общей сессии — короткая лента для окна. */
 export interface JamEvent {

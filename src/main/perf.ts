@@ -75,6 +75,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'covers') return runCoversProbe()
   if (PROBE === 'saveas') return runSaveAsProbe()
   if (PROBE === 'head') return runHeadProbe()
+  if (PROBE === 'jamedit') return runJamEditProbe()
   if (PROBE === 'trackwave') return runTrackWaveProbe()
   if (PROBE === 'tint') return runTintProbe()
   if (PROBE === 'motion2') return runMotion2Probe()
@@ -4925,6 +4926,250 @@ async function runHeadProbe(): Promise<void> {
     report.ok = true
   } catch (error) {
     report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Правка общей очереди и права участников.
+ *
+ * Три слоя, и каждый проверяется отдельно, потому что ломаться они могут
+ * порознь. Окно: перетаскивание и крестик действительно двигают очередь
+ * ведущего. Ведущий: просьбы участника выполняются, пока разрешено, и
+ * отбрасываются, когда нет. Провод: права доезжают до участника, и его
+ * собственная перестановка видна у него сразу, не дожидаясь ответа.
+ */
+async function runJamEditProbe(): Promise<void> {
+  const { spawn } = await import('node:child_process')
+  const { join } = await import('node:path')
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'jamedit' }
+
+  const port = 8802
+  const relay = spawn(process.execPath, [join(app.getAppPath(), 'server/relay.mjs')], {
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: String(port), HOST: '127.0.0.1' },
+    stdio: 'ignore'
+  })
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    await wait(900)
+    const { ensureInvite } = await import('./together/host')
+    const { sayToHost } = await import('./together/jam')
+
+    setSettings({
+      relayUrl: `http://127.0.0.1:${port}`,
+      listenTogether: true,
+      jamGuestsSkip: true,
+      jamGuestsEdit: true
+    })
+    const { code } = ensureInvite()
+
+    const queue = (await likedTracks()).filter((t) => t.available).slice(0, 9)
+    if (queue.length < 8) throw new Error('мало доступных треков')
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    await wait(1200)
+    await command({ type: 'openJam' })
+    await wait(1000)
+    const pass = getSettings().jamPass
+
+    /** Ближайшие треки ведущего — названиями, как их видно на экране. */
+    const впереди = (): string[] =>
+      getPlayer()
+        .queue.slice(getPlayer().index + 1)
+        .map((track) => track.title)
+    const играет = (): string | undefined => getPlayer().queue[getPlayer().index]?.title
+
+    // ---- окно ведущего ----
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1400, 900)
+    await wait(1000)
+    const run = async (js: string): Promise<unknown> => window.webContents.executeJavaScript(js)
+    await run(
+      `(() => { const b = [...document.querySelectorAll('.railitem')]
+        .find((n) => (n.title ?? '').startsWith('Duet Jam')); if (b) b.click(); return true })()`
+    )
+    await wait(1200)
+
+    const строкиНаЭкране = `[...document.querySelectorAll('.jam__item .jam__itemtitle')].map((n) => n.textContent.trim())`
+    report.экран = await run(
+      `(() => ({
+        строк: document.querySelectorAll('.jam__item').length,
+        ручек: document.querySelectorAll('.jam__grip').length,
+        крестиков: document.querySelectorAll('.jam__remove').length,
+        переключателейПрав: document.querySelectorAll('.jam__perm .toggle').length
+      }))()`
+    )
+
+    /*
+     * Перетаскивание настоящими событиями DOM: React слушает именно их, и так
+     * проверяется вся проводка обработчиков, а не только команда движка.
+     * Четвёртую строку бросаем на первую — она должна встать первой.
+     */
+    const доПеретаскивания = впереди()
+    const тащим = доПеретаскивания[3]
+    await run(
+      `(() => {
+        const rows = [...document.querySelectorAll('.jam__item')]
+        const data = new DataTransfer()
+        const fire = (el, type) => el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: data }))
+        fire(rows[3], 'dragstart')
+        fire(rows[0], 'dragenter')
+        fire(rows[0], 'dragover')
+        fire(rows[0], 'drop')
+        fire(rows[3], 'dragend')
+        return true
+      })()`
+    )
+    await wait(1200)
+    report.перетаскивание = {
+      тащили: тащим,
+      первымСтал: впереди()[0],
+      сработало: впереди()[0] === тащим,
+      наЭкранеПервым: ((await run(строкиНаЭкране)) as string[])[0],
+      играетТоЖе: играет() === queue[0]!.title
+    }
+
+    // ---- крестик ----
+    const убираем = впереди()[1]
+    const сколькоБыло = getPlayer().queue.length
+    await run(
+      `(() => { const b = document.querySelectorAll('.jam__remove')[1]; if (!b) return false; b.click(); return true })()`
+    )
+    await wait(1200)
+    report.удаление = {
+      убирали: убираем,
+      сталоКороче: getPlayer().queue.length === сколькоБыло - 1,
+      исчез: !впереди().includes(убираем!),
+      играетТоЖе: играет() === queue[0]!.title
+    }
+    save(join(out, 'jamedit-host.png'), (await window.webContents.capturePage()).toPNG())
+
+    // ---- просьбы участника, пока всё разрешено ----
+    const idОчереди = (n: number): string =>
+      getPlayer().queue[getPlayer().index + 1 + n]!.id
+    const просимПереставить = впереди()[4]
+    await sayToHost(code, pass, { type: 'move', id: idОчереди(4), to: 0, from: 'Проба' })
+    await wait(2500)
+    const просимУбрать = впереди()[2]
+    await sayToHost(code, pass, { type: 'remove', id: idОчереди(2), from: 'Проба' })
+    await wait(2500)
+    report.просьбыРазрешены = {
+      переставилось: впереди()[0] === просимПереставить,
+      убралось: !впереди().includes(просимУбрать!),
+      сообщение: getPlayer().followError
+    }
+
+    // ---- ведущий запретил: те же просьбы отбрасываются ----
+    // Запрет — нажатием переключателя в окне, как это сделает человек.
+    await run(
+      `(() => { const t = [...document.querySelectorAll('.jam__perm')]
+        .find((n) => n.textContent.includes('меняют очередь'))?.querySelector('.toggle');
+        if (!t) return false; t.click(); return true })()`
+    )
+    await run(
+      `(() => { const t = [...document.querySelectorAll('.jam__perm')]
+        .find((n) => n.textContent.includes('переключают'))?.querySelector('.toggle');
+        if (!t) return false; t.click(); return true })()`
+    )
+    await wait(1500)
+    const запрещено = впереди()
+    const игралоДо = играет()
+    await sayToHost(code, pass, { type: 'remove', id: idОчереди(0), from: 'Проба' })
+    await sayToHost(code, pass, { type: 'move', id: idОчереди(3), to: 0, from: 'Проба' })
+    await sayToHost(code, pass, { type: 'next', from: 'Проба' })
+    await wait(3000)
+    report.просьбыЗапрещены = {
+      настройкиПоменялись: !getSettings().jamGuestsEdit && !getSettings().jamGuestsSkip,
+      правоВСостоянии: getPlayer().jamPerms,
+      очередьНеТронута: JSON.stringify(впереди()) === JSON.stringify(запрещено),
+      трекНеПереключён: играет() === игралоДо
+    }
+
+    // Что ушло участникам: права должны лежать у ретранслятора.
+    report.уРетранслятора = await (async (): Promise<unknown> => {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 4000)
+      try {
+        const response = await fetch(`http://127.0.0.1:${port}/s/${encodeURIComponent(code)}`, {
+          headers: { Accept: 'text/event-stream' },
+          signal: controller.signal
+        })
+        const reader = response.body!.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        for (let i = 0; i < 20; i += 1) {
+          const { value, done } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const line = buffer
+            .split(String.fromCharCode(10))
+            .find((l) => l.startsWith('data:'))
+          if (!line) continue
+          void reader.cancel()
+          return (JSON.parse(line.slice(5).trim()) as { perms?: unknown }).perms ?? 'прав нет'
+        }
+        return 'состояния не пришло'
+      } catch (error) {
+        return `не вышло: ${String(error)}`
+      } finally {
+        clearTimeout(timer)
+      }
+    })()
+
+    /*
+     * Участник целиком. Ведущий и участник — одно приложение, поэтому свой код
+     * на время подменяется (иначе «по своей ссылке идти некуда»). Права
+     * выставляются до подключения: пока идём следом, состояние держит права
+     * ведущего, и свои настройки их не перебивают — ровно как и должно быть.
+     */
+    setSettings({ jamGuestsEdit: true, jamGuestsSkip: false })
+    await wait(1500)
+    const свой = getSettings().togetherCode
+    setSettings({ togetherCode: 'ChuzhoyKodDlyaProverki12345678' })
+    await command({ type: 'follow', code: свой, jam: pass })
+    await wait(3000)
+    const участник = getPlayer()
+    report.участник = {
+      следуем: участник.following !== null,
+      праваУчастника: участник.jamGuest,
+      праваОтВедущего: участник.jamPerms,
+      очередьВидна: участник.jamQueue.length
+    }
+
+    // «Дальше» запрещено — должно прийти объяснение, а не тишина.
+    await command({ type: 'next' })
+    await wait(600)
+    report.участникЖмётДальше = getPlayer().followError
+
+    // Перестановка у участника: видна сразу, до ответа ведущего.
+    const списокДо = getPlayer().jamQueue.map((item) => item.title)
+    const последний = getPlayer().jamQueue[getPlayer().jamQueue.length - 1]
+    if (последний) {
+      void command({ type: 'jamMove', id: последний.id, to: 0 })
+      await wait(60)
+      report.участникПереставил = {
+        сразуПервым: getPlayer().jamQueue[0]?.title === последний.title,
+        былоПервым: списокДо[0]
+      }
+    }
+
+    await command({ type: 'stopFollowing' })
+    setSettings({ togetherCode: свой })
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    // Не оставляем пробную настройку в профиле: по умолчанию всё разрешено.
+    setSettings({ jamGuestsSkip: true, jamGuestsEdit: true })
+    relay.kill()
   }
   writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
   app.exit(0)

@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Settings } from '@shared/types'
 import type { JamQueueItem } from '@shared/jam'
 import { currentTrack, type PlayerState } from '@shared/player'
 import { Cover } from '../components/Cover'
 import { StateBlock } from '../components/StateBlock'
-import { Check, PlaylistAdd, Radio } from '../../shared/Icons'
+import { Check, Close, PlaylistAdd, Radio } from '../../shared/Icons'
 
 interface Props {
   state: PlayerState
@@ -35,6 +35,12 @@ export function JamScreen({ state, settings, onChange }: Props): JSX.Element {
       : null
   const jamLink =
     link && settings.jamPass ? `${link}&jam=${encodeURIComponent(settings.jamPass)}` : null
+
+  /*
+   * Ведущий правит свою очередь всегда. Участник — если ведущий разрешил;
+   * слушатель по обычной ссылке не правит никогда: прав у него нет вовсе.
+   */
+  const editable = !away || (guest && state.jamPerms.edit)
 
   // У ведущего очередь своя и полная; участник видит присланный срез.
   const upcoming: JamQueueItem[] = away
@@ -83,19 +89,7 @@ export function JamScreen({ state, settings, onChange }: Props): JSX.Element {
       )}
 
       {upcoming.length > 0 ? (
-        <ol className="jam__queue">
-          {upcoming.map((item, index) => (
-            <li key={`${item.id}-${index}`} className="jam__item">
-              <span className="jam__num muted">{index + 1}</span>
-              <Cover url={item.coverUrl ?? undefined} seed={item.title} className="jam__art" />
-              <div className="jam__meta">
-                <div className="truncate jam__itemtitle">{item.title}</div>
-                <div className="truncate muted">{item.artists.join(', ') || '—'}</div>
-              </div>
-              <span className="jam__by muted">{item.by ? `предложил ${item.by}` : 'от ведущего'}</span>
-            </li>
-          ))}
-        </ol>
+        <JamQueueList items={upcoming} editable={editable} />
       ) : (
         <StateBlock
           kind="empty"
@@ -113,12 +107,20 @@ export function JamScreen({ state, settings, onChange }: Props): JSX.Element {
 
 /** Одна строка о том, кто вы в этой сессии и сколько вас. */
 function roleLine(state: PlayerState): string {
-  if (state.jamGuest) return 'Вы участник: можно добавлять треки и переключать'
+  if (state.jamGuest) return `Вы участник: можно ${guestCan(state).join(', ')}`
   if (state.following) return 'Вы слушаете чужую сессию — добавлять может только участник'
   if (!state.jamOpen) return 'Сессия не открыта'
   return state.listeners > 0
     ? `Вы ведущий · ${state.listeners} ${plural(state.listeners)}`
     : 'Вы ведущий · пока никто не подключился'
+}
+
+/** Что участнику можно — словами, в том порядке, в каком это нужно. */
+function guestCan(state: PlayerState): string[] {
+  const can = ['добавлять треки']
+  if (state.jamPerms.skip) can.push('переключать')
+  if (state.jamPerms.edit) can.push('менять очередь')
+  return can
 }
 
 function следующихНет(state: PlayerState): string {
@@ -166,7 +168,29 @@ function HostPanel({ state, settings, onChange, link, jamLink }: HostProps): JSX
           </p>
           <div className="jam__links">
             <LinkRow label="Послушать" hint="Только слушать, без прав" url={link} />
-            <LinkRow label="Участвовать" hint="Добавлять треки и переключать" url={jamLink} strong />
+            <LinkRow
+              label="Участвовать"
+              hint="Добавлять треки — и то, что вы разрешите ниже"
+              url={jamLink}
+              strong
+            />
+          </div>
+          {/* Добавлять участники могут всегда — ради этого сессию и открывают.
+              Остальное решает ведущий, и менять это можно посреди сессии:
+              участники увидят новое правило со следующим же обновлением. */}
+          <div className="jam__perms">
+            <PermRow
+              label="Участники переключают треки"
+              hint="«Дальше» и «назад» в плите участника"
+              value={settings.jamGuestsSkip}
+              onChange={(value) => onChange({ jamGuestsSkip: value })}
+            />
+            <PermRow
+              label="Участники меняют очередь"
+              hint="Перетаскивать треки и убирать их из очереди"
+              value={settings.jamGuestsEdit}
+              onChange={(value) => onChange({ jamGuestsEdit: value })}
+            />
           </div>
           <div className="jam__actions">
             <button
@@ -215,8 +239,13 @@ function GuestPanel({ state, settings, onChange }: Props): JSX.Element {
     <div className="jam__panel">
       <p className="jam__lead">
         <PlaylistAdd size={14} /> Откройте поиск или свою фонотеку и нажмите на треке «В очередь» —
-        он уйдёт ведущему и появится в списке ниже у всех участников. Кнопки «дальше» и «назад» в
-        плите теперь тоже ваши: они переключают у ведущего.
+        он уйдёт ведущему и появится в списке ниже у всех участников.
+        {state.jamPerms.skip
+          ? ' Кнопки «дальше» и «назад» в плите тоже ваши: они переключают у ведущего.'
+          : ' Переключает ведущий — он оставил это за собой.'}
+        {state.jamPerms.edit
+          ? ' Треки в очереди можно перетаскивать и убирать.'
+          : ' Порядок очереди меняет ведущий.'}
       </p>
       <div className="jam__name">
         <label className="jam__namelabel" htmlFor="jam-name">
@@ -240,6 +269,162 @@ function GuestPanel({ state, settings, onChange }: Props): JSX.Element {
         </button>
       </div>
     </div>
+  )
+}
+
+function PermRow({
+  label,
+  hint,
+  value,
+  onChange
+}: {
+  label: string
+  hint: string
+  value: boolean
+  onChange: (value: boolean) => void
+}): JSX.Element {
+  return (
+    <div className="jam__perm">
+      <div className="jam__perminfo">
+        <div className="jam__permlabel">{label}</div>
+        <div className="muted jam__permhint">{hint}</div>
+      </div>
+      <button
+        className="toggle"
+        aria-pressed={value}
+        aria-label={label}
+        onClick={() => onChange(!value)}
+      >
+        <i />
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Общая очередь, которую можно править руками.
+ *
+ * Перетаскивание — тот же приём, что в очереди полноэкранного плеера: брошенный
+ * трек встаёт на место того, на который его бросили. Черта показывает, куда
+ * именно: при перетаскивании вниз трек встанет после строки, вверх — перед
+ * ней, и без черты это приходилось угадывать.
+ *
+ * Для клавиатуры — Alt со стрелками и Delete: перетаскивание мышью не
+ * единственный способ, которым пользуются списками.
+ */
+function JamQueueList({
+  items,
+  editable
+}: {
+  items: JamQueueItem[]
+  editable: boolean
+}): JSX.Element {
+  const [dragging, setDragging] = useState<number | null>(null)
+  const [over, setOver] = useState<number | null>(null)
+  /*
+   * Что тащим — ещё и здесь, а не только в состоянии. Состояние React
+   * обновляется после перерисовки, а события перетаскивания ждать её не
+   * обязаны: `dragover` и `drop`, пришедшие раньше, видели бы «ничего не
+   * тащим» и отказывались принимать трек. Ссылка меняется сразу.
+   */
+  const held = useRef<number | null>(null)
+
+  const move = (id: string, to: number): void => {
+    window.shell.command({ type: 'jamMove', id, to })
+  }
+  const remove = (id: string): void => {
+    window.shell.command({ type: 'jamRemove', id })
+  }
+  const reset = (): void => {
+    held.current = null
+    setDragging(null)
+    setOver(null)
+  }
+
+  return (
+    <ol className={`jam__queue ${editable ? 'jam__queue--editable' : ''}`}>
+      {items.map((item, index) => {
+        const target = over === index && dragging !== null && dragging !== index
+        const direction = dragging !== null && dragging < index ? 'below' : 'above'
+        const classes = [
+          'jam__item',
+          dragging === index ? 'jam__item--dragging' : '',
+          target ? `jam__item--${direction}` : ''
+        ]
+          .filter(Boolean)
+          .join(' ')
+
+        return (
+          <li
+            key={`${item.id}-${index}`}
+            className={classes}
+            draggable={editable}
+            tabIndex={editable ? 0 : undefined}
+            onDragStart={(event) => {
+              held.current = index
+              setDragging(index)
+              event.dataTransfer.effectAllowed = 'move'
+              // Без полезной нагрузки перетаскивание иногда не начинается вовсе.
+              event.dataTransfer.setData('text/plain', item.id)
+            }}
+            onDragOver={(event) => {
+              // Чужое перетаскивание — файл с рабочего стола, текст — не наше.
+              if (held.current === null) return
+              event.preventDefault()
+              event.dataTransfer.dropEffect = 'move'
+              setOver(index)
+            }}
+            onDragLeave={() => setOver((current) => (current === index ? null : current))}
+            onDrop={(event) => {
+              event.preventDefault()
+              const start = held.current
+              const from = start === null ? undefined : items[start]
+              if (from && start !== index) move(from.id, index)
+              reset()
+            }}
+            onDragEnd={reset}
+            onKeyDown={(event) => {
+              if (!editable) return
+              if (event.altKey && event.key === 'ArrowUp' && index > 0) {
+                event.preventDefault()
+                move(item.id, index - 1)
+              } else if (event.altKey && event.key === 'ArrowDown' && index < items.length - 1) {
+                event.preventDefault()
+                move(item.id, index + 1)
+              } else if (event.key === 'Delete') {
+                event.preventDefault()
+                remove(item.id)
+              }
+            }}
+          >
+            {editable && (
+              <span className="jam__grip muted" aria-hidden={true}>
+                ⋮⋮
+              </span>
+            )}
+            <span className="jam__num muted">{index + 1}</span>
+            <Cover url={item.coverUrl ?? undefined} seed={item.title} className="jam__art" />
+            <div className="jam__meta">
+              <div className="truncate jam__itemtitle">{item.title}</div>
+              <div className="truncate muted">{item.artists.join(', ') || '—'}</div>
+            </div>
+            <span className="jam__by muted">
+              {item.by ? `предложил ${item.by}` : 'от ведущего'}
+            </span>
+            {editable && (
+              <button
+                className="jam__remove"
+                title="Убрать из общей очереди (Delete)"
+                aria-label={`Убрать «${item.title}» из очереди`}
+                onClick={() => remove(item.id)}
+              >
+                <Close size={12} />
+              </button>
+            )}
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 

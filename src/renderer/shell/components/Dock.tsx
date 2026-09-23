@@ -45,6 +45,12 @@ export function Dock({
   const [burst, setBurst] = useState(0)
   const position = useSmoothPosition(state)
   const track = currentTrack(state)
+  /*
+   * Участник переключает, только если ведущий это разрешил. Иначе кнопка
+   * гаснет: нажатие всё равно ничего бы не сделало, а горящая кнопка, которая
+   * не работает, выглядит поломкой.
+   */
+  const guestSkips = state.jamGuest && state.jamPerms.skip
 
   return (
     <footer className="dock glass">
@@ -109,7 +115,9 @@ export function Dock({
             >
               {state.followError ??
                 (state.jamGuest
-                  ? 'Общая сессия — можно добавлять и переключать'
+                  ? state.jamPerms.skip
+                    ? 'Общая сессия — можно добавлять и переключать'
+                    : 'Общая сессия — можно добавлять, переключает ведущий'
                   : state.following
                     ? 'Слушаете вместе — переключает ведущий'
                     : state.listeners > 0
@@ -138,9 +146,9 @@ export function Dock({
           </button>
           <button
             className="transport"
-            disabled={!track || (state.following !== null && !state.jamGuest)}
+            disabled={!track || (state.following !== null && !guestSkips)}
             title={
-              state.jamGuest
+              guestSkips
                 ? 'Предыдущий — просьба уйдёт ведущему'
                 : state.following
                   ? 'Пока слушаете вместе, переключает ведущий'
@@ -172,9 +180,9 @@ export function Dock({
           </button>
           <button
             className="transport"
-            disabled={!track || (state.following !== null && !state.jamGuest)}
+            disabled={!track || (state.following !== null && !guestSkips)}
             title={
-              state.jamGuest
+              guestSkips
                 ? 'Следующий — просьба уйдёт ведущему'
                 : state.following
                   ? 'Пока слушаете вместе, переключает ведущий'
