@@ -1,5 +1,12 @@
 import type { ServiceId, Track, WaveChoice } from './domain'
-import { DEFAULT_JAM_PERMS, type JamPerms, type JamQueueItem } from './jam'
+import {
+  DEFAULT_JAM_PERMS,
+  EMPTY_ROOM,
+  type JamEvent,
+  type JamPerms,
+  type JamQueueItem,
+  type JamRoom
+} from './jam'
 
 /** How the queue advances when a track ends. */
 export type RepeatMode = 'off' | 'all' | 'one'
@@ -78,6 +85,20 @@ export interface PlayerState {
    * присланные ведущим: по ним гаснут кнопки, которые всё равно не сработают.
    */
   jamPerms: JamPerms
+  /** Кто в комнате. У ведущего — его учёт, у участника — присланный. */
+  jamRoom: JamRoom
+  /** Лента «Что происходит», новые сверху. */
+  jamEvents: JamEvent[]
+  /** Кто предложил играющий трек — у участника из присланного, у ведущего null. */
+  jamNowBy: string | null
+  /** Свой номер участника — по нему лента и комната узнают «вы». */
+  jamSelfId: string | null
+  /**
+   * Ретранслятор не отвечает ведущему — несколько отправок подряд не дошли.
+   * Участник узнаёт об обрыве по своему потоку (followError), а ведущему
+   * сказать некому, кроме этого флага.
+   */
+  relayDown: boolean
   /** Set when the current track failed to load, cleared on the next track. */
   error: string | null
   /** Wall clock at which positionMs was sampled, for smooth interpolation. */
@@ -109,6 +130,11 @@ export const EMPTY_PLAYER: PlayerState = {
   jamCredits: {},
   jamQueue: [],
   jamPerms: DEFAULT_JAM_PERMS,
+  jamRoom: EMPTY_ROOM,
+  jamEvents: [],
+  jamNowBy: null,
+  jamSelfId: null,
+  relayDown: false,
   error: null,
   sampledAt: 0
 }

@@ -1,11 +1,19 @@
 import { artistLine, type Track } from '@shared/domain'
 import { currentTrack, type PlayerCommand, type PlayerState } from '@shared/player'
+import type { EdgeInfo, Settings } from '@shared/types'
 import { ServiceBadge } from '../../shared/ServiceLogo'
 import { Heart, Next, Pause, Play, Prev } from '../../shared/Icons'
 import { Cover } from '../../shell/components/Cover'
 
 export interface VariantProps {
   player: PlayerState
+  /** Шторке и язычку — задержка, всплывание, громкость и край. Плитам не нужно. */
+  settings: Settings
+  /**
+   * Шторка и язычок сообщают, где в окне их форма. Есть только в окне плиты:
+   * превью в настройках ничего не сообщает — окна у него нет.
+   */
+  onEdge?: (info: EdgeInfo) => void
   expanded: boolean
   onToggleExpand: () => void
   onCommand: (command: PlayerCommand) => void

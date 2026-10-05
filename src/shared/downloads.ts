@@ -63,3 +63,24 @@ export function formatBytes(bytes: number): string {
   if (mb < 1024) return `${mb.toFixed(mb < 10 ? 1 : 0)} МБ`
   return `${(mb / 1024).toFixed(2)} ГБ`
 }
+
+/**
+ * The index stores enough of a track to play it back. Общее для экрана
+ * загрузок и плитки «Скачанное» на Главной.
+ */
+export function downloadedTrack(item: DownloadItem): Track {
+  return {
+    id: item.trackId,
+    service: item.service,
+    nativeId: item.nativeId,
+    title: item.title,
+    artists: item.artists,
+    artistRefs: [],
+    album: item.album,
+    albumId: null,
+    durationMs: item.durationMs,
+    coverUrl: item.coverUrl,
+    liked: false,
+    available: true
+  }
+}

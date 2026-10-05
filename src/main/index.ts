@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron'
 import { IPC } from '@shared/ipc'
-import type { DisplayInfo, Settings } from '@shared/types'
+import type { DisplayInfo, EdgeInfo, Settings } from '@shared/types'
 import type {
   Connection,
   Lyrics,
@@ -25,6 +25,7 @@ import {
   initPlayer,
   onPlayerChanged,
   reportListeners,
+  reportRelay,
   restoreSession,
   saveSessionNow
 } from './player/engine'
@@ -73,7 +74,7 @@ import {
 } from './downloads/manager'
 import { registerMediaScheme, serveMediaScheme } from './downloads/protocol'
 import { claimJoinScheme, joinCodeFrom, offerJoinCode, onJoinRequest } from './together/join'
-import { ensureInvite, listenerCount, publish } from './together/host'
+import { ensureInvite, listenerCount, publish, relayHealthy } from './together/host'
 import {
   addToPlaylist,
   createPlaylist,
@@ -97,6 +98,7 @@ import {
   destroyMiniPlayer,
   hideMiniPlayer,
   resizeMiniPlayer,
+  setMiniEdge,
   sendToMini,
   showMiniPlayer,
   toggleMiniPlayer
@@ -183,7 +185,8 @@ function start(): void {
   onPlayerChanged((state) => {
     sendToShell(IPC.playerState, toShell(state))
     // Ведомым нужно знать, что здесь играет, — если публикация включена.
-    void publish(state)
+    // После отправки — доходит ли она: ведущему об обрыве сказать больше некому.
+    void publish(state).then(() => reportRelay(relayHealthy()))
     reportListeners(listenerCount())
     // Volume survives restarts; the rest of the state is deliberately not kept.
     persistVolume(state)
@@ -339,6 +342,7 @@ function registerIpc(): void {
   })
 
   // ---- mini player ----
+  ipcMain.on(IPC.miniEdge, (_event, info: EdgeInfo | null) => setMiniEdge(info))
   ipcMain.on(IPC.miniResize, (_event, size: { width: number; height: number }) =>
     resizeMiniPlayer(size.width, size.height)
   )

@@ -308,6 +308,46 @@
   }
 }
 
+/* ---- эквалайзер «играет сейчас» ----------------------------------------- */
+
+/*
+ * Четыре столбика с разными периодами, чтобы не прыгали в ногу. Петля быстрая,
+ * вопреки правилу 2 выше: это показание, а не фон, — оно говорит «звучит», и
+ * медленный эквалайзер читался бы как сломанный. Крутится только пока играет.
+ */
+.eq--on > i {
+  animation: eq-bounce 0.7s ease-in-out infinite;
+}
+
+.eq--on > i:nth-child(2) {
+  animation-duration: 0.87s;
+  animation-delay: -0.23s;
+}
+
+.eq--on > i:nth-child(3) {
+  animation-duration: 1.04s;
+  animation-delay: -0.46s;
+}
+
+.eq--on > i:nth-child(4) {
+  animation-duration: 1.21s;
+  animation-delay: -0.69s;
+}
+
+@keyframes eq-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+:root[data-motion='off'] .eq > i {
+  animation: none !important;
+}
+
 /* ---- доступность важнее выбора ------------------------------------------- */
 
 /*
@@ -327,5 +367,9 @@
   :root[data-motion='system'] .fullplayer__art {
     animation: none !important;
     transform: none !important;
+  }
+
+  :root[data-motion='system'] .eq > i {
+    animation: none !important;
   }
 }

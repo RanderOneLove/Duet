@@ -3,14 +3,17 @@ import { ServiceBadge } from '../../shared/ServiceLogo'
 import { StateBlock } from '../components/StateBlock'
 import { Segmented } from '../components/Segmented'
 import { WaveTuner } from '../components/WaveTuner'
-import { TrackList } from '../components/TrackList'
 import { Cover } from '../components/Cover'
-import { useFiltered, type ServiceFilter } from '../useServiceFilter'
+import type { ServiceFilter } from '../useServiceFilter'
+import { PlaylistsBlock, TracksBlock } from '../components/HomeSections'
 import type { HomeBlock, HomeBlockId, HomeLayout } from '@shared/types'
 import { Heart, HeartOff, Pause, Play } from '../../shared/Icons'
+import type { PlayerState } from '@shared/player'
+import { downloadedTrack, type DownloadsState } from '@shared/downloads'
+import { DashHome, DuetHome, StageHome, type HomeModel } from './HomeStages'
 import { artistLine } from '@shared/domain'
 
-interface WaveState {
+export interface WaveState {
   tracks: Track[]
   /** Умеет ли сервис играющего трека «не нравится». */
   canDislike: boolean
@@ -40,6 +43,12 @@ interface Props {
   wave: WaveState
   activeId: string | null
   playing: boolean
+  /** Новым видам нужна позиция и очередь — они показывают, что звучит. */
+  player: PlayerState
+  /** Плитке «Скачанное» в дашборде — сколько и сколько места. */
+  downloads: DownloadsState
+  /** «Все» у избранного в дашборде ведёт в «Вам нравится». */
+  onOpenLiked: () => void
   onWaveService: (choice: WaveChoice) => void
   onPlayWave: () => void
   onToggleWave: () => void
@@ -65,6 +74,9 @@ export function HomeScreen({
   wave,
   activeId,
   playing,
+  player,
+  downloads,
+  onOpenLiked,
   onWaveService,
   onPlayWave,
   onToggleWave,
@@ -142,6 +154,56 @@ export function HomeScreen({
     ) : null
   }
 
+  /*
+   * Три новых вида раскладывают те же данные по-своему, поэтому получают их
+   * одним пакетом. Пустое состояние и скелетоны у всех видов общие.
+   */
+  if ((layout === 'stage' || layout === 'dash' || layout === 'duet') && !(loading && sections.length === 0)) {
+    const done = downloads.items.filter((item) => item.status === 'done')
+    const model: HomeModel = {
+      filter,
+      shown,
+      playlists,
+      liked,
+      downloads: {
+        tracks: done.map(downloadedTrack),
+        bytes: downloads.totalBytes,
+        limitBytes: downloads.limitBytes
+      },
+      options: available.map((connection) => connection.service),
+      waveService,
+      wave,
+      player,
+      activeId,
+      onWaveService,
+      onPlayWave,
+      onToggleWave,
+      onPlayTracks,
+      onOpenPlaylist,
+      onOpenLibrary,
+      onOpenLiked,
+      onToggleLike,
+      downloadedIds,
+      onDownload,
+      onSimilar
+    }
+    const order = blocks.map((item) => item.id)
+    if (sections.length === 0 && available.length === 0) {
+      return (
+        <div className={`home home--${layout}`}>
+          <StateBlock
+            kind="empty"
+            title="Пока пусто"
+            hint="Подключите сервис в настройках — здесь появятся ваши плейлисты и треки."
+          />
+        </div>
+      )
+    }
+    if (layout === 'dash') return <DashHome model={model} />
+    if (layout === 'duet') return <DuetHome model={model} order={order} />
+    return <StageHome model={model} order={order} />
+  }
+
   return (
     <div className={`home home--${layout}`}>
       {available.length > 0 && shown('wave') && (
@@ -168,103 +230,6 @@ export function HomeScreen({
         <>{blocks.map((item) => block(item.id))}</>
       )}
     </div>
-  )
-}
-
-/** Ряд плейлистов обоих сервисов. */
-function PlaylistsBlock({
-  playlists,
-  onOpenPlaylist,
-  onOpenLibrary
-}: {
-  playlists: Playlist[]
-  onOpenPlaylist: (playlist: Playlist) => void
-  onOpenLibrary: () => void
-}): JSX.Element {
-  return (
-    <section className="home__section">
-      <div className="home__head">
-        <h2 className="home__title">Плейлисты сервисов</h2>
-        <span className="muted">оба сервиса · {playlists.length}</span>
-        <div className="home__spacer" />
-        <button className="gbtn" onClick={onOpenLibrary}>
-          Все
-        </button>
-      </div>
-      <div className="cardrow">
-        {playlists.map((playlist) => (
-          <button key={playlist.id} className="card" onClick={() => onOpenPlaylist(playlist)}>
-            <div className="card__artwrap">
-              <Cover url={playlist.coverUrl} seed={playlist.title} className="card__art" />
-              <span className="card__play">
-                <Play size={14} />
-              </span>
-            </div>
-            <div className="card__titlerow">
-              <span className="truncate card__title">{playlist.title}</span>
-              <ServiceBadge service={playlist.service} />
-            </div>
-            <div className="truncate muted card__sub">{playlist.trackCount} треков</div>
-          </button>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-/** Список треков на Главной: избранное или скачанное. */
-function TracksBlock({
-  title,
-  filter,
-  tracks,
-  activeId,
-  playing,
-  onPlayTracks,
-  onToggleLike,
-  downloadedIds,
-  onDownload,
-  onSimilar
-}: {
-  title: string
-  filter: ServiceFilter
-  tracks: Track[]
-  activeId: string | null
-  playing: boolean
-  onPlayTracks: (tracks: Track[], index: number) => void
-  onToggleLike: (track: Track) => void
-  downloadedIds: Set<string>
-  onDownload: (track: Track) => void
-  onSimilar: (track: Track) => void
-}): JSX.Element {
-  const filtered = useFiltered(tracks, filter)
-
-  return (
-    <section className="home__section">
-      <div className="home__head">
-        <h2 className="home__title">{title}</h2>
-        {/* Счётчик остался, а переключатель сервиса уехал в титульную строку:
-            он один на всё окно и не должен повторяться на каждом экране. */}
-        <span className="muted home__count">{filtered.length}</span>
-        <div className="home__spacer" />
-        <button className="gbtn" disabled={filtered.length === 0} onClick={() => onPlayTracks(filtered, 0)}>
-          <Play size={13} /> Слушать
-        </button>
-      </div>
-
-      <TrackList
-        tracks={filtered}
-        loading={false}
-        activeId={activeId}
-        playing={playing}
-        onPlay={(index) => onPlayTracks(filtered, index)}
-        onToggleLike={onToggleLike}
-        downloadedIds={downloadedIds}
-        onDownload={onDownload}
-        onSimilar={onSimilar}
-        emptyTitle="В этом сервисе пусто"
-        emptyHint="Выберите другую вкладку фильтра."
-      />
-    </section>
   )
 }
 
@@ -298,7 +263,7 @@ function WaveHero({
 
   return (
     <section
-      className={`on-media wave wave--${service} ${compact ? 'wave--compact' : ''} ${
+      className={`on-hero wave wave--${service} ${compact ? 'wave--compact' : ''} ${
         cover ? '' : 'wave--nocover'
       }`}
     >
@@ -425,8 +390,8 @@ function WaveHero({
           {upNext.length > 0 && (
             <div className="wave__next">
               <span className="wave__nextlabel">ДАЛЕЕ</span>
-              {upNext.map((track) => (
-                <span key={track.id} className="wave__nextitem truncate">
+              {upNext.map((track, index) => (
+                <span key={`${index}-${track.id}`} className="wave__nextitem truncate">
                   {track.title}
                 </span>
               ))}

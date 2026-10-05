@@ -1,7 +1,7 @@
 import { BrowserWindow, screen } from 'electron'
 import { join } from 'node:path'
 import { IPC } from '@shared/ipc'
-import { MINI_SIZES, type MiniAnchor, type Settings } from '@shared/types'
+import { MINI_SIZES, isEdgeVariant, type EdgeInfo, type MiniAnchor, type Settings } from '@shared/types'
 import { createMiniWire, getPlayer, onPlayerChanged } from '../player/engine'
 import { getSettings, onSettingsChanged, setSettings } from '../state/settings'
 
@@ -35,7 +35,7 @@ export function createMiniPlayer(): BrowserWindow {
     transparent: true,
     backgroundColor: '#00000000',
     resizable: false,
-    movable: settings.miniDraggable,
+    movable: canDrag(settings),
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -50,7 +50,7 @@ export function createMiniPlayer(): BrowserWindow {
   })
 
   // 'screen-saver' keeps it visible over full-screen apps, which 'floating'
-  // does not on Windows.
+  // does not on Windows — unless they raise themselves later (see syncRaise).
   win.setAlwaysOnTop(true, 'screen-saver')
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
 
@@ -72,6 +72,8 @@ export function createMiniPlayer(): BrowserWindow {
    */
   win.on('moved', () => {
     if (repositioning || !win || win.isDestroyed()) return
+    // Шторку и язычок двигает только край экрана, а не рука.
+    if (isEdgeVariant(getSettings().miniVariant)) return
     const bounds = win.getBounds()
     setSettings({
       miniAnchor: 'custom',
@@ -91,7 +93,8 @@ export function createMiniPlayer(): BrowserWindow {
     onPlayerChanged(pushPlayback)
     onSettingsChanged((next) => {
       pushConfig()
-      win?.setMovable(next.miniDraggable)
+      syncRaise(next)
+      win?.setMovable(canDrag(next))
       // A variant change alters the content size; re-place on the new anchor.
       applyBounds(size.width, size.height, next)
     })
@@ -109,12 +112,37 @@ export function createMiniPlayer(): BrowserWindow {
 let hoverTimer: NodeJS.Timeout | null = null
 let hovered = false
 
+/** Форма шторки или язычка внутри окна; null — плита, она и есть окно. */
+let edge: EdgeInfo | null = null
+
+/**
+ * Принять от плиты, где её форма и ловит ли она мышь.
+ *
+ * Мышь пропускается насквозь, пока форма не раскрыта: в покое это полоска, по
+ * которой щёлкать незачем, а прозрачный запас окна вокруг неё лежит прямо над
+ * краем чужого окна — над его полосой прокрутки, заголовком, кнопками.
+ */
+export function setMiniEdge(info: EdgeInfo | null): void {
+  edge = info
+  if (!win || win.isDestroyed()) return
+  win.setIgnoreMouseEvents(info ? !info.interactive : false)
+}
+
 function startHoverWatch(): void {
   if (hoverTimer) return
   hoverTimer = setInterval(() => {
     if (!win || win.isDestroyed() || !win.isVisible()) return
     const point = screen.getCursorScreenPoint()
-    const b = win.getBounds()
+    const bounds = win.getBounds()
+    // У шторки и язычка наведение — это курсор над формой, а не над окном.
+    const b = edge
+      ? {
+          x: bounds.x + edge.hit.x,
+          y: bounds.y + edge.hit.y,
+          width: edge.hit.width,
+          height: edge.hit.height
+        }
+      : bounds
     // A couple of pixels of slack stops the state flapping on the border.
     const slack = hovered ? 2 : 0
     const inside =
@@ -136,6 +164,37 @@ function stopHoverWatch(): void {
 
 const HOVER_POLL_MS = 120
 
+/**
+ * Поверх полноэкранных приложений.
+ *
+ * Уровень 'screen-saver' в Windows значит просто «поверх всех», а таких окон
+ * бывает несколько: они делят один слой, и сверху то, что подняли последним.
+ * Игра или видеоплеер во весь экран часто сами встают «поверх всех» и при
+ * каждом щелчке по ним поднимаются над мини-плеером. Узнать, что на переднем
+ * плане полноэкранное окно, Electron не умеет, поэтому при включённой
+ * настройке плита просто поднимается обратно раз в секунду. Фокус она при
+ * этом не забирает: moveTop в Windows двигает окно без активации.
+ *
+ * Игру в эксклюзивном полноэкранном режиме не перекрыть ничем — она владеет
+ * экраном целиком, и об этом сказано в подсказке настройки.
+ */
+const RAISE_MS = 1000
+let raiseTimer: NodeJS.Timeout | null = null
+
+function syncRaise(settings: Settings): void {
+  const want = settings.miniOverFullscreen && isMiniPlayerVisible()
+  if (want && !raiseTimer) {
+    raiseTimer = setInterval(() => {
+      if (!win || win.isDestroyed() || !win.isVisible()) return
+      win.setAlwaysOnTop(true, 'screen-saver')
+      win.moveTop()
+    }, RAISE_MS)
+  } else if (!want && raiseTimer) {
+    clearInterval(raiseTimer)
+    raiseTimer = null
+  }
+}
+
 export function showMiniPlayer(): void {
   const target = createMiniPlayer()
   applyBounds(size.width, size.height, getSettings())
@@ -143,6 +202,7 @@ export function showMiniPlayer(): void {
   target.showInactive()
   target.setAlwaysOnTop(true, 'screen-saver')
   startHoverWatch()
+  syncRaise(getSettings())
   pushConfig()
   pushPlayback()
 }
@@ -150,6 +210,7 @@ export function showMiniPlayer(): void {
 export function hideMiniPlayer(): void {
   stopHoverWatch()
   if (win && !win.isDestroyed()) win.hide()
+  syncRaise(getSettings())
 }
 
 export function isMiniPlayerVisible(): boolean {
@@ -165,12 +226,19 @@ export function destroyMiniPlayer(): void {
   stopHoverWatch()
   if (win && !win.isDestroyed()) win.destroy()
   win = null
+  syncRaise(getSettings())
 }
 
 /** Resize to the renderer's measured content, keeping the anchored edges put. */
 export function resizeMiniPlayer(width: number, height: number): void {
-  const w = Math.max(120, Math.round(width))
-  const h = Math.max(40, Math.round(height))
+  /*
+   * Нижний предел — от плит: окно меньше 120×40 у них значило бы ошибку
+   * замера. У шторки и язычка покой и есть полоска в несколько пикселей, и
+   * этот предел раздувал бы её в невидимую плашку, ловящую щелчки.
+   */
+  const edge = isEdgeVariant(getSettings().miniVariant)
+  const w = Math.max(edge ? 4 : 120, Math.round(width))
+  const h = Math.max(edge ? 4 : 40, Math.round(height))
   if (w === size.width && h === size.height) return
   size = { width: w, height: h }
   applyBounds(w, h, getSettings())
@@ -208,6 +276,11 @@ function loadRenderer(target: BrowserWindow): void {
  */
 function applyBounds(width: number, height: number, settings: Settings): void {
   if (!win || win.isDestroyed()) return
+
+  if (isEdgeVariant(settings.miniVariant)) {
+    placeAtEdge(width, height, settings)
+    return
+  }
 
   const previous = win.getBounds()
   /*
@@ -252,6 +325,53 @@ function applyBounds(width: number, height: number, settings: Settings): void {
   setImmediate(() => {
     repositioning = false
   })
+}
+
+/**
+ * Шторка и язычок прижаты к краю экрана, а не к углу.
+ *
+ * Шторка срастается с верхним краем, язычок — с боковым, и оба растут от края
+ * внутрь: шторка вниз, язычок вбок. Середину они держат при любом размере —
+ * шторка по горизонтали (если стоит по центру), язычок по вертикали, — поэтому
+ * раскрытие выглядит как рост из одной точки, а не как съезд в сторону.
+ *
+ * Берётся рабочая область, а не весь экран: если панель задач стоит сверху или
+ * сбоку, полоска должна прижаться к ней, а не спрятаться под неё.
+ */
+const NOTCH_SIDE_INSET = 32
+
+function placeAtEdge(width: number, height: number, settings: Settings): void {
+  if (!win || win.isDestroyed()) return
+  const area = pickDisplay(settings).workArea
+  let x: number
+  let y: number
+
+  if (settings.miniVariant === 'notch') {
+    y = area.y
+    x =
+      settings.notchPlace === 'left'
+        ? area.x + NOTCH_SIDE_INSET
+        : settings.notchPlace === 'right'
+          ? area.x + area.width - width - NOTCH_SIDE_INSET
+          : area.x + Math.round((area.width - width) / 2)
+  } else {
+    x = settings.sideEdge === 'left' ? area.x : area.x + area.width - width
+    y = area.y + Math.round((area.height - height) / 2)
+  }
+
+  x = clamp(x, area.x, area.x + area.width - width)
+  y = clamp(y, area.y, area.y + area.height - height)
+
+  repositioning = true
+  win.setBounds({ x, y, width, height })
+  setImmediate(() => {
+    repositioning = false
+  })
+}
+
+/** Перетаскивать можно плиту, но не то, что прижато к краю экрана. */
+function canDrag(settings: Settings): boolean {
+  return settings.miniDraggable && !isEdgeVariant(settings.miniVariant)
 }
 
 function splitAnchor(anchor: Exclude<MiniAnchor, 'custom'>): ['top' | 'bottom', 'left' | 'center' | 'right'] {

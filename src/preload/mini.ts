@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '@shared/ipc'
-import type { Settings } from '@shared/types'
+import type { EdgeInfo, Settings } from '@shared/types'
 import type { PlayerCommand, PlayerUpdate } from '@shared/player'
 
 /** The mini player's surface: read the player state, send transport. */
@@ -15,6 +15,8 @@ const api = {
    * app underneath.
    */
   resize: (width: number, height: number): void => ipcRenderer.send(IPC.miniResize, { width, height }),
+  /** null — обычная плита: ловит мышь целиком. */
+  edge: (info: EdgeInfo | null): void => ipcRenderer.send(IPC.miniEdge, info),
   close: (): void => ipcRenderer.send(IPC.miniToggle),
   restoreMain: (): void => ipcRenderer.send(IPC.miniRestoreMain),
   /** Развернуть приложение и открыть плеер во весь экран. */

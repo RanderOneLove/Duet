@@ -1,6 +1,13 @@
 import { randomBytes } from 'node:crypto'
 import type { Track } from '@shared/domain'
-import { JAM_QUEUE_LIMIT, type JamPerms, type JamQueueItem } from '@shared/jam'
+import {
+  JAM_EVENTS_SHARED,
+  JAM_QUEUE_LIMIT,
+  type JamEvent,
+  type JamPerms,
+  type JamQueueItem,
+  type JamRoom
+} from '@shared/jam'
 import type { PlayerState } from '@shared/player'
 import { getSettings, setSettings } from '../state/settings'
 
@@ -34,6 +41,12 @@ export interface SharedState {
    * а не нажимать на кнопку, которая перестала работать.
    */
   perms?: JamPerms
+  /** Кто в комнате по именам и сколько слушает молча. */
+  room?: JamRoom
+  /** Последние события ленты «Что происходит» — она видна всем. */
+  events?: JamEvent[]
+  /** Кто предложил играющий трек; null — поставил сам ведущий. */
+  nowBy?: string | null
 }
 
 /**
@@ -86,6 +99,13 @@ export async function publish(state: PlayerState, force = false): Promise<void> 
     next,
     listeners,
     jam: state.jamOpen,
+    room: {
+      people: state.jamRoom.people,
+      // Участники тоже подключены к потоку: молчащих — столько, сколько сверх них.
+      listeners: Math.max(0, listeners - state.jamRoom.people.filter((p) => p.role === 'guest').length)
+    },
+    events: state.jamEvents.slice(0, JAM_EVENTS_SHARED),
+    nowBy: track ? (state.jamCredits[track.id] ?? null) : null,
     // Из настроек, а не из состояния: пока сами идём за кем-то, в состоянии
     // лежат права того ведущего, а раздавать мы должны свои.
     perms: { skip: settings.jamGuestsSkip, edit: settings.jamGuestsEdit }
@@ -102,7 +122,10 @@ export async function publish(state: PlayerState, force = false): Promise<void> 
    */
   const queueMark = next.map((item) => `${item.id}~${item.by ?? ''}`).join(',')
   const permsMark = `${shared.perms?.skip ? 's' : ''}${shared.perms?.edit ? 'e' : ''}`
-  const signature = `${track?.id ?? ''}|${state.playing}|${queueMark}|${permsMark}`
+  // Комната и лента — тоже повод отправить: вошедший и «Маша предлагает…»
+  // должны появиться у всех сразу, а не с ближайшей сменой трека.
+  const roomMark = `${shared.room?.people.map((p) => p.id).join(',')}|${shared.room?.listeners}|${state.jamEvents[0]?.at ?? 0}`
+  const signature = `${track?.id ?? ''}|${state.playing}|${queueMark}|${permsMark}|${roomMark}`
   const stale = Date.now() - lastAt > HEARTBEAT_MS
   if (!force && signature === lastSent && !stale) return
 
@@ -217,6 +240,11 @@ const MISSES_BEFORE_ZERO = 3
 /** Сколько человек слушает вместе с вами прямо сейчас. */
 let listeners = 0
 let misses = 0
+
+/** Доходят ли отправки до ретранслятора. Пара промахов подряд — ещё не обрыв. */
+export function relayHealthy(): boolean {
+  return misses < MISSES_BEFORE_ZERO
+}
 
 export function listenerCount(): number {
   return listeners

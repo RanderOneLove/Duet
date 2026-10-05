@@ -398,3 +398,28 @@
 .wave--compact .wave__actions {
   margin: 0;
 }
+
+/*
+ * Светлая тема: плита волны — бумага, подкрашенная обложкой. Кроме вида
+ * «Обложка во весь экран», где текст лежит на фотографии (см. .on-hero в
+ * tokens.css).
+ */
+:root[data-theme='light'] .home:not(.home--cover) .wave {
+  background: linear-gradient(120deg, #ece8f4, #fbfaf8);
+}
+
+:root[data-theme='light'] .home:not(.home--cover) .wave--vk {
+  background: linear-gradient(120deg, #e2ecfb, #fbfaf8);
+}
+
+:root[data-theme='light'] .home:not(.home--cover) .wave--yandex {
+  background: linear-gradient(120deg, #f8e5ea, #fbfaf8);
+}
+
+:root[data-theme='light'] .home:not(.home--cover) .wave__glow {
+  filter: blur(56px) saturate(170%);
+}
+
+:root[data-theme='light'] .home:not(.home--cover) .wave__inner {
+  background: linear-gradient(100deg, rgb(255 255 255 / 0.84), rgb(255 255 255 / 0.36));
+}

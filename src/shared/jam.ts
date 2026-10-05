@@ -25,10 +25,23 @@ export interface JamSeed {
   nativeId: string
 }
 
+/**
+ * Просьбы участника. У каждой — имя (`from`) и номер участника (`pid`):
+ * имя показывают, номер нужен, чтобы участник узнал в ленте себя, а ведущий
+ * не путал двух Маш.
+ */
 export type JamMessage =
-  | { type: 'add'; track: JamSeed; from?: string }
-  | { type: 'next'; from?: string }
-  | { type: 'prev'; from?: string }
+  | { type: 'add'; track: JamSeed; from?: string; pid?: string }
+  | { type: 'next'; from?: string; pid?: string }
+  | { type: 'prev'; from?: string; pid?: string }
+  /**
+   * «Я в комнате». Участник шлёт это, подключившись, и дальше раз в полминуты:
+   * ретранслятор знает только число подключённых, а не кто они, и без этого
+   * ведущий не мог бы показать комнату по именам. Перестал слать — значит
+   * ушёл, даже если не успел попрощаться.
+   */
+  | { type: 'hello'; from?: string; pid: string }
+  | { type: 'bye'; from?: string; pid: string }
   /**
    * Переставить трек в общей очереди.
    *
@@ -37,8 +50,8 @@ export type JamMessage =
    * «следующим». Не номер в очереди ведущего: пока просьба шла, там могло
    * что-то сдвинуться, а «через два трека» остаётся верным и тогда.
    */
-  | { type: 'move'; id: string; to: number; from?: string }
-  | { type: 'remove'; id: string; from?: string }
+  | { type: 'move'; id: string; to: number; from?: string; pid?: string }
+  | { type: 'remove'; id: string; from?: string; pid?: string }
 
 /**
  * Что ведущий разрешил участникам. Добавлять можно всегда — ради этого сессию
@@ -53,11 +66,50 @@ export interface JamPerms {
 
 export const DEFAULT_JAM_PERMS: JamPerms = { skip: true, edit: true }
 
-/** Кто что сделал в общей сессии — короткая лента для окна. */
+/** Человек в комнате — ведущий или участник, назвавший себя. */
+export interface JamPerson {
+  id: string
+  name: string
+  role: 'host' | 'guest'
+}
+
+/**
+ * Комната: кто в ней по именам и сколько слушает молча.
+ *
+ * Слушатели по обычной ссылке ничего не шлют — права голоса у них нет, — и
+ * потому видны только числом.
+ */
+export interface JamRoom {
+  people: JamPerson[]
+  listeners: number
+}
+
+export const EMPTY_ROOM: JamRoom = { people: [], listeners: 0 }
+
+/** Номер ведущего в комнате: он один, и номер ему не нужен. */
+export const HOST_ID = 'host'
+
+export type JamEventKind = 'open' | 'rotate' | 'join' | 'leave' | 'add' | 'move' | 'remove' | 'skip'
+
+/**
+ * Что произошло в комнате — лента «Что происходит», видная всем.
+ *
+ * Хранится смыслом, а не готовой фразой: у ведущего это «Вы добавили», у
+ * участника — «Ведущий добавил», у того, кто сделал сам, — «Вы предлагаете».
+ * Фразу собирает тот, кто смотрит.
+ */
 export interface JamEvent {
   at: number
-  text: string
+  /** null — ведущий. */
+  who: { id: string; name: string } | null
+  kind: JamEventKind
+  /** Название трека, если событие про трек. */
+  title?: string
 }
+
+/** Сколько событий держать и сколько рассылать участникам. */
+export const JAM_EVENTS_KEPT = 20
+export const JAM_EVENTS_SHARED = 6
 
 /**
  * Трек в общей очереди — так, как его видит участник.
@@ -78,3 +130,10 @@ export interface JamQueueItem {
 
 /** Сколько ближайших треков показывать участникам. */
 export const JAM_QUEUE_LIMIT = 12
+
+/**
+ * Что показывает участник, пока связь с ведущим восстанавливается. Общая
+ * строка: по ней экран Jam узнаёт обрыв и показывает его отдельной плашкой,
+ * а не одним из сообщений.
+ */
+export const FOLLOW_RECONNECTING = 'Связь с ведущим прервалась — восстанавливаем…'

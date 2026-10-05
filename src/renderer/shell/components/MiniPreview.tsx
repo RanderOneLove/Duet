@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import type { MiniVariant } from '@shared/types'
+import type { MiniVariant, Settings } from '@shared/types'
 import type { PlayerState } from '@shared/player'
 import { BarVariant } from '../../mini/variants/BarVariant'
 import { CardVariant } from '../../mini/variants/CardVariant'
 import { CoverVariant } from '../../mini/variants/CoverVariant'
 import { PillVariant } from '../../mini/variants/PillVariant'
+import { NotchVariant } from '../../mini/variants/NotchVariant'
+import { SideVariant } from '../../mini/variants/SideVariant'
 import type { VariantProps } from '../../mini/variants/shared'
 import '../../mini/mini.css'
 
@@ -12,7 +14,9 @@ const VARIANTS: Record<MiniVariant, (props: VariantProps) => JSX.Element> = {
   bar: BarVariant,
   card: CardVariant,
   pill: PillVariant,
-  cover: CoverVariant
+  cover: CoverVariant,
+  notch: NotchVariant,
+  side: SideVariant
 }
 
 /**
@@ -29,7 +33,15 @@ const VARIANTS: Record<MiniVariant, (props: VariantProps) => JSX.Element> = {
  * the mini player uses, on the live player state — so what is shown cannot
  * drift from what the window actually looks like.
  */
-export function MiniPreview({ variant, player }: { variant: MiniVariant; player: PlayerState }): JSX.Element {
+export function MiniPreview({
+  variant,
+  player,
+  settings
+}: {
+  variant: MiniVariant
+  player: PlayerState
+  settings: Settings
+}): JSX.Element {
   const Variant = VARIANTS[variant]
   const box = useRef<HTMLDivElement>(null)
   const inner = useRef<HTMLDivElement>(null)
@@ -51,7 +63,13 @@ export function MiniPreview({ variant, player }: { variant: MiniVariant; player:
        */
       const natural = { width: child.offsetWidth, height: child.offsetHeight }
       if (width > 0 && natural.width > 0 && natural.height > 0) {
-        const scale = width / natural.width
+        /*
+         * По ширине плашки, но не выше потолка. Язычок узкий и длинный: по
+         * ширине он растягивался в столб под шестьсот точек и тянул за собой
+         * весь ряд плашек. Упёршись в потолок, превью уменьшается по высоте
+         * и встаёт по центру.
+         */
+        const scale = Math.min(width / natural.width, MAX_HEIGHT / natural.height)
         setSize({ width, height: Math.round(natural.height * scale), scale })
       }
     }
@@ -70,13 +88,31 @@ export function MiniPreview({ variant, player }: { variant: MiniVariant; player:
       <div
         className="minipreview__scale"
         ref={inner}
-        style={{ transform: size.scale ? `scale(${size.scale})` : undefined }}
+        style={{
+          transform: size.scale ? `scale(${size.scale})` : undefined,
+          // Уменьшенная по высоте плита уже плашки — ставим её посередине.
+          marginLeft:
+            size.scale && inner.current
+              ? Math.max(0, Math.round((size.width - inner.current.offsetWidth * size.scale) / 2))
+              : undefined
+        }}
       >
-        <Variant player={player} expanded onToggleExpand={noop} onCommand={noop} onClose={noop} onRestore={noop} />
+        <Variant
+          player={player}
+          settings={settings}
+          expanded
+          onToggleExpand={noop}
+          onCommand={noop}
+          onClose={noop}
+          onRestore={noop}
+        />
       </div>
     </div>
   )
 }
+
+/** Выше этого превью не растёт — столько занимает превью «Карточки». */
+const MAX_HEIGHT = 280
 
 /** The preview is a picture, not a control — every callback is inert. */
 function noop(): void {}

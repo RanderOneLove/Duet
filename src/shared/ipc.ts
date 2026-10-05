@@ -83,6 +83,8 @@ export const IPC = {
 
   // ---- mini player ----
   miniResize: 'mini:resize',
+  /** mini → main: где в окне форма шторки или язычка и ловит ли она мышь. */
+  miniEdge: 'mini:edge',
   /** main → mini: the cursor entered or left the window. */
   miniHover: 'mini:hover',
   miniToggle: 'mini:toggle',

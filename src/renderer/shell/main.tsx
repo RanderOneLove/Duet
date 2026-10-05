@@ -7,6 +7,8 @@ import './parts.css'
 import './parts2.css'
 import './parts4.css'
 import './parts5.css'
+import './home2.css'
+import './jamroom.css'
 import '../shared/motion.css'
 import { App } from './App'
 

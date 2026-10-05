@@ -5,15 +5,41 @@ import { BarVariant } from './variants/BarVariant'
 import { CardVariant } from './variants/CardVariant'
 import { PillVariant } from './variants/PillVariant'
 import { CoverVariant } from './variants/CoverVariant'
+import { NotchVariant } from './variants/NotchVariant'
+import { SideVariant } from './variants/SideVariant'
 import type { VariantProps } from './variants/shared'
-import type { MiniVariant } from '@shared/types'
+import { isEdgeVariant, type MiniVariant } from '@shared/types'
 import { useAppearance } from '../shared/useAppearance'
 
 const VARIANTS: Record<MiniVariant, (props: VariantProps) => JSX.Element> = {
   bar: BarVariant,
   card: CardVariant,
   pill: PillVariant,
-  cover: CoverVariant
+  cover: CoverVariant,
+  notch: NotchVariant,
+  side: SideVariant
+}
+
+/** Сколько ждать после ухода курсора, прежде чем свернуть шторку и язычок. */
+const LEAVE_MS = 240
+
+/**
+ * Флаг, который включается и выключается с задержкой. Нулевая задержка —
+ * мгновенно, как было у плит до шторки.
+ */
+function useDelayedFlag(value: boolean, onMs: number, offMs: number): boolean {
+  const [flag, setFlag] = useState(value)
+  useEffect(() => {
+    if (value === flag) return
+    const wait = value ? onMs : offMs
+    if (wait <= 0) {
+      setFlag(value)
+      return
+    }
+    const timer = window.setTimeout(() => setFlag(value), wait)
+    return () => window.clearTimeout(timer)
+  }, [value, flag, onMs, offMs])
+  return flag
 }
 
 /**
@@ -50,11 +76,29 @@ export function App(): JSX.Element {
 
   // Pinning it in place is a window-level setting, but the plate must also stop
   // advertising itself as a drag region or the cursor still invites a drag.
+  const edge = isEdgeVariant(settings.miniVariant)
   useEffect(() => {
-    document.body.classList.toggle('mini--locked', !settings.miniDraggable)
-  }, [settings.miniDraggable])
+    // Шторку и язычок двигает край экрана, а не рука.
+    document.body.classList.toggle('mini--locked', !settings.miniDraggable || edge)
+  }, [settings.miniDraggable, edge])
 
-  const expanded = pinned || (settings.miniExpandOnHover && hovered)
+  /*
+   * У шторки и язычка раскрытие ждёт: полоска у края попадается под курсор,
+   * идущий к заголовку окна или в угол экрана, и раскрываться от каждого такого
+   * прохода значило бы мешать. Уход тоже ждёт — меньше: пути от полоски до
+   * кнопки внутри хватает, чтобы курсор на мгновение вышел за край.
+   */
+  const hoverOpen = useDelayedFlag(
+    settings.miniExpandOnHover && hovered,
+    edge ? settings.notchDelay : 0,
+    edge ? LEAVE_MS : 0
+  )
+  const expanded = pinned || hoverOpen
+
+  // Плита — это и есть окно: ловит мышь целиком, наведение по всему окну.
+  useEffect(() => {
+    if (!edge) window.mini.edge(null)
+  }, [edge])
   const Variant = VARIANTS[settings.miniVariant] ?? BarVariant
 
   /**
@@ -71,6 +115,8 @@ export function App(): JSX.Element {
     <div ref={ref} className="mini" style={{ opacity: hovered ? 1 : settings.miniIdleOpacity }}>
       <Variant
         player={player}
+        settings={settings}
+        onEdge={edge ? window.mini.edge : undefined}
         expanded={expanded}
         onToggleExpand={onDoubleClick}
         onCommand={(command) => window.mini.command(command)}

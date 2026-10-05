@@ -31,6 +31,8 @@ import type { ServiceFilter } from './useServiceFilter'
 import { useUpdate } from './useUpdate'
 import { useClosing } from './useClosing'
 import { JamGuestContext } from './JamContext'
+import { MotionConfig } from 'framer-motion'
+import { useQuietMotion } from '../shared/useQuietMotion'
 import { useAppearance } from '../shared/useAppearance'
 import { accentFromImage } from '../shared/accent'
 
@@ -362,6 +364,14 @@ export function App(): JSX.Element {
    * на это и была жалоба. Пока не включено, значка нет: постоянное место в
    * колонке под то, чем не пользуются, — плохой обмен.
    */
+  /*
+   * Анимации Framer Motion слушаются той же настройки «Сколько движения», что
+   * и CSS: «выключено» гасит перемещения и сдвиги. А «В очередь» на строке
+   * трека — у участника по пропуску и у ведущего открытой комнаты: очередь
+   * общая, кладут в неё оба (JamGuestContext ниже).
+   */
+  const quietMotion = useQuietMotion(settings)
+
   const jamLive = player.jamOpen || player.following !== null || settings.listenTogether
 
   /*
@@ -514,6 +524,9 @@ export function App(): JSX.Element {
             onToggleWave={() => window.shell.command({ type: 'playPause' })}
             activeId={activeId}
             playing={player.playing}
+            player={player}
+            downloads={downloads}
+            onOpenLiked={() => navigate('liked')}
             onPlayTracks={playTracks}
             onOpenPlaylist={showPlaylist}
             onOpenLibrary={() => navigate('library')}
@@ -545,7 +558,14 @@ export function App(): JSX.Element {
           />
         )
       case 'jam':
-        return <JamScreen state={player} settings={settings} onChange={patchSettings} />
+        return (
+          <JamScreen
+            state={player}
+            settings={settings}
+            onChange={patchSettings}
+            onFind={(text) => (text ? goSearch(text) : navigate('search'))}
+          />
+        )
       case 'liked':
         return (
           <LikedScreen
@@ -634,7 +654,8 @@ export function App(): JSX.Element {
   const topBarError = activeAsync?.error && activeAsync.error !== dismissedError ? activeAsync.error : null
 
   return (
-    <JamGuestContext.Provider value={player.jamGuest}>
+    <MotionConfig reducedMotion={quietMotion ? 'always' : 'never'}>
+    <JamGuestContext.Provider value={player.jamGuest || (player.jamOpen && !player.following)}>
     <div className="app">
       <div className="app__body">
         <Rail route={route} jam={jamLive} onNavigate={navigate} />
@@ -695,6 +716,7 @@ export function App(): JSX.Element {
       )}
     </div>
     </JamGuestContext.Provider>
+    </MotionConfig>
   )
 }
 

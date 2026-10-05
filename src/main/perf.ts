@@ -75,7 +75,15 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'covers') return runCoversProbe()
   if (PROBE === 'saveas') return runSaveAsProbe()
   if (PROBE === 'head') return runHeadProbe()
-  if (PROBE === 'jamedit') return runJamEditProbe()
+  if (PROBE === 'jamroom') return runJamRoomProbe()
+  if (PROBE === 'edge') return runEdgeProbe()
+  if (PROBE === 'narrow') return runNarrowProbe()
+  if (PROBE === 'homes') return runHomesProbe()
+  if (PROBE === 'fan') return runFanProbe()
+  if (PROBE === 'lighthero') return runLightHeroProbe()
+  if (PROBE === 'fullscreen') return runFullscreenProbe()
+  if (PROBE === 'minicover') return runMiniCoverProbe()
+  if (PROBE === 'newsettings') return runNewSettingsProbe()
   if (PROBE === 'trackwave') return runTrackWaveProbe()
   if (PROBE === 'tint') return runTintProbe()
   if (PROBE === 'motion2') return runMotion2Probe()
@@ -579,19 +587,28 @@ async function runCloseProbe(): Promise<void> {
  *
  * Отдельно от проверочных: тем нужна правда о состоянии, а этим — чтобы по ним
  * было понятно, что это за приложение. Поэтому здесь и подобранное окно, и
- * играющий трек с настоящей обложкой, и все четыре вида мини-плеера подряд.
+ * играющий трек с настоящей обложкой, и все шесть видов мини-плеера подряд.
  *
  * Недавние запросы из боковой панели вычищаются: README публичный, а история
- * поиска — личное.
+ * поиска — личное. По той же причине код приглашения и пропуск участника
+ * подменяются выдуманными — они видны на снимках ссылок, — а комната Jam
+ * открывается на своём ретрансляторе, а не на настоящем.
  */
 async function runReadmeShots(): Promise<void> {
   const { writeFileSync, mkdirSync } = await import('node:fs')
   const { join } = await import('node:path')
+  const { spawn } = await import('node:child_process')
   const out = process.env['DUET_SHOTS'] ?? '.'
   mkdirSync(out, { recursive: true })
 
   const report: Record<string, unknown> = { probe: 'readme', shots: [] as string[] }
   const shots = report.shots as string[]
+
+  const relayPort = 8805
+  const relay = spawn(process.execPath, [join(app.getAppPath(), 'server/relay.mjs')], {
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: String(relayPort), HOST: '127.0.0.1' },
+    stdio: 'ignore'
+  })
 
   try {
     await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
@@ -608,9 +625,17 @@ async function runReadmeShots(): Promise<void> {
       accent: ACCENTS[0]!,
       accentFromCover: false,
       density: 'normal',
-      homeLayout: 'calm',
+      homeLayout: 'stage',
       playerLayout: 'split',
-      homeBlocks: DEFAULT_HOME_BLOCKS
+      homeBlocks: DEFAULT_HOME_BLOCKS,
+      listenTogether: true,
+      relayUrl: `http://127.0.0.1:${relayPort}`,
+      togetherCode: 'DuetDemoInvite',
+      togetherKey: 'DuetDemoKeyNotSecretAtAll000000',
+      jamPass: 'DemoPass',
+      jamName: '',
+      jamGuestsSkip: true,
+      jamGuestsEdit: true
     })
     window.showInactive()
     window.setSize(1280, 800)
@@ -692,6 +717,54 @@ async function runReadmeShots(): Promise<void> {
     setSettings({ accent: ACCENTS[0]! })
     await wait(1200)
 
+    // ---- ещё два вида главной из шести ----
+    for (const layout of ['dash', 'duet'] as const) {
+      setSettings({ homeLayout: layout })
+      await wait(1600)
+      await shoot(`home-${layout}`)
+    }
+    setSettings({ homeLayout: 'stage' })
+    await wait(900)
+
+    // ---- Duet Jam: комната с одним участником, который предложил трек ----
+    {
+      const { sayToHost } = await import('./together/jam')
+      void command({ type: 'play' })
+      await wait(800)
+      await command({ type: 'openJam' })
+      await wait(1200)
+      const code = getSettings().togetherCode
+      const pass = getSettings().jamPass
+      await sayToHost(code, pass, { type: 'hello', from: 'Маша', pid: 'readme-masha' })
+      await wait(1000)
+      const offered = queue[6]
+      if (offered) {
+        await sayToHost(code, pass, {
+          type: 'add',
+          from: 'Маша',
+          pid: 'readme-masha',
+          track: {
+            title: offered.title,
+            artists: offered.artists,
+            durationMs: offered.durationMs,
+            service: offered.service,
+            nativeId: offered.nativeId
+          }
+        })
+      }
+      await wait(3000)
+      await run<boolean>(
+        `(() => { const b = [...document.querySelectorAll('.railitem')]
+          .find((n) => (n.title ?? '').startsWith('Duet Jam')); if (!b) return false; b.click(); return true })()`
+      )
+      await wait(1800)
+      await shoot('jam')
+      await sayToHost(code, pass, { type: 'bye', from: 'Маша', pid: 'readme-masha' })
+      await command({ type: 'closeJam' })
+      void command({ type: 'pause' })
+      await wait(900)
+    }
+
     // ---- «Вам нравится»: строки списка со всеми действиями ----
     await run<boolean>(`(${click})('Вам нравится')`)
     await wait(1600)
@@ -764,22 +837,31 @@ async function runReadmeShots(): Promise<void> {
     await pane('О программе')
     await shoot('settings-update')
 
-    // ---- четыре вида мини-плеера ----
+    // ---- шесть видов мини-плеера ----
     const mini = createMiniPlayer()
     showMiniPlayer()
     await wait(1200)
-    for (const variant of ['bar', 'pill', 'card', 'cover'] as const) {
+    for (const variant of ['bar', 'pill', 'card', 'cover', 'notch', 'side'] as const) {
       setSettings({ miniVariant: variant })
       // Плита пересчитывает свой размер сама, дадим ей это сделать.
       await wait(1600)
+      // Шторка и язычок в покое — полоска в семь точек; снимать их надо раскрытыми.
+      if (variant === 'notch' || variant === 'side') {
+        mini.webContents.send(IPC.miniHover, true)
+        await wait(1400)
+      }
       const plate = await mini.webContents.capturePage()
       const file = join(out, `mini-${variant}.png`)
       writeFileSync(file, plate.toPNG())
       shots.push(file)
+      mini.webContents.send(IPC.miniHover, false)
+      await wait(700)
     }
     hideMiniPlayer()
   } catch (error) {
     report.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    relay.kill()
   }
 
   writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
@@ -4932,24 +5014,24 @@ async function runHeadProbe(): Promise<void> {
 }
 
 /**
- * Правка общей очереди и права участников.
+ * Duet Jam — комната (макет 5a) на живом окне и настоящем ретрансляторе.
  *
- * Три слоя, и каждый проверяется отдельно, потому что ломаться они могут
- * порознь. Окно: перетаскивание и крестик действительно двигают очередь
- * ведущего. Ведущий: просьбы участника выполняются, пока разрешено, и
- * отбрасываются, когда нет. Провод: права доезжают до участника, и его
- * собственная перестановка видна у него сразу, не дожидаясь ответа.
+ * Участник здесь двойной. «Маша» — это просьбы, отправленные пробой прямо на
+ * ретранслятор: так видно, как ведущий учитывает чужого человека. А взгляд
+ * участника — само приложение, идущее за собой под подменённым кодом.
+ * Перетаскивание — настоящей мышью, а не событиями DOM: Reorder из Framer
+ * Motion слушает указатель, и подделка проверила бы не то.
  */
-async function runJamEditProbe(): Promise<void> {
+async function runJamRoomProbe(): Promise<void> {
   const { spawn } = await import('node:child_process')
   const { join } = await import('node:path')
   const { writeFileSync: save, mkdirSync } = await import('node:fs')
   const out = process.env['DUET_SHOTS'] ?? '.'
   mkdirSync(out, { recursive: true })
-  const report: Record<string, unknown> = { probe: 'jamedit' }
+  const report: Record<string, unknown> = { probe: 'jamroom' }
 
-  const port = 8802
-  const relay = spawn(process.execPath, [join(app.getAppPath(), 'server/relay.mjs')], {
+  const port = 8803
+  let relay = spawn(process.execPath, [join(app.getAppPath(), 'server/relay.mjs')], {
     env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: String(port), HOST: '127.0.0.1' },
     stdio: 'ignore'
   })
@@ -4964,7 +5046,8 @@ async function runJamEditProbe(): Promise<void> {
       relayUrl: `http://127.0.0.1:${port}`,
       listenTogether: true,
       jamGuestsSkip: true,
-      jamGuestsEdit: true
+      jamGuestsEdit: true,
+      motion: 'lively'
     })
     const { code } = ensureInvite()
 
@@ -4977,199 +5060,1000 @@ async function runJamEditProbe(): Promise<void> {
     await wait(1000)
     const pass = getSettings().jamPass
 
-    /** Ближайшие треки ведущего — названиями, как их видно на экране. */
-    const впереди = (): string[] =>
-      getPlayer()
-        .queue.slice(getPlayer().index + 1)
-        .map((track) => track.title)
-    const играет = (): string | undefined => getPlayer().queue[getPlayer().index]?.title
-
-    // ---- окно ведущего ----
     const window = getMainWindow()
     if (!window) throw new Error('нет окна оболочки')
     window.webContents.setBackgroundThrottling(false)
     window.showInactive()
-    window.setSize(1400, 900)
-    await wait(1000)
+    window.setSize(1600, 1000)
+    await wait(900)
     const run = async (js: string): Promise<unknown> => window.webContents.executeJavaScript(js)
     await run(
       `(() => { const b = [...document.querySelectorAll('.railitem')]
         .find((n) => (n.title ?? '').startsWith('Duet Jam')); if (b) b.click(); return true })()`
     )
-    await wait(1200)
+    await wait(1300)
 
-    const строкиНаЭкране = `[...document.querySelectorAll('.jam__item .jam__itemtitle')].map((n) => n.textContent.trim())`
-    report.экран = await run(
-      `(() => ({
-        строк: document.querySelectorAll('.jam__item').length,
-        ручек: document.querySelectorAll('.jam__grip').length,
-        крестиков: document.querySelectorAll('.jam__remove').length,
-        переключателейПрав: document.querySelectorAll('.jam__perm .toggle').length
-      }))()`
-    )
+    const впереди = (): string[] =>
+      getPlayer()
+        .queue.slice(getPlayer().index + 1)
+        .map((track) => track.title)
+    const экран = `(() => ({
+      вЭфире: !!document.querySelector('.jamstage__live'),
+      аватары: [...document.querySelectorAll('.jamstage__avatars .jamavatar')].map((a) => a.textContent),
+      сколько: document.querySelector('.jamstage__count')?.textContent ?? null,
+      роль: document.querySelector('.jamstage__role')?.textContent ?? null,
+      панель: document.querySelector('.jampanel .jamcard__title')?.textContent ?? null,
+      ссылок: document.querySelectorAll('.jamlink').length,
+      прав: document.querySelectorAll('.jamperm').length,
+      лента: [...document.querySelectorAll('.jamfeed__text')].map((n) => n.textContent.trim()),
+      строк: document.querySelectorAll('.jamrow').length,
+      подписи: [...document.querySelectorAll('.jamrow__by')].slice(0, 3).map((n) => n.textContent.trim()),
+      предложить: !!document.querySelector('.jamsuggest'),
+      плашкаОбрыва: !!document.querySelector('.jamroom__flash'),
+      вбок: document.documentElement.scrollWidth > document.documentElement.clientWidth
+    }))()`
 
-    /*
-     * Перетаскивание настоящими событиями DOM: React слушает именно их, и так
-     * проверяется вся проводка обработчиков, а не только команда движка.
-     * Четвёртую строку бросаем на первую — она должна встать первой.
-     */
-    const доПеретаскивания = впереди()
-    const тащим = доПеретаскивания[3]
-    await run(
-      `(() => {
-        const rows = [...document.querySelectorAll('.jam__item')]
-        const data = new DataTransfer()
-        const fire = (el, type) => el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: data }))
-        fire(rows[3], 'dragstart')
-        fire(rows[0], 'dragenter')
-        fire(rows[0], 'dragover')
-        fire(rows[0], 'drop')
-        fire(rows[3], 'dragend')
-        return true
-      })()`
-    )
+    report.ведущийСразу = await run(экран)
+    save(join(out, 'jamroom-host.png'), (await window.webContents.capturePage()).toPNG())
+
+    // ---- пришла «Маша» и предложила трек ----
+    await sayToHost(code, pass, { type: 'hello', from: 'Маша', pid: 'probe-masha' })
     await wait(1200)
-    report.перетаскивание = {
-      тащили: тащим,
-      первымСтал: впереди()[0],
-      сработало: впереди()[0] === тащим,
-      наЭкранеПервым: ((await run(строкиНаЭкране)) as string[])[0],
-      играетТоЖе: играет() === queue[0]!.title
+    const предложено = queue[8]!
+    await sayToHost(code, pass, {
+      type: 'add',
+      from: 'Маша',
+      pid: 'probe-masha',
+      track: {
+        title: предложено.title,
+        artists: предложено.artists,
+        durationMs: предложено.durationMs,
+        service: предложено.service,
+        nativeId: предложено.nativeId
+      }
+    })
+    await wait(3500)
+    report.послеМаши = await run(экран)
+
+    // ---- перетаскивание настоящей мышью: четвёртую строку — наверх ----
+    const до = впереди()
+    const тащим = до[3]
+    const точки = (await run(`(() => {
+      const rows = [...document.querySelectorAll('.jamrow')]
+      const grip = rows[3]?.querySelector('.jamrow__grip')
+      if (!grip) return null
+      const g = grip.getBoundingClientRect(); const top = rows[0].getBoundingClientRect()
+      return { x: Math.round(g.left + g.width / 2), y: Math.round(g.top + g.height / 2), toY: Math.round(top.top + 6) }
+    })()`)) as { x: number; y: number; toY: number } | null
+    if (точки) {
+      const send = (type: 'mouseDown' | 'mouseMove' | 'mouseUp', y: number): void =>
+        window.webContents.sendInputEvent({ type, x: точки.x, y, button: 'left', clickCount: 1 })
+      send('mouseMove', точки.y)
+      send('mouseDown', точки.y)
+      for (let step = 1; step <= 14; step += 1) {
+        await wait(30)
+        send('mouseMove', Math.round(точки.y + ((точки.toY - точки.y) * step) / 14))
+      }
+      // Пока держат — строки уже разъехались, ещё до отпускания.
+      report.строкиРазъехалисьДоОтпускания = await run(
+        `document.querySelectorAll('.jamrow')[0]?.querySelector('.jamrow__title')?.textContent === ${JSON.stringify(тащим)}`
+      )
+      await wait(80)
+      send('mouseUp', точки.toY)
+      await wait(1500)
     }
+    report.перетаскивание = { тащили: тащим, первымСтал: впереди()[0], сработало: впереди()[0] === тащим }
+
+    // ---- клавиатура: Alt+↓ двигает первую строку на место второй ----
+    const первая = впереди()[0]
+    await run(`(() => { const r = document.querySelectorAll('.jamrow')[0]; r?.focus(); return !!r })()`)
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Down', modifiers: ['alt'] })
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Down', modifiers: ['alt'] })
+    await wait(1200)
+    report.клавиатура = { была: первая, сталаВторой: впереди()[1] === первая }
 
     // ---- крестик ----
-    const убираем = впереди()[1]
-    const сколькоБыло = getPlayer().queue.length
-    await run(
-      `(() => { const b = document.querySelectorAll('.jam__remove')[1]; if (!b) return false; b.click(); return true })()`
-    )
-    await wait(1200)
-    report.удаление = {
-      убирали: убираем,
-      сталоКороче: getPlayer().queue.length === сколькоБыло - 1,
-      исчез: !впереди().includes(убираем!),
-      играетТоЖе: играет() === queue[0]!.title
-    }
-    save(join(out, 'jamedit-host.png'), (await window.webContents.capturePage()).toPNG())
-
-    // ---- просьбы участника, пока всё разрешено ----
-    const idОчереди = (n: number): string =>
-      getPlayer().queue[getPlayer().index + 1 + n]!.id
-    const просимПереставить = впереди()[4]
-    await sayToHost(code, pass, { type: 'move', id: idОчереди(4), to: 0, from: 'Проба' })
-    await wait(2500)
-    const просимУбрать = впереди()[2]
-    await sayToHost(code, pass, { type: 'remove', id: idОчереди(2), from: 'Проба' })
-    await wait(2500)
-    report.просьбыРазрешены = {
-      переставилось: впереди()[0] === просимПереставить,
-      убралось: !впереди().includes(просимУбрать!),
-      сообщение: getPlayer().followError
-    }
-
-    // ---- ведущий запретил: те же просьбы отбрасываются ----
-    // Запрет — нажатием переключателя в окне, как это сделает человек.
-    await run(
-      `(() => { const t = [...document.querySelectorAll('.jam__perm')]
-        .find((n) => n.textContent.includes('меняют очередь'))?.querySelector('.toggle');
-        if (!t) return false; t.click(); return true })()`
-    )
-    await run(
-      `(() => { const t = [...document.querySelectorAll('.jam__perm')]
-        .find((n) => n.textContent.includes('переключают'))?.querySelector('.toggle');
-        if (!t) return false; t.click(); return true })()`
-    )
+    const убираем = впереди()[2]
+    await run(`(() => { const b = document.querySelectorAll('.jamrow__remove')[2]; if (!b) return false; b.click(); return true })()`)
     await wait(1500)
-    const запрещено = впереди()
-    const игралоДо = играет()
-    await sayToHost(code, pass, { type: 'remove', id: idОчереди(0), from: 'Проба' })
-    await sayToHost(code, pass, { type: 'move', id: idОчереди(3), to: 0, from: 'Проба' })
-    await sayToHost(code, pass, { type: 'next', from: 'Проба' })
-    await wait(3000)
-    report.просьбыЗапрещены = {
-      настройкиПоменялись: !getSettings().jamGuestsEdit && !getSettings().jamGuestsSkip,
-      правоВСостоянии: getPlayer().jamPerms,
-      очередьНеТронута: JSON.stringify(впереди()) === JSON.stringify(запрещено),
-      трекНеПереключён: играет() === игралоДо
-    }
+    report.крестик = { убирали: убираем, исчез: !впереди().includes(убираем!) }
+    report.лентаПослеДействий = await run(`[...document.querySelectorAll('.jamfeed__text')].map((n) => n.textContent.trim())`)
 
-    // Что ушло участникам: права должны лежать у ретранслятора.
-    report.уРетранслятора = await (async (): Promise<unknown> => {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 4000)
-      try {
-        const response = await fetch(`http://127.0.0.1:${port}/s/${encodeURIComponent(code)}`, {
-          headers: { Accept: 'text/event-stream' },
-          signal: controller.signal
-        })
-        const reader = response.body!.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
-        for (let i = 0; i < 20; i += 1) {
-          const { value, done } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(value, { stream: true })
-          const line = buffer
-            .split(String.fromCharCode(10))
-            .find((l) => l.startsWith('data:'))
-          if (!line) continue
-          void reader.cancel()
-          return (JSON.parse(line.slice(5).trim()) as { perms?: unknown }).perms ?? 'прав нет'
-        }
-        return 'состояния не пришло'
-      } catch (error) {
-        return `не вышло: ${String(error)}`
-      } finally {
-        clearTimeout(timer)
-      }
-    })()
-
-    /*
-     * Участник целиком. Ведущий и участник — одно приложение, поэтому свой код
-     * на время подменяется (иначе «по своей ссылке идти некуда»). Права
-     * выставляются до подключения: пока идём следом, состояние держит права
-     * ведущего, и свои настройки их не перебивают — ровно как и должно быть.
-     */
-    setSettings({ jamGuestsEdit: true, jamGuestsSkip: false })
+    // ---- Маша ушла ----
+    await sayToHost(code, pass, { type: 'bye', from: 'Маша', pid: 'probe-masha' })
     await wait(1500)
+    report.послеУходаМаши = await run(
+      `(() => ({ аватары: [...document.querySelectorAll('.jamstage__avatars .jamavatar')].map((a) => a.textContent),
+        лента0: document.querySelector('.jamfeed__text')?.textContent.trim() ?? null }))()`
+    )
+    save(join(out, 'jamroom-host-after.png'), (await window.webContents.capturePage()).toPNG())
+
+    // ---- узкое окно ----
+    window.setSize(1080, 820)
+    await wait(900)
+    report.узко = await run(`(() => ({ вбок: (document.querySelector('.app__content')?.scrollWidth ?? 0) > (document.querySelector('.app__content')?.clientWidth ?? 0) + 1,
+      колонок: getComputedStyle(document.querySelector('.jamroom__grid')).gridTemplateColumns }))()`)
+    save(join(out, 'jamroom-narrow.png'), (await window.webContents.capturePage()).toPNG())
+    window.setSize(1600, 1000)
+    await wait(600)
+
+    // ---- взгляд участника: идём за собой под подменённым кодом ----
     const свой = getSettings().togetherCode
     setSettings({ togetherCode: 'ChuzhoyKodDlyaProverki12345678' })
     await command({ type: 'follow', code: свой, jam: pass })
-    await wait(3000)
-    const участник = getPlayer()
-    report.участник = {
-      следуем: участник.following !== null,
-      праваУчастника: участник.jamGuest,
-      праваОтВедущего: участник.jamPerms,
-      очередьВидна: участник.jamQueue.length
+    await wait(4000)
+    await run(
+      `(() => { const b = [...document.querySelectorAll('.railitem')]
+        .find((n) => (n.title ?? '').startsWith('Duet Jam')); if (b) b.click(); return true })()`
+    )
+    await wait(1200)
+    report.участник = await run(экран)
+    report.участникСвойНомер = getPlayer().jamSelfId
+    const гостьКладёт = queue[7]!
+    await command({ type: 'jamAdd', tracks: [гостьКладёт] })
+    await wait(3500)
+    report.участникЛента = await run(`[...document.querySelectorAll('.jamfeed__text')].map((n) => n.textContent.trim())`)
+    // Где на самом деле оказался предложенный трек: у ведущего и в присланной
+    // участнику очереди.
+    report.послеПредложенияУчастника = {
+      предложено: гостьКладёт.title,
+      уВедущегоСледом: getPlayer().queue.slice(getPlayer().index + 1, getPlayer().index + 3).map((t) => `${t.title} [${t.id}] ← ${getPlayer().jamCredits[t.id] ?? 'ведущий'}`),
+      уУчастникаСледом: getPlayer().jamQueue.slice(0, 2).map((item) => `${item.title} [${item.id}] ← ${item.by ?? 'ведущий'}`),
+      сообщение: getPlayer().followError
     }
-
-    // «Дальше» запрещено — должно прийти объяснение, а не тишина.
-    await command({ type: 'next' })
-    await wait(600)
-    report.участникЖмётДальше = getPlayer().followError
-
-    // Перестановка у участника: видна сразу, до ответа ведущего.
-    const списокДо = getPlayer().jamQueue.map((item) => item.title)
-    const последний = getPlayer().jamQueue[getPlayer().jamQueue.length - 1]
-    if (последний) {
-      void command({ type: 'jamMove', id: последний.id, to: 0 })
-      await wait(60)
-      report.участникПереставил = {
-        сразуПервым: getPlayer().jamQueue[0]?.title === последний.title,
-        былоПервым: списокДо[0]
-      }
-    }
-
+    save(join(out, 'jamroom-guest.png'), (await window.webContents.capturePage()).toPNG())
     await command({ type: 'stopFollowing' })
     setSettings({ togetherCode: свой })
+    await wait(1500)
+
+    // ---- обрыв: ретранслятор умер, ведущий должен это показать ----
+    relay.kill()
+    for (let i = 0; i < 4; i += 1) {
+      await command({ type: 'next' })
+      await wait(2500)
+    }
+    report.обрыв = {
+      relayDown: getPlayer().relayDown,
+      плашка: await run(`!!document.querySelector('.jamroom__flash')`)
+    }
+    save(join(out, 'jamroom-down.png'), (await window.webContents.capturePage()).toPNG())
+
     report.ok = true
   } catch (error) {
     report.error = error instanceof Error ? error.message : String(error)
   } finally {
-    // Не оставляем пробную настройку в профиле: по умолчанию всё разрешено.
-    setSettings({ jamGuestsSkip: true, jamGuestsEdit: true })
+    setSettings({ jamGuestsSkip: true, jamGuestsEdit: true, motion: 'system' })
     relay.kill()
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Шторка и язычок на настоящем окне.
+ *
+ * Меряется то, что видно на экране: где стоит окно относительно края рабочей
+ * области, какого оно размера в каждом состоянии, выдерживается ли задержка
+ * наведения и возвращается ли всплывание в покой. Наведение подаётся тем же
+ * сообщением, которым его шлёт опрос курсора, — двигать настоящий курсор
+ * проба не вправе.
+ */
+async function runEdgeProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const { screen } = await import('electron')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'edge' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    // «Полное» движение: на машине с выключенными в Windows анимациями «как в
+    // системе» обходится без перетекания, а проверить надо именно его.
+    setSettings({
+      miniVariant: 'notch',
+      motion: process.env['DUET_MOTION'] === 'system' ? 'system' : 'lively',
+      notchDelay: 300,
+      notchPeek: true,
+      notchVolume: true,
+      notchPlace: 'center',
+      sideEdge: 'right',
+      miniExpandOnHover: true
+    })
+
+    const queue = (await likedTracks()).filter((t) => t.available).slice(0, 4)
+    if (queue.length < 3) throw new Error('мало доступных треков')
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+
+    const mini = createMiniPlayer()
+    showMiniPlayer()
+    await wait(2200)
+
+    const area = screen.getPrimaryDisplay().workArea
+    const place = (): Record<string, number> => {
+      const b = mini.getBounds()
+      return {
+        x: b.x,
+        y: b.y,
+        w: b.width,
+        h: b.height,
+        отВерха: b.y - area.y,
+        отЦентра: Math.round(b.x + b.width / 2 - (area.x + area.width / 2)),
+        отПравогоКрая: area.x + area.width - (b.x + b.width),
+        отСерединыПоВертикали: Math.round(b.y + b.height / 2 - (area.y + area.height / 2))
+      }
+    }
+    const stateOf = async (): Promise<string> =>
+      (await mini.webContents.executeJavaScript(
+        `document.querySelector('.edge')?.getAttribute('data-state') ?? 'нет'`
+      )) as string
+    const shape = async (): Promise<unknown> =>
+      mini.webContents.executeJavaScript(
+        `(() => { const s = document.querySelector('.edge__shape'); if (!s) return null;
+          const r = s.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top) } })()`
+      )
+    const hover = (on: boolean): void => mini.webContents.send(IPC.miniHover, on)
+    const shot = async (name: string): Promise<void> => {
+      save(join(out, `${name}.png`), (await mini.webContents.capturePage()).toPNG())
+    }
+
+    /*
+     * Есть ли что-то непрозрачное за пределами формы с ушками. Тёмный
+     * прямоугольник вокруг шторки был именно этим — обрезанной краем окна
+     * тенью, — и проверять его надо по пикселям, а не на глаз.
+     */
+    const outside = async (): Promise<unknown> => {
+      const box = (await mini.webContents.executeJavaScript(
+        `(() => { const s = document.querySelector('.edge__shape'); const r = s.getBoundingClientRect();
+          const e = parseFloat(getComputedStyle(s).getPropertyValue('--e')) || 0;
+          return { x: r.left, y: r.top, w: r.width, h: r.height, e, notch: !!document.querySelector('.edge--notch') } })()`
+      )) as { x: number; y: number; w: number; h: number; e: number; notch: boolean }
+      const image = await mini.webContents.capturePage()
+      const size = image.getSize()
+      const bounds = mini.getContentBounds()
+      const k = size.width / bounds.width
+      const bitmap = image.toBitmap()
+      // Форма плюс ушки: у шторки по бокам, у язычка сверху и снизу.
+      const left = (box.x - (box.notch ? box.e : 0)) * k
+      const right = (box.x + box.w + (box.notch ? box.e : 0)) * k
+      const top = (box.y - (box.notch ? 0 : box.e)) * k
+      const bottom = (box.y + box.h + (box.notch ? 0 : box.e)) * k
+      let stray = 0
+      for (let y = 0; y < size.height; y += 1) {
+        for (let x = 0; x < size.width; x += 1) {
+          const inside = x >= left - 1 && x <= right + 1 && y >= top - 1 && y <= bottom + 1
+          if (inside) continue
+          if (bitmap[(y * size.width + x) * 4 + 3]! > 8) stray += 1
+        }
+      }
+      return { окно: `${bounds.width}×${bounds.height}`, форма: `${Math.round(box.w)}×${Math.round(box.h)}`, лишнихПикселей: stray }
+    }
+
+    /*
+     * Влезает ли раскрытое содержимое в форму. Кнопка паузы однажды обрезалась
+     * нижним краем: высота формы задана числом, а строки текста оказались выше
+     * задуманного. Смотрим нижний край каждого ряда против нижнего края формы.
+     */
+    const fits = async (): Promise<unknown> =>
+      mini.webContents.executeJavaScript(
+        `(() => { const s = document.querySelector('.edge__shape').getBoundingClientRect();
+          const open = document.querySelector('.notch__open, .side__open');
+          const rows = [...open.children].map((c) => { const r = c.getBoundingClientRect();
+            return c.className.split(' ')[0] + ' ' + Math.round(r.top - s.top) + '…' + Math.round(r.bottom - s.top) })
+          const play = document.querySelector('.edge__play').getBoundingClientRect();
+          return { форма: Math.round(s.height), ряды: rows, низПаузы: Math.round(play.bottom - s.top),
+            запасСнизу: Math.round(s.bottom - play.bottom), содержимое: open.scrollHeight, коробка: open.clientHeight } })()`
+      )
+
+    // ---- шторка ----
+    report.шторкаПокой = { состояние: await stateOf(), окно: place(), форма: await shape() }
+    await shot('notch-idle')
+
+    hover(true)
+    await wait(150)
+    const рано = await stateOf()
+    await wait(900)
+    report.шторкаНаведение = {
+      через150мс: рано,
+      через1050мс: await stateOf(),
+      окно: place(),
+      форма: await shape()
+    }
+    report.шторкаВлезает = await fits()
+    await shot('notch-open')
+    await wait(700)
+    report.шторкаЗаФормой = await outside()
+
+    hover(false)
+    // Каждые 100 мс: состояние, окно и где на самом деле курсор. Опрос курсора в
+    // главном процессе продолжает работать и может перебить поданное пробой.
+    const следы: string[] = []
+    for (let i = 0; i < 14; i += 1) {
+      await wait(100)
+      const c = screen.getCursorScreenPoint()
+      const b = mini.getBounds()
+      const dom = (await mini.webContents.executeJavaScript(
+        `(() => { const e = document.querySelector('.edge'); const m = document.querySelector('.mini');
+          const sh = document.querySelector('.edge__shape');
+          const r = m.getBoundingClientRect(); const er = e.getBoundingClientRect();
+          const cm = getComputedStyle(m), ce = getComputedStyle(e), cs = getComputedStyle(sh);
+          return 'edge ' + Math.round(er.width) + 'x' + Math.round(er.height) + ' (стиль ' + e.style.width + 'x' + e.style.height + ', перех ' + ce.transitionProperty + ')' +
+            ' mini ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' disp ' + cm.display + ' pos ' + cs.position +
+            ' детей ' + m.children.length + ' класс ' + m.firstElementChild.className })()`
+      )) as string
+      следы.push(`${(i + 1) * 100}мс ${await stateOf()} окно ${b.width}×${b.height} рамка ${dom} курсор ${c.x},${c.y}`)
+    }
+    report.шторкаУшёлКурсор = { состояние: await stateOf(), окно: place(), следы }
+
+    void command({ type: 'next' })
+    await wait(900)
+    report.шторкаСменаТрека = { состояние: await stateOf(), окно: place(), форма: await shape() }
+    await shot('notch-peek')
+    report.всплытиеЗаФормой = await outside()
+    await wait(3000)
+    report.шторкаПослеВсплытия = { состояние: await stateOf(), окно: place() }
+
+    // ---- язычок ----
+    setSettings({ miniVariant: 'side' })
+    await wait(1500)
+    report.язычокПокой = { состояние: await stateOf(), окно: place(), форма: await shape() }
+    hover(true)
+    await wait(1100)
+    report.язычокНаведение = { состояние: await stateOf(), окно: place(), форма: await shape() }
+    await shot('side-open')
+    await wait(700)
+    report.язычокЗаФормой = await outside()
+    report.язычокВлезает = await fits()
+    hover(false)
+    await wait(1200)
+
+    void command({ type: 'next' })
+    await wait(900)
+    report.язычокСменаТрека = { состояние: await stateOf(), окно: place() }
+    await shot('side-peek')
+
+    setSettings({ sideEdge: 'left' })
+    await wait(1500)
+    report.язычокСлева = { окно: place(), отЛевогоКрая: mini.getBounds().x - area.x }
+
+    // ---- нельзя перетащить ----
+    report.перетаскивание = { движимо: mini.isMovable() }
+
+    hideMiniPlayer()
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    setSettings({ miniVariant: 'bar', sideEdge: 'right' })
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/** Разведка: как Windows обходится с очень узким прозрачным окном. */
+async function runNarrowProbe(): Promise<void> {
+  const { screen } = await import('electron')
+  const report: Record<string, unknown> = { probe: 'narrow' }
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    setSettings({ miniVariant: 'bar' })
+    const mini = createMiniPlayer()
+    showMiniPlayer()
+    await wait(1500)
+    const area = screen.getPrimaryDisplay().workArea
+    const tries: unknown[] = []
+    for (const [w, h] of [
+      [7, 206],
+      [20, 206],
+      [40, 206],
+      [72, 176],
+      [7, 206],
+      [164, 526],
+      [266, 7],
+      [7, 7]
+    ] as const) {
+      mini.setBounds({ x: area.x + area.width - w, y: area.y + 200, width: w, height: h })
+      await wait(300)
+      const b = mini.getBounds()
+      const content = mini.getContentBounds()
+      tries.push({ просили: `${w}×${h}`, вышло: `${b.width}×${b.height}`, содержимое: `${content.width}×${content.height}`, x: b.x - (area.x + area.width - w) })
+    }
+    report.попытки = tries
+    report.минимум = mini.getMinimumSize()
+    report.масштаб = screen.getPrimaryDisplay().scaleFactor
+    hideMiniPlayer()
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Три новых вида Главной на живом окне.
+ *
+ * Волна включается по-настоящему: сцена, дашборд и дуэт показывают то, что
+ * играет, и без этого проверять в них было бы нечего. Снимки — в размер кадра
+ * макета, 1600×1000, чтобы их можно было класть рядом.
+ */
+async function runHomesProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'homes' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1600, 1000)
+    setSettings({ motion: 'lively', motionWave: 'drift' })
+    await wait(800)
+    const run = async (code: string): Promise<unknown> => window.webContents.executeJavaScript(code)
+
+    await command({ type: 'playWave', service: getSettings().waveService })
+    await waitFor(() => getPlayer().playing, 40_000)
+    await wait(2500)
+
+    /*
+     * Плейлисты и «Скачанное» в копии профиля бывают пустыми — заводим свой
+     * плейлист и включаем блок скачанного, иначе правая колонка дашборда и
+     * сетка плейлистов дуэта остались бы непроверенными.
+     */
+    const { createPlaylist, removePlaylist } = await import('./library/playlists')
+    const пробныйПлейлист = await createPlaylist('Проба Главной', (await likedTracks()).slice(0, 12))
+    const блокиБыли = getSettings().homeBlocks
+    setSettings({ homeBlocks: блокиБыли.map((block) => ({ ...block, shown: true })) })
+    await wait(1500)
+
+    const goHome = async (): Promise<void> => {
+      await run(
+        `(() => { const b = [...document.querySelectorAll('.railitem')]
+          .find((n) => (n.title ?? '') === 'Главная'); if (b) b.click(); return true })()`
+      )
+      await run(`document.querySelector('.app__content')?.scrollTo(0, 0)`)
+    }
+    const common = `
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth ||
+        (document.querySelector('.app__content')?.scrollWidth ?? 0) > (document.querySelector('.app__content')?.clientWidth ?? 0) + 1,
+      eqИграет: document.querySelectorAll('.eq--on').length,
+      заголовок: document.querySelector('.stagehero__title')?.textContent ?? null,
+      размерЗаголовка: document.querySelector('.stagehero__title') ? getComputedStyle(document.querySelector('.stagehero__title')).fontSize : null`
+
+    // ---- 2a · сцена ----
+    setSettings({ homeLayout: 'stage' })
+    await wait(600)
+    await goHome()
+    await wait(2200)
+    report.сцена = await run(`(() => ({ ${common},
+      высотаHero: Math.round(document.querySelector('.stagehero')?.getBoundingClientRect().height ?? 0),
+      картВеера: document.querySelectorAll('.coverfan__card').length,
+      чиповДалее: document.querySelectorAll('.stagechip').length,
+      полосаВремени: !!document.querySelector('.stagehero .stageprogress'),
+      анимацияСвечения: getComputedStyle(document.querySelector('.stagehero__glow') ?? document.body).animationName,
+      блоковНиже: document.querySelectorAll('.home--stage > .home__section').length
+    }))()`)
+    save(join(out, 'home-stage.png'), (await window.webContents.capturePage()).toPNG())
+
+    /*
+     * Веер: вторая карта должна стать первой тем же узлом. Помечаем её и
+     * смотрим, у кого после смены трека класс «front».
+     */
+    await run(`(() => { const mid = document.querySelector('.coverfan__card--mid'); if (mid) mid.dataset.probe = 'mid'; return !!mid })()`)
+    await command({ type: 'next' })
+    await wait(250)
+    report.веер = await run(`(() => {
+      const marked = document.querySelector('[data-probe="mid"]')
+      return {
+        помеченнаяЖива: !!marked,
+        теперьКласс: marked ? marked.className.replace('coverfan__card ', '') : null,
+        улетающая: !!document.querySelector('.coverfan__card--gone')
+      }
+    })()`)
+    await wait(1500)
+
+    // ---- 2b · дашборд ----
+    setSettings({ homeLayout: 'dash' })
+    await wait(600)
+    await goHome()
+    await wait(2200)
+    report.дашборд = await run(`(() => ({ ${common},
+      плиткаВолны: Math.round(document.querySelector('.dashwave')?.getBoundingClientRect().height ?? 0),
+      строкДалее: document.querySelectorAll('.dashrow').length,
+      сейчасИграет: document.querySelector('.dashnow__title')?.textContent ?? null,
+      строкИзбранного: document.querySelectorAll('.dashliked .trackrow').length,
+      плейлистов: document.querySelectorAll('.dashlist').length,
+      скачанное: document.querySelector('.dashdl__title')?.textContent ?? 'нет плитки',
+      колонкиВерх: (() => { const a = document.querySelector('.dashwave')?.getBoundingClientRect(); const b = document.querySelector('.dashnow')?.getBoundingClientRect(); return a && b ? Math.round(a.top) === Math.round(b.top) : null })()
+    }))()`)
+    save(join(out, 'home-dash.png'), (await window.webContents.capturePage()).toPNG())
+
+    // ---- 2c · дуэт ----
+    const станцияБыла = getSettings().waveService
+    setSettings({ homeLayout: 'duet', waveService: 'both' })
+    await wait(600)
+    await goHome()
+    await wait(2200)
+    const состояниеКругов = `(() => [...document.querySelectorAll('.duetcircle')].map((c) => c.className.replace('duetcircle ', '') + ' ' + getComputedStyle(c).opacity))()`
+    report.дуэт = await run(`(() => ({ ${common},
+      кругов: document.querySelectorAll('.duetcircle').length,
+      подсказка: document.querySelector('.duethero__hint')?.textContent ?? null,
+      кнопкаОбе: document.querySelector('.duetboth')?.className ?? null,
+      избранноеИПлейлистыРядом: document.querySelector('.duetgrid')?.className ?? 'нет сетки'
+    }))()`)
+    report.кругиДо = await run(состояниеКругов)
+    save(join(out, 'home-duet.png'), (await window.webContents.capturePage()).toPNG())
+
+    // Щелчок по кругу меняет станцию — как сегмент в других видах.
+    const было = getSettings().waveService
+    await run(`(() => { const c = document.querySelector('.duetcircle--vk'); if (!c || c.disabled) return false; c.click(); return true })()`)
+    await wait(900)
+    report.щелчокПоКругуVK = { было, стало: getSettings().waveService, круги: await run(состояниеКругов) }
+    setSettings({ waveService: станцияБыла })
+
+    // ---- узкое окно ----
+    window.setSize(1080, 820)
+    for (const layout of ['stage', 'dash', 'duet'] as const) {
+      setSettings({ homeLayout: layout })
+      await wait(900)
+      report[`узко_${layout}`] = await run(`(() => ({ ${common},
+        веерВиден: document.querySelector('.coverfan') ? getComputedStyle(document.querySelector('.coverfan')).display !== 'none' : null,
+        // Круги дуэта — рядом с текстом, а не под ним: верх кругов выше низа текста.
+        кругиРядом: (() => { const c = document.querySelector('.duetcircles')?.getBoundingClientRect(); const b = document.querySelector('.duethero__body')?.getBoundingClientRect();
+          return c && b ? { рядом: c.top < b.bottom && c.left > b.left, ширинаКругов: Math.round(c.width), высотаHero: Math.round(document.querySelector('.duethero').getBoundingClientRect().height) } : null })()
+      }))()`)
+      save(join(out, `home-${layout}-narrow.png`), (await window.webContents.capturePage()).toPNG())
+    }
+
+    await removePlaylist(пробныйПлейлист)
+    setSettings({ homeBlocks: блокиБыли })
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    setSettings({ homeLayout: 'calm', motion: 'system' })
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Новое в настройках и светлая тема новых видов.
+ *
+ * Схемы видов Главной и превью шторки и язычка — это то, по чему человек
+ * выбирает, поэтому их видно глазами; а светлая тема у дашборда проверяется
+ * отдельно — его плитки стоят на поверхностях темы, а не на обложке.
+ */
+async function runNewSettingsProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'newsettings' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1500, 980)
+    await wait(800)
+    const run = async (code: string): Promise<unknown> => window.webContents.executeJavaScript(code)
+
+    const queue = (await likedTracks()).filter((t) => t.available).slice(0, 4)
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+
+    const pane = async (name: string): Promise<void> => {
+      await run(`(() => { const b = [...document.querySelectorAll('.railitem')]
+        .find((n) => (n.title ?? '') === 'Настройки'); if (b) b.click(); return true })()`)
+      await wait(700)
+      await run(`(() => { const n = [...document.querySelectorAll('.settings__navitem')]
+        .find((b) => b.textContent.includes('${name}')); if (n) n.click(); return true })()`)
+      await wait(900)
+    }
+
+    await pane('Внешний вид')
+    report.видыГлавной = await run(
+      `[...document.querySelectorAll('.layoutcard')].map((c) => c.querySelector('.layoutcard__label')?.textContent)`
+    )
+    save(join(out, 'settings-layouts.png'), (await window.webContents.capturePage()).toPNG())
+
+    await pane('Мини-плеер')
+    report.видыПлиты = await run(
+      `[...document.querySelectorAll('.variantcard')].map((c) => ({
+        имя: c.querySelector('.variantcard__label')?.textContent,
+        превью: Math.round(c.querySelector('.minipreview')?.getBoundingClientRect().height ?? 0)
+      }))`
+    )
+    report.группаШторки = await run(
+      `[...document.querySelectorAll('.settings__group')].some((g) => g.textContent.includes('ШТОРКА И ЯЗЫЧОК'))`
+    )
+    save(join(out, 'settings-mini.png'), (await window.webContents.capturePage()).toPNG())
+    await run(`(() => { const g = [...document.querySelectorAll('.settings__group')]
+      .find((n) => n.textContent.includes('ШТОРКА')); const box = document.querySelector('.app__content');
+      if (!g || !box) return false; box.scrollTop += g.getBoundingClientRect().top - box.getBoundingClientRect().top - 80; return true })()`)
+    await wait(600)
+    save(join(out, 'settings-notch.png'), (await window.webContents.capturePage()).toPNG())
+
+    // ---- светлая тема у дашборда ----
+    setSettings({ theme: 'light', homeLayout: 'dash' })
+    await run(`(() => { const b = [...document.querySelectorAll('.railitem')]
+      .find((n) => (n.title ?? '') === 'Главная'); if (b) b.click(); return true })()`)
+    await wait(1800)
+    save(join(out, 'home-dash-light.png'), (await window.webContents.capturePage()).toPNG())
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    setSettings({ theme: 'dark', homeLayout: 'calm' })
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Веер обложек «сцены»: не остаётся ли лишних карт.
+ *
+ * Жалоба — «картинка трека залагивает, и в итоге поверх всех полупрозрачная».
+ * Карты веера держатся за трек по ключу, и если один трек попадает в веер
+ * дважды, React теряет счёт узлам. Смотрим порядок карт в разметке: передняя
+ * обязана быть последней (иначе её накрывает полупрозрачная), а карт — не
+ * больше трёх плюс улетающая.
+ */
+async function runFanProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'fan' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1600, 1000)
+    setSettings({ motion: 'lively', motionWave: 'breathe', homeLayout: 'stage', theme: process.env['DUET_THEME'] === 'dark' ? 'dark' : 'light' })
+    await wait(800)
+    const run = async (code: string): Promise<unknown> => window.webContents.executeJavaScript(code)
+    await run(
+      `(() => { const b = [...document.querySelectorAll('.railitem')]
+        .find((n) => (n.title ?? '') === 'Главная'); if (b) b.click(); return true })()`
+    )
+    await wait(2500)
+
+    const веер = `(() => {
+      const cards = [...document.querySelectorAll('.coverfan__card')]
+      const last = cards[cards.length - 1]
+      return {
+        карт: cards.length,
+        порядок: cards.map((c) => c.className.replace('coverfan__card coverfan__card--', '')),
+        последняяПередняя: !!last && last.classList.contains('coverfan__card--front'),
+        передних: cards.filter((c) => c.classList.contains('coverfan__card--front')).length
+      }
+    })()`
+
+    report.волнаНеИграет = await run(веер)
+    save(join(out, 'fan-idle.png'), (await window.webContents.capturePage()).toPNG())
+
+    await command({ type: 'playWave', service: getSettings().waveService })
+    await waitFor(() => getPlayer().playing, 40_000)
+    await wait(2500)
+    report.волнаИграет = await run(веер)
+
+    // Быстрые переключения — как человек, листающий волну.
+    for (const step of ['next', 'next', 'prev', 'next', 'next', 'prev', 'prev'] as const) {
+      void command({ type: step })
+      await wait(220)
+    }
+    await wait(2500)
+    report.послеЛистания = await run(веер)
+    save(join(out, 'fan-after.png'), (await window.webContents.capturePage()).toPNG())
+
+    // Включили не волну: веер снова показывает предпросмотр станции.
+    const liked = (await likedTracks()).filter((t) => t.available).slice(0, 5)
+    await command({ type: 'playQueue', tracks: liked, startIndex: 0 })
+    await wait(2500)
+    report.играетНеВолна = await run(веер)
+    await command({ type: 'playWave', service: getSettings().waveService })
+    await wait(3000)
+    report.сноваВолна = await run(веер)
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Hero Главной и сцена Jam в обеих темах.
+ *
+ * В светлой теме они должны быть бумажными, с тёмным текстом; в тёмной —
+ * прежними. Кроме вида «Обложка во весь экран»: там текст на фотографии, и
+ * плита тёмная в любой теме. Проверяется по цвету фона и текста под рукой
+ * браузера, а снимки — глазами.
+ */
+async function runLightHeroProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'lighthero' }
+  // Свой ретранслятор: открытая комната не должна стучаться в настоящий.
+  const { spawn } = await import('node:child_process')
+  const port = 8804
+  const relay = spawn(process.execPath, [join(app.getAppPath(), 'server/relay.mjs')], {
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', PORT: String(port), HOST: '127.0.0.1' },
+    stdio: 'ignore'
+  })
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    window.showInactive()
+    window.setSize(1600, 1000)
+    setSettings({ motion: 'lively', motionWave: 'breathe', theme: 'light', relayUrl: `http://127.0.0.1:${port}` })
+    await wait(800)
+    const run = async (code: string): Promise<unknown> => window.webContents.executeJavaScript(code)
+    const go = async (title: string): Promise<void> => {
+      await run(
+        `(() => { const b = [...document.querySelectorAll('.railitem')]
+          .find((n) => (n.title ?? '').startsWith(${JSON.stringify(title)})); if (b) b.click(); return true })()`
+      )
+      await run(`document.querySelector('.app__content')?.scrollTo(0, 0)`)
+    }
+
+    await command({ type: 'playWave', service: getSettings().waveService })
+    await waitFor(() => getPlayer().playing, 40_000)
+    await wait(2000)
+
+    // Яркость фона под заголовком и цвет заголовка: светлое на бумаге — ошибка.
+    const look = (hero: string, title: string): string => `(() => {
+      const h = document.querySelector(${JSON.stringify(hero)}); const t = document.querySelector(${JSON.stringify(title)})
+      if (!h || !t) return null
+      const lum = (c) => { const m = c.match(/[\\d.]+/g).map(Number); return Math.round(0.2126*m[0] + 0.7152*m[1] + 0.0722*m[2]) }
+      return { фон: getComputedStyle(h).backgroundColor, текст: getComputedStyle(t).color, яркостьТекста: lum(getComputedStyle(t).color) }
+    })()`
+
+    const layouts: Array<[string, string, string]> = [
+      ['stage', '.stagehero', '.stagehero__title'],
+      ['dash', '.dashwave', '.stagehero__title'],
+      ['duet', '.duethero', '.stagehero__title'],
+      ['calm', '.wave', '.wave__title'],
+      ['cover', '.wave', '.wave__title']
+    ]
+    for (const theme of ['light', 'dark'] as const) {
+      setSettings({ theme })
+      for (const [layout, hero, title] of layouts) {
+        setSettings({ homeLayout: layout as never })
+        await wait(500)
+        await go('Главная')
+        await wait(1600)
+        report[`${theme}-${layout}`] = await run(look(hero, title))
+        save(join(out, `hero-${theme}-${layout}.png`), (await window.webContents.capturePage()).toPNG())
+      }
+    }
+
+    // ---- Jam ----
+    setSettings({ theme: 'light', homeLayout: 'stage' })
+    await command({ type: 'openJam' })
+    await wait(1200)
+    await go('Duet Jam')
+    await wait(1500)
+    report['light-jam'] = await run(look('.jamstage', '.jamstage__title'))
+    save(join(out, 'hero-light-jam.png'), (await window.webContents.capturePage()).toPNG())
+
+    // Быстрое листание: слоёв обложки после него должен остаться один.
+    for (const step of ['next', 'next', 'prev', 'next', 'prev', 'prev', 'next'] as const) {
+      void command({ type: step })
+      await wait(140)
+    }
+    await wait(2500)
+    report.слоёвОбложкиJam = await run(
+      `[...document.querySelectorAll('.jamnow__artlayer')].map((n) => getComputedStyle(n).opacity)`
+    )
+
+    setSettings({ theme: 'dark' })
+    await wait(900)
+    report['dark-jam'] = await run(look('.jamstage', '.jamstage__title'))
+    save(join(out, 'hero-dark-jam.png'), (await window.webContents.capturePage()).toPNG())
+    await command({ type: 'closeJam' })
+
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    setSettings({ theme: 'light', homeLayout: 'stage' })
+    relay.kill()
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Мини-плеер и полноэкранное приложение.
+ *
+ * Полноэкранное окно — настоящее и из другого процесса: форма PowerShell во
+ * весь экран, как у игры или видеоплеера. Видно ли плиту, решает снимок
+ * экрана, а не свойства окна: «поверх всех» стоят оба, и кто из них сверху,
+ * знает только то, что нарисовано. Окно залито одним цветом — доля этого
+ * цвета в рамке плиты и есть ответ.
+ */
+async function runFullscreenProbe(): Promise<void> {
+  const { spawn } = await import('node:child_process')
+  const { join } = await import('node:path')
+  const { tmpdir } = await import('node:os')
+  const { writeFileSync: save } = await import('node:fs')
+  const { screen, desktopCapturer, BrowserWindow: Windows } = await import('electron')
+  const report: Record<string, unknown> = { probe: 'fullscreen' }
+
+  const script = join(tmpdir(), 'duet-fullscreen-probe.ps1')
+  save(
+    script,
+    [
+      'Add-Type -AssemblyName System.Windows.Forms',
+      'Add-Type -AssemblyName System.Drawing',
+      '$f = New-Object System.Windows.Forms.Form',
+      "$f.FormBorderStyle = 'None'",
+      "$f.StartPosition = 'Manual'",
+      '$f.Bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds',
+      '$f.TopMost = [bool]::Parse($env:DUET_TOPMOST)',
+      '$f.BackColor = [System.Drawing.Color]::FromArgb(20, 20, 60)',
+      '$f.ShowInTaskbar = $false',
+      '$t = New-Object System.Windows.Forms.Timer; $t.Interval = 15000; $t.Add_Tick({ $f.Close() }); $t.Start()',
+      '$f.Add_Shown({ $f.Activate() })',
+      '[System.Windows.Forms.Application]::Run($f)'
+    ].join('\r\n')
+  )
+  let form: ReturnType<typeof spawn> | null = null
+  const openForm = (topmost: boolean): void => {
+    form = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script], {
+      env: { ...process.env, DUET_TOPMOST: topmost ? 'true' : 'false' },
+      stdio: 'ignore'
+    })
+  }
+  const closeForm = (): void => {
+    form?.kill()
+    form = null
+  }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    setSettings({ miniVariant: 'cover', miniAnchor: 'top-right', miniOverFullscreen: false, miniShowWhen: 'never' })
+    const queue = (await likedTracks()).filter((t) => t.available).slice(0, 3)
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await wait(1500)
+    const mini = createMiniPlayer()
+    showMiniPlayer()
+    await wait(2000)
+
+    const display = screen.getPrimaryDisplay()
+    // Доля пикселей цвета формы в рамке плиты: ~1 — плиту закрыли, ~0 — видна.
+    const covered = async (): Promise<number> => {
+      const sources = await desktopCapturer.getSources({
+        types: ['screen'],
+        thumbnailSize: {
+          width: Math.round(display.bounds.width * display.scaleFactor),
+          height: Math.round(display.bounds.height * display.scaleFactor)
+        }
+      })
+      const source = sources.find((s) => s.display_id === String(display.id)) ?? sources[0]
+      if (!source) throw new Error('нет снимка экрана')
+      const image = source.thumbnail
+      const { width, height } = image.getSize()
+      const k = width / display.bounds.width
+      const bitmap = image.toBitmap()
+      const b = mini.getBounds()
+      let same = 0
+      let total = 0
+      for (let y = Math.round((b.y - display.bounds.y + 6) * k); y < Math.round((b.y - display.bounds.y + b.height - 6) * k); y += 3) {
+        for (let x = Math.round((b.x - display.bounds.x + 6) * k); x < Math.round((b.x - display.bounds.x + b.width - 6) * k); x += 3) {
+          if (x < 0 || y < 0 || x >= width || y >= height) continue
+          const i = (y * width + x) * 4
+          // BGRA
+          const near = Math.abs(bitmap[i]! - 60) < 4 && Math.abs(bitmap[i + 1]! - 20) < 4 && Math.abs(bitmap[i + 2]! - 20) < 4
+          if (near) same += 1
+          total += 1
+        }
+      }
+      return total ? Math.round((same / total) * 100) / 100 : -1
+    }
+
+    report.доФормы = await covered()
+
+    // ---- A: полноэкранное «поверх всех», настройка выключена ----
+    openForm(true)
+    await wait(3500)
+    report.A_поверхВсехБезНастройки = { закрыто: await covered(), фокусУНас: Windows.getFocusedWindow() !== null }
+
+    // ---- B: включили настройку ----
+    setSettings({ miniOverFullscreen: true })
+    await wait(2200)
+    report.B_поверхВсехСНастройкой = {
+      закрыто: await covered(),
+      // Фокус должен остаться у полноэкранного приложения.
+      фокусУНас: Windows.getFocusedWindow() !== null
+    }
+    closeForm()
+    await wait(1200)
+
+    // ---- C: обычное полноэкранное окно, настройка выключена ----
+    setSettings({ miniOverFullscreen: false })
+    openForm(false)
+    await wait(3500)
+    report.C_обычноеБезНастройки = { закрыто: await covered() }
+    closeForm()
+    await wait(800)
+
+    hideMiniPlayer()
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    closeForm()
+    setSettings({ miniOverFullscreen: false })
+  }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Мини-плеер «Обложка» в обеих темах: текст на затемнённой обложке обязан
+ * быть светлым, иначе в светлой теме он чёрный по тёмному.
+ */
+async function runMiniCoverProbe(): Promise<void> {
+  const { writeFileSync: save, mkdirSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'minicover' }
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    setSettings({ miniVariant: 'cover', miniAnchor: 'top-right', miniShowWhen: 'never', miniExpandOnHover: true })
+    const queue = (await likedTracks()).filter((t) => t.available && t.coverUrl).slice(0, 3)
+    void command({ type: 'playQueue', tracks: queue, startIndex: 0 })
+    await waitFor(() => getPlayer().playing, 30_000)
+    const mini = createMiniPlayer()
+    showMiniPlayer()
+    await wait(2000)
+
+    const colors = `(() => {
+      const pick = (sel) => { const n = document.querySelector(sel); return n ? getComputedStyle(n).color : null }
+      const play = document.querySelector('.v-cover .playbtn')
+      return { название: pick('.v-cover__title'), исполнитель: pick('.v-cover__sub'), значок: pick('.v-cover__icon'),
+        пауза: play ? getComputedStyle(play).color : null, кнопкиПеремотки: pick('.v-cover .transport') }
+    })()`
+
+    for (const theme of ['light', 'dark'] as const) {
+      setSettings({ theme })
+      mini.webContents.send(IPC.miniHover, false)
+      await wait(900)
+      report[`${theme}-покой`] = await mini.webContents.executeJavaScript(colors)
+      save(join(out, `minicover-${theme}.png`), (await mini.webContents.capturePage()).toPNG())
+      mini.webContents.send(IPC.miniHover, true)
+      await wait(900)
+      report[`${theme}-раскрыт`] = await mini.webContents.executeJavaScript(colors)
+      save(join(out, `minicover-${theme}-open.png`), (await mini.webContents.capturePage()).toPNG())
+    }
+    hideMiniPlayer()
+    report.ok = true
+  } catch (error) {
+    report.error = error instanceof Error ? error.message : String(error)
+  } finally {
+    setSettings({ theme: 'light' })
   }
   writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
   app.exit(0)

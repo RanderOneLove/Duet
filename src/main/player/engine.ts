@@ -23,12 +23,23 @@ import { startFollowing, stopFollowing } from '../together/follow'
 import { resetPublishing } from '../together/host'
 import { closeJam, openJam, rotateJam, sayToHost } from '../together/jam'
 import { resolveSeed } from '../sources/registry'
-import { DEFAULT_JAM_PERMS, type JamMessage, type JamPerms } from '@shared/jam'
+import {
+  DEFAULT_JAM_PERMS,
+  EMPTY_ROOM,
+  FOLLOW_RECONNECTING,
+  HOST_ID,
+  JAM_EVENTS_KEPT,
+  type JamEvent,
+  type JamEventKind,
+  type JamMessage,
+  type JamPerms
+} from '@shared/jam'
 import type { SharedState } from '../together/host'
 import { flushSession, readSession, writeSession } from '../state/session'
 import { addDownloads, downloadedFile } from '../downloads/manager'
 import { mediaUrl } from '../downloads/protocol'
 import { userInfo } from 'node:os'
+import { randomBytes } from 'node:crypto'
 import { getSettings, onSettingsChanged, setSettings } from '../state/settings'
 
 /**
@@ -246,7 +257,11 @@ export async function command(input: PlayerCommand): Promise<void> {
       const code = state.following
       void (async () => {
         const delivered = passed
-          ? await sayToHost(code, passed, { type: input.type as 'next' | 'prev' })
+          ? await sayToHost(code, passed, {
+              type: input.type as 'next' | 'prev',
+              from: jamName(),
+              pid: followGuestId ?? undefined
+            })
           : false
         if (!delivered) patch({ followError: 'Ведущий сейчас не на связи — просьба не дошла' })
       })()
@@ -529,6 +544,7 @@ export async function command(input: PlayerCommand): Promise<void> {
         jamGuest: joined && followJamPass !== null,
         followError: joined ? null : 'Сессия не найдена — возможно, её уже закрыли'
       })
+      if (joined && followJamPass) startGreeting(input.code)
       return
     }
 
@@ -538,16 +554,26 @@ export async function command(input: PlayerCommand): Promise<void> {
 
     case 'openJam': {
       const opened = await openJam(handleJamMessage)
+      // Новая комната начинается пустой: прежние гости и события — из прошлой.
+      jamPeople.clear()
       patch({
         jamOpen: opened,
+        jamEvents: [],
+        jamRoom: roomOf(),
         followError: opened ? null : 'Не вышло открыть общую сессию — нет связи с ретранслятором'
       })
+      if (opened) {
+        pushEvent(null, 'open')
+        startRoomWatch()
+      }
       return
     }
 
     case 'closeJam':
       await closeJam()
-      patch({ jamOpen: false })
+      stopRoomWatch()
+      jamPeople.clear()
+      patch({ jamOpen: false, jamRoom: EMPTY_ROOM, jamEvents: [] })
       return
 
     case 'rotateJam': {
@@ -556,10 +582,33 @@ export async function command(input: PlayerCommand): Promise<void> {
         jamOpen: opened,
         followError: opened ? 'Прежние ссылки больше не работают' : 'Не вышло сменить пропуск'
       })
+      if (opened) pushEvent(null, 'rotate')
       return
     }
 
     case 'jamAdd': {
+      /*
+       * Ведущий кладёт в общую очередь сам — сразу после играющего, как и
+       * просьбы участников. Кнопка «В очередь» у него та же, что у гостей:
+       * открытая комната — это одна очередь на всех, включая хозяина.
+       */
+      if (!state.following && state.jamOpen) {
+        // С конца: каждый следующий встаёт перед предыдущим, и порядок
+        // выбранных сохраняется.
+        const placed: string[] = []
+        for (const track of [...input.tracks].reverse()) {
+          const put = await placeNext(track)
+          if (put) placed.unshift(put.title)
+        }
+        for (const title of placed) pushEvent(null, 'add', title)
+        patch({
+          followError: placed.length
+            ? `В общей очереди: «${placed[0]}»`
+            : 'Этот трек сейчас недоступен ни в VK, ни в Яндексе'
+        })
+        return
+      }
+
       // Просьба уходит ведущему; своя очередь у участника не меняется —
       // иначе у него заиграло бы одно, а у всех остальных другое.
       const code = state.following
@@ -572,6 +621,7 @@ export async function command(input: PlayerCommand): Promise<void> {
         const ok = await sayToHost(code, followJamPass, {
           type: 'add',
           from: jamName(),
+          pid: followGuestId ?? undefined,
           track: {
             title: track.title,
             artists: track.artists,
@@ -601,10 +651,13 @@ export async function command(input: PlayerCommand): Promise<void> {
       if (!state.following) {
         const at = upcomingIndexOf(input.id)
         if (at < 0) return
+        const title = state.queue[at]?.title
         if (input.type === 'jamRemove') {
           await command({ type: 'removeFromQueue', index: at })
+          if (state.jamOpen) pushEvent(null, 'remove', title)
         } else {
           await command({ type: 'moveInQueue', from: at, to: slotAfterCurrent(input.to) })
+          if (state.jamOpen) pushEvent(null, 'move', title)
         }
         return
       }
@@ -640,8 +693,8 @@ export async function command(input: PlayerCommand): Promise<void> {
         code,
         pass,
         input.type === 'jamMove'
-          ? { type: 'move', id: input.id, to: input.to, from: jamName() }
-          : { type: 'remove', id: input.id, from: jamName() }
+          ? { type: 'move', id: input.id, to: input.to, from: jamName(), pid: followGuestId ?? undefined }
+          : { type: 'remove', id: input.id, from: jamName(), pid: followGuestId ?? undefined }
       )
       if (!delivered) {
         patch({ jamQueue: before, followError: 'Ведущий сейчас не на связи — просьба не дошла' })
@@ -831,12 +884,21 @@ const SYNC_TOLERANCE_MS = 2000
 let applyingFollowed = false
 
 function leaveFollowing(): void {
+  stopGreeting(true)
   lastShared = null
   followJamPass = null
   const own = ownPerms()
   const permsDiffer = own.skip !== state.jamPerms.skip || own.edit !== state.jamPerms.edit
-  if (state.jamGuest || state.jamQueue.length > 0 || permsDiffer) {
-    patch({ jamGuest: false, jamQueue: [], jamPerms: own })
+  if (state.jamGuest || state.jamQueue.length > 0 || permsDiffer || state.jamSelfId) {
+    patch({
+      jamGuest: false,
+      jamQueue: [],
+      jamPerms: own,
+      jamRoom: EMPTY_ROOM,
+      jamEvents: [],
+      jamNowBy: null,
+      jamSelfId: null
+    })
   }
   stopFollowing()
   if (state.following || state.followError) patch({ following: null, followError: null })
@@ -896,6 +958,27 @@ function handleJamMessage(message: JamMessage): void {
      */
     applyingJam = true
     try {
+      const who = guestOf(message)
+      if (message.type === 'hello') {
+        // Пульс приходит каждые полминуты — событием он становится только раз.
+        const known = jamPeople.has(message.pid)
+        jamPeople.set(message.pid, { name: who.name, seen: Date.now() })
+        if (!known) pushEvent(who, 'join')
+        patchRoom()
+        return
+      }
+      if (message.type === 'bye') {
+        if (jamPeople.delete(message.pid)) {
+          pushEvent(who, 'leave')
+          patchRoom()
+        }
+        return
+      }
+      // Любая просьба — тоже признак, что человек на месте.
+      if (message.pid && jamPeople.has(message.pid)) {
+        jamPeople.set(message.pid, { name: who.name, seen: Date.now() })
+      }
+
       /*
        * Права проверяются здесь, у ведущего, а не только погашенной кнопкой
        * у участника. Кнопка — вежливость; решает тот, чья очередь. Участник
@@ -906,46 +989,175 @@ function handleJamMessage(message: JamMessage): void {
       if (message.type === 'next' || message.type === 'prev') {
         if (!perms.skip) return
         await command({ type: message.type })
+        pushEvent(who, 'skip')
         return
       }
       if (message.type === 'move' || message.type === 'remove') {
         if (!perms.edit) return
         const at = upcomingIndexOf(message.id)
         if (at < 0) return
-        const who = (message.from ?? '').trim() || 'участник'
         const title = state.queue[at]?.title ?? ''
         if (message.type === 'remove') {
           await command({ type: 'removeFromQueue', index: at })
-          patch({ followError: `${who} убрал из очереди: «${title}»` })
+          pushEvent(who, 'remove', title)
         } else {
           await command({ type: 'moveInQueue', from: at, to: slotAfterCurrent(message.to) })
-          patch({ followError: `${who} переставил: «${title}»` })
+          pushEvent(who, 'move', title)
         }
         return
       }
       if (message.type !== 'add') return
 
-      const track = await resolveSeed(message.track)
+      const found = await resolveSeed(message.track)
+      const track = found ? await placeNext(found) : null
       if (!track) {
         patch({ followError: `«${message.track.title}» не нашёлся ни в VK, ни в Яндексе` })
         return
       }
-      await command({ type: 'enqueueNext', tracks: [track] })
       // Имя предложившего — то, ради чего очередь вообще показывают: иначе
       // общая сессия выглядит как очередь ведущего, в которую что-то падает.
-      const by = (message.from ?? '').trim() || 'участник'
-      patch({
-        jamCredits: { ...state.jamCredits, [track.id]: by },
-        followError: `${by} добавил: «${track.title}»`
-      })
+      patch({ jamCredits: { ...state.jamCredits, [track.id]: who.name } })
+      pushEvent(who, 'add', track.title)
     } finally {
       applyingJam = false
     }
   })()
 }
 
+/**
+ * Поставить трек следующим в общую очередь — и сказать, что вышло.
+ *
+ * Уже стоит дальше в очереди — поднимается, а не встаёт второй раз: иначе в
+ * общей очереди появлялись дубли, и подпись «предложила Маша» доставалась
+ * обоим. Недоступен — ищется тот же трек у другого сервиса. Не вышло ни так,
+ * ни так — null, и тогда в ленту не пишется «добавлено»: раньше событие
+ * появлялось, даже когда очередь молча выбрасывала недоступный трек.
+ */
+async function placeNext(track: Track): Promise<Track | null> {
+  const at = upcomingIndexOf(track.id)
+  if (at >= 0) {
+    if (at !== state.index + 1) await command({ type: 'moveInQueue', from: at, to: state.index + 1 })
+    return track
+  }
+  const playable = track.available ? track : await playableTrack(track)
+  if (!playable.available) return null
+  const twinAt = upcomingIndexOf(playable.id)
+  if (twinAt >= 0) {
+    if (twinAt !== state.index + 1) await command({ type: 'moveInQueue', from: twinAt, to: state.index + 1 })
+    return playable
+  }
+  await command({ type: 'enqueueNext', tracks: [playable] })
+  // В пустой очереди трек не встаёт «следующим», а сразу играет.
+  const next = state.queue[state.index + 1]?.id
+  const now = state.queue[state.index]?.id
+  return next === playable.id || now === playable.id ? playable : null
+}
+
+/* ===========================================================================
+   Комната Jam: кто в ней и что в ней происходит.
+=========================================================================== */
+
+/**
+ * Участники, назвавшие себя, — у ведущего. Ретранслятор знает только, сколько
+ * подключено; кто именно — знает лишь тот, кто прислал «я здесь».
+ */
+const jamPeople = new Map<string, { name: string; seen: number }>()
+
+/** Молчит дольше этого — значит ушёл, даже если не попрощался. */
+const ROOM_SILENCE_MS = 75_000
+const ROOM_CHECK_MS = 15_000
+let roomTimer: NodeJS.Timeout | null = null
+
+function startRoomWatch(): void {
+  stopRoomWatch()
+  roomTimer = setInterval(() => {
+    const now = Date.now()
+    let changed = false
+    for (const [pid, person] of jamPeople) {
+      if (now - person.seen < ROOM_SILENCE_MS) continue
+      jamPeople.delete(pid)
+      pushEvent({ id: pid, name: person.name }, 'leave')
+      changed = true
+    }
+    if (changed) patchRoom()
+  }, ROOM_CHECK_MS)
+  roomTimer.unref()
+}
+
+function stopRoomWatch(): void {
+  if (roomTimer) clearInterval(roomTimer)
+  roomTimer = null
+}
+
+/** Комната ведущего: он сам и те, кто назвался. */
+function roomOf(): { people: { id: string; name: string; role: 'host' | 'guest' }[]; listeners: number } {
+  return {
+    people: [
+      { id: HOST_ID, name: jamName(), role: 'host' },
+      ...[...jamPeople].map(([id, person]) => ({ id, name: person.name, role: 'guest' as const }))
+    ],
+    // Молчащих считает ведущий по ответу ретранслятора, см. together/host.ts.
+    listeners: 0
+  }
+}
+
+function patchRoom(): void {
+  patch({ jamRoom: roomOf() })
+}
+
+function guestOf(message: JamMessage): { id: string; name: string } {
+  return { id: message.pid ?? '', name: (message.from ?? '').trim().slice(0, 24) || 'участник' }
+}
+
+/** Записать событие в ленту — она уходит участникам со следующей публикацией. */
+function pushEvent(who: JamEvent['who'], kind: JamEventKind, title?: string): void {
+  const event: JamEvent = { at: Date.now(), who, kind, ...(title ? { title } : {}) }
+  patch({ jamEvents: [event, ...state.jamEvents].slice(0, JAM_EVENTS_KEPT) })
+}
+
+/**
+ * Участник: «я в комнате» сразу и дальше раз в полминуты.
+ *
+ * Номер участника — на эту сессию: по нему ведущий отличает двух людей с
+ * одинаковым именем, а участник узнаёт в ленте и комнате себя.
+ */
+let followGuestId: string | null = null
+let greetTimer: NodeJS.Timeout | null = null
+const GREET_MS = 30_000
+
+function startGreeting(code: string): void {
+  stopGreeting(false)
+  followGuestId = randomBytes(6).toString('base64url')
+  patch({ jamSelfId: followGuestId })
+  const hello = (): void => {
+    const pass = followJamPass
+    if (!pass || !followGuestId || state.following !== code) return
+    void sayToHost(code, pass, { type: 'hello', from: jamName(), pid: followGuestId })
+  }
+  hello()
+  greetTimer = setInterval(hello, GREET_MS)
+  greetTimer.unref()
+}
+
+/** Перестать приветствовать; `farewell` — ещё и попрощаться, если было с кем. */
+function stopGreeting(farewell: boolean): void {
+  if (greetTimer) clearInterval(greetTimer)
+  greetTimer = null
+  const code = state.following
+  if (farewell && code && followJamPass && followGuestId) {
+    void sayToHost(code, followJamPass, { type: 'bye', from: jamName(), pid: followGuestId })
+  }
+  followGuestId = null
+}
+
+/** Ведущий: доходят ли отправки до ретранслятора (см. together/host.ts). */
+export function reportRelay(healthy: boolean): void {
+  const down = !healthy && getSettings().listenTogether
+  if (state.relayDown !== down) patch({ relayDown: down })
+}
+
 /** Что показывается, пока связь с ведущим восстанавливается. */
-const RECONNECTING = 'Связь с ведущим прервалась — восстанавливаем…'
+const RECONNECTING = FOLLOW_RECONNECTING
 
 /**
  * Состояния применяются по одному и только самое свежее.
@@ -971,7 +1183,10 @@ function applyFollowed(shared: SharedState): void {
   patch({
     jamQueue: shared.next ?? [],
     listeners: shared.listeners ?? 0,
-    jamPerms: shared.perms ?? DEFAULT_JAM_PERMS
+    jamPerms: shared.perms ?? DEFAULT_JAM_PERMS,
+    jamRoom: shared.room ?? EMPTY_ROOM,
+    jamEvents: shared.events ?? [],
+    jamNowBy: shared.nowBy ?? null
   })
   if (state.followError === RECONNECTING) patch({ followError: null })
   if (!draining) void drainFollowed()

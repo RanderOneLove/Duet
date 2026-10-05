@@ -3,14 +3,27 @@ import type { WaveChoice } from './domain'
 /**
  * Visual style of the always-on-top mini player. Names map to the wireframe
  * artboards: bar=3a, card=3b, pill=3c, cover=3d.
+ *
+ * «Шторка» и «язычок» — другой род: это не плита, которую кладут куда угодно,
+ * а полоска, прижатая к краю экрана. В покое её почти не видно, при наведении
+ * она раскрывается в плеер, при смене трека ненадолго всплывает.
  */
-export type MiniVariant = 'bar' | 'card' | 'pill' | 'cover'
+export type MiniVariant = 'bar' | 'card' | 'pill' | 'cover' | 'notch' | 'side'
+
+/** Варианты, живущие у края экрана: их место задаётся краем, а не углом. */
+export const EDGE_VARIANTS: readonly MiniVariant[] = ['notch', 'side']
+
+export function isEdgeVariant(variant: MiniVariant): boolean {
+  return EDGE_VARIANTS.includes(variant)
+}
 
 export const MINI_VARIANTS: { id: MiniVariant; label: string; hint: string }[] = [
   { id: 'bar', label: 'Плашка', hint: 'Минимум места, всё на виду' },
   { id: 'card', label: 'Карточка', hint: 'Обложка крупно + что дальше' },
   { id: 'pill', label: 'Пилюля', hint: 'Свёрнута, раскрывается по наведению' },
-  { id: 'cover', label: 'Обложка', hint: 'Квадрат, контролы на затемнении' }
+  { id: 'cover', label: 'Обложка', hint: 'Квадрат, контролы на затемнении' },
+  { id: 'notch', label: 'Шторка', hint: 'Чёрная полоска сверху, раскрывается по наведению' },
+  { id: 'side', label: 'Язычок', hint: 'Тонкая полоска у края, выезжает сбоку' }
 ]
 
 /**
@@ -21,8 +34,32 @@ export const MINI_SIZES: Record<MiniVariant, { width: number; height: number }> 
   bar: { width: 384, height: 116 },
   card: { width: 272, height: 430 },
   pill: { width: 230, height: 48 },
-  cover: { width: 264, height: 264 }
+  cover: { width: 264, height: 264 },
+  // Покой: полоска с «ушками», которыми шторка срастается с краем экрана.
+  notch: { width: 224, height: 7 },
+  side: { width: 7, height: 164 }
 }
+
+/**
+ * Что шторка или язычок сообщают главному процессу.
+ *
+ * Окно у них больше формы — под тень и потому, что Windows не даёт окну быть
+ * уже пары десятков точек. Поэтому наведение меряется по самой форме, а не по
+ * окну, а в покое окно пропускает мышь насквозь: прозрачный запас у края
+ * экрана иначе съедал бы щелчки по полосе прокрутки окна под ним.
+ */
+export interface EdgeInfo {
+  /** Прямоугольник формы в координатах окна. */
+  hit: { x: number; y: number; width: number; height: number }
+  /** Ловит ли окно мышь. Только раскрытая форма — в покое она лишь полоска. */
+  interactive: boolean
+}
+
+/** Где у верхнего края стоит шторка. */
+export type NotchPlace = 'left' | 'center' | 'right'
+
+/** К какому краю прижат язычок. */
+export type SideEdge = 'left' | 'right'
 
 /** Where the mini player parks itself on the chosen display. */
 export type MiniAnchor =
@@ -98,8 +135,14 @@ export const ROW_HEIGHT: Record<Density, number> = {
   roomy: 64
 }
 
-/** Каким показывать главный экран. */
-export type HomeLayout = 'calm' | 'cover' | 'list'
+/**
+ * Каким показывать главный экран.
+ *
+ * Первые три — прежние. «Сцена» отдаёт волне весь первый экран, «дашборд»
+ * показывает всё сразу сеткой, «дуэт» превращает два круга марки в выбор
+ * станции.
+ */
+export type HomeLayout = 'calm' | 'cover' | 'list' | 'stage' | 'dash' | 'duet'
 
 /** Каким показывать полноэкранный плеер. */
 export type PlayerLayout = 'split' | 'center' | 'ambient'
@@ -293,8 +336,28 @@ export interface Settings {
   miniExpandOnHover: boolean
   /** Let the plate be dragged around, or pin it where it stands. */
   miniDraggable: boolean
+  /**
+   * Держать мини-плеер над полноэкранными приложениями. Игра или видеоплеер
+   * во весь экран, сами вставшие «поверх всех», иначе его перекрывают: в
+   * Windows такие окна делят один слой, и сверху тот, кого подняли последним.
+   */
+  miniOverFullscreen: boolean
   /** Что делает двойной щелчок по плите мини-плеера. */
   miniDoubleClick: MiniDoubleClick
+  /**
+   * Сколько держать курсор на шторке или язычке, прежде чем они раскроются,
+   * в мс. Без задержки полоска у края раскрывалась бы от каждого курсора,
+   * проходящего мимо к заголовку окна или к краю экрана.
+   */
+  notchDelay: number
+  /** Всплывать на пару секунд при смене трека — показать, что заиграло. */
+  notchPeek: boolean
+  /** Ползунок громкости внутри раскрытой шторки и язычка. */
+  notchVolume: boolean
+  /** Где у верхнего края стоит шторка. */
+  notchPlace: NotchPlace
+  /** К какому краю прижат язычок. */
+  sideEdge: SideEdge
   hotkeyToggleMini: string
   hotkeyPlayPause: string
   hotkeyNext: string
@@ -309,7 +372,8 @@ export const DEFAULT_SETTINGS: Settings = {
   playerTintFromCover: true,
   density: 'normal',
   likeBurst: true,
-  homeLayout: 'calm',
+  // Главный вид — «волна во весь экран»: с ним Duet и знакомится.
+  homeLayout: 'stage',
   playerLayout: 'split',
   homeBlocks: DEFAULT_HOME_BLOCKS,
   motionPlayer: 'sheet',
@@ -354,7 +418,13 @@ export const DEFAULT_SETTINGS: Settings = {
   miniIdleOpacity: 0.92,
   miniExpandOnHover: true,
   miniDraggable: true,
+  miniOverFullscreen: false,
   miniDoubleClick: 'expand',
+  notchDelay: 300,
+  notchPeek: true,
+  notchVolume: true,
+  notchPlace: 'center',
+  sideEdge: 'right',
   hotkeyToggleMini: 'CommandOrControl+Shift+M',
   hotkeyPlayPause: 'MediaPlayPause',
   hotkeyNext: 'MediaNextTrack',

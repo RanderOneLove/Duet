@@ -8,13 +8,18 @@ import { Badge, LikeButton, Transport, artist, title, track, type VariantProps }
  * Wireframe 3d — 264px square with the artwork as the background. The gradient
  * scrim is fixed rather than sampled from the art, so text contrast holds for
  * any cover.
+ *
+ * Затемнение тёмное в обеих темах, значит, и текст на нём светлый в обеих:
+ * плита — поверхность на обложке (`on-media`), как плеер во весь экран. Без
+ * этого в светлой теме чёрный текст ложился на тёмную картинку и почти
+ * пропадал.
  */
 export function CoverVariant({ player, expanded, onCommand, onToggleExpand, onClose, onRestore }: VariantProps): JSX.Element {
   const position = useSmoothPosition(player)
 
   return (
     <div
-      className="v-cover drag"
+      className="v-cover on-media drag"
       onDoubleClick={onToggleExpand}
       style={track(player)?.coverUrl ? { backgroundImage: `url("${track(player)?.coverUrl}")` } : undefined}
     >

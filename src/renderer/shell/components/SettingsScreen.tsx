@@ -13,6 +13,8 @@ import {
   type HomeLayout,
   type MiniDoubleClick,
   type MotionLevel,
+  type NotchPlace,
+  type SideEdge,
   type PlayerLayout,
   type PlayerAnimation,
   type ScreenAnimation,
@@ -111,7 +113,10 @@ export function SettingsScreen({
 const HOME_LAYOUTS: { id: HomeLayout; label: string; hint: string }[] = [
   { id: 'calm', label: 'Спокойная', hint: 'Волна карточкой, потом списки' },
   { id: 'cover', label: 'Обложка во весь экран', hint: 'Списки поднимаются скроллом' },
-  { id: 'list', label: 'Списком', hint: 'Без hero — сразу треки' }
+  { id: 'list', label: 'Списком', hint: 'Без hero — сразу треки' },
+  { id: 'stage', label: 'Волна во весь экран', hint: 'Огромная волна, следующие треки веером' },
+  { id: 'dash', label: 'Дашборд', hint: 'Волна, далее, избранное — всё видно сразу' },
+  { id: 'duet', label: 'Дуэт', hint: 'Два круга выбирают станцию' }
 ]
 
 function AppearancePane({ settings, onChange }: Pick<Props, 'settings' | 'onChange'>): JSX.Element {
@@ -132,7 +137,25 @@ function AppearancePane({ settings, onChange }: Pick<Props, 'settings' | 'onChan
             onClick={() => onChange({ homeLayout: option.id })}
           >
             <span className={`layoutcard__stage layoutcard__stage--${option.id}`} aria-hidden={true}>
-              <span className="layoutcard__hero" />
+              {/* Схема, а не картинка: у новых видов своя раскладка — сетка
+                  плиток у дашборда, два круга у дуэта. */}
+              {option.id === 'dash' ? (
+                <span className="layoutcard__grid">
+                  <span className="layoutcard__tile layoutcard__tile--hero" />
+                  <span className="layoutcard__tile" />
+                  <span className="layoutcard__tile" />
+                  <span className="layoutcard__tile" />
+                </span>
+              ) : (
+                <span className="layoutcard__hero">
+                  {option.id === 'duet' && (
+                    <span className="layoutcard__circles">
+                      <i />
+                      <i />
+                    </span>
+                  )}
+                </span>
+              )}
               <span className="layoutcard__line" />
               <span className="layoutcard__line" />
               <span className="layoutcard__line layoutcard__line--short" />
@@ -646,7 +669,7 @@ function MiniPane({
           >
             {/* The preview renders the real variant component on live state. */}
             <div className="variantcard__stage">
-              <MiniPreview variant={variant.id} player={player} />
+              <MiniPreview variant={variant.id} player={player} settings={settings} />
             </div>
             <div className="variantcard__label">{variant.label}</div>
             <div className="muted variantcard__hint">{variant.hint}</div>
@@ -705,6 +728,15 @@ function MiniPane({
         <Row label="Перетаскивать мышью" hint="Выключено — плеер закреплён там, где стоит">
           <Toggle value={settings.miniDraggable} onChange={(v) => onChange({ miniDraggable: v })} />
         </Row>
+        <Row
+          label="Поверх полноэкранных приложений"
+          hint="Игры и видео во весь экран не закроют плеер. Игра в эксклюзивном полноэкранном режиме не пускает поверх себя никого — у неё выберите «окно без рамки»"
+        >
+          <Toggle
+            value={settings.miniOverFullscreen}
+            onChange={(v) => onChange({ miniOverFullscreen: v })}
+          />
+        </Row>
         <Row label="Прозрачность в покое" hint={`${Math.round(settings.miniIdleOpacity * 100)} %`} last>
           <input
             type="range"
@@ -713,6 +745,53 @@ function MiniPane({
             step={2}
             value={Math.round(settings.miniIdleOpacity * 100)}
             onChange={(event) => onChange({ miniIdleOpacity: Number(event.target.value) / 100 })}
+          />
+        </Row>
+      </Card>
+
+      {/* Своё у шторки и язычка: задержка, всплывание и край. Группа видна
+          всегда, а не только когда они выбраны, — иначе о них не узнать, не
+          перебрав виды наугад. */}
+      <Group label="ШТОРКА И ЯЗЫЧОК" />
+      <Card>
+        <Row
+          label="Задержка раскрытия"
+          hint={`${(settings.notchDelay / 1000).toFixed(2).replace(/0$/, '').replace('.', ',')} с — чтобы не раскрываться от случайного курсора`}
+        >
+          <input
+            type="range"
+            min={0}
+            max={1000}
+            step={50}
+            value={settings.notchDelay}
+            onChange={(event) => onChange({ notchDelay: Number(event.target.value) })}
+          />
+        </Row>
+        <Row label="Всплывать при смене трека" hint="На пару секунд показывают, что заиграло">
+          <Toggle value={settings.notchPeek} onChange={(v) => onChange({ notchPeek: v })} />
+        </Row>
+        <Row label="Громкость внутри" hint="Ползунок в раскрытой шторке и язычке">
+          <Toggle value={settings.notchVolume} onChange={(v) => onChange({ notchVolume: v })} />
+        </Row>
+        <Row label="Шторка у верхнего края">
+          <Segmented
+            value={settings.notchPlace}
+            onChange={(value: NotchPlace) => onChange({ notchPlace: value })}
+            options={[
+              { id: 'left', label: 'Слева' },
+              { id: 'center', label: 'По центру' },
+              { id: 'right', label: 'Справа' }
+            ]}
+          />
+        </Row>
+        <Row label="Край для язычка" hint="Язычок держится середины края" last>
+          <Segmented
+            value={settings.sideEdge}
+            onChange={(value: SideEdge) => onChange({ sideEdge: value })}
+            options={[
+              { id: 'left', label: 'Слева' },
+              { id: 'right', label: 'Справа' }
+            ]}
           />
         </Row>
       </Card>
@@ -763,7 +842,8 @@ function MiniPane({
         )}
       </Card>
       <p className="muted settings__note">
-        Мини-плеер можно перетащить мышью — положение сохранится как «своё место».
+        Мини-плеер можно перетащить мышью — положение сохранится как «своё место». Шторка и язычок
+        прижаты к краю экрана и не перетаскиваются: их место выбирается выше.
       </p>
     </>
   )

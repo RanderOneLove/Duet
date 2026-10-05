@@ -1,0 +1,985 @@
+/* ===========================================================================
+   Duet Jam — общая комната (макет 5a).
+
+   Сцена — как hero Главной: тёмная в тёмной теме, бумажная с подсветкой
+   обложкой в светлой (см. .on-hero в tokens.css). Карточки ниже — на
+   поверхностях темы.
+=========================================================================== */
+
+.jamroom {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ---- сцена ----------------------------------------------------------------- */
+
+.jamstage {
+  position: relative;
+  flex: none;
+  /* Не меньше макета, но и не обрезать: на узком окне карточка справа
+     бывает выше, и раньше она срезала аватарки внизу слева. */
+  min-height: 210px;
+  /* Колонкой: сетка внутри растягивается на всю высоту сцены, и аватарки
+     внизу слева остаются у нижнего края при любой высоте. */
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #141218;
+  box-shadow: var(--shadow-raised);
+  color: var(--text);
+  /* Кольцо вокруг аватаров — цвета сцены, чтобы они читались внахлёст. */
+  --ring: #16141b;
+}
+
+.jamstage__glow {
+  position: absolute;
+  right: -6%;
+  top: -60%;
+  width: 70%;
+  height: 220%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(90px) saturate(140%);
+  opacity: 0.55;
+  transition: background-image 1s ease;
+}
+
+.jamstage__veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(14, 13, 18, 0.96) 0%, rgba(14, 13, 18, 0.82) 45%, rgba(14, 13, 18, 0.35) 100%);
+}
+
+.jamstage__grid {
+  position: relative;
+  flex: 1;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 560px);
+  gap: clamp(16px, 2vw, 32px);
+  padding: 22px 28px;
+}
+
+.jamstage__head {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.jamstage__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.jamstage__kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.jamstage__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #30d158;
+}
+
+/* «В эфире» дышит, как светодиод: это состояние, а не украшение. */
+.jamstage__pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #30d158;
+  animation: jam-pulse 1.6s ease-out infinite;
+}
+
+@keyframes jam-pulse {
+  from {
+    box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.55);
+  }
+  to {
+    box-shadow: 0 0 0 10px rgba(48, 209, 88, 0);
+  }
+}
+
+.jamstage__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(40px, 3.6vw, 54px);
+  line-height: 0.95;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+.jamstage__role {
+  font-size: 14.5px;
+  color: var(--text-muted);
+}
+
+.jamstage__people {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.jamstage__avatars {
+  display: flex;
+  flex: none;
+}
+
+.jamstage__peopletext {
+  margin-left: 12px;
+  min-width: 0;
+}
+
+.jamstage__count {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.jamstage__note {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* Аватары — инициалы на цвете имени, внахлёст, с кольцом цвета сцены. */
+.jamavatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: -10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  font-weight: 700;
+  font-size: 14px;
+  color: #0b0b0d;
+  box-shadow: 0 0 0 3px var(--ring, #16141b);
+}
+
+.jamavatar--more {
+  background: var(--fill-3);
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+.jamavatar--sm {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  font-size: 10px;
+  box-shadow: none;
+}
+
+.jamavatar--xs {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  font-size: 9.5px;
+  box-shadow: none;
+}
+
+.jamavatar--host {
+  background: var(--mark-second);
+}
+
+/* Карточка «что играет» — стекло поверх свечения обложки. */
+.jamnow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--fill-1);
+  border: 1px solid var(--hairline);
+  backdrop-filter: blur(20px);
+  align-self: center;
+  min-width: 0;
+}
+
+.jamnow__art {
+  position: relative;
+  width: clamp(84px, 8vw, 120px);
+  aspect-ratio: 1;
+  flex: none;
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.jamnow__artlayer {
+  position: absolute;
+  inset: 0;
+}
+
+.jamnow__cover {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+}
+
+.jamnow__tag {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+}
+
+.jamnow__meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jamnow__titlerow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.jamnow__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.jamnow__sub {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin-top: -6px;
+}
+
+.jamnow__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.jamnow__bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.jamnow__bar > i {
+  display: block;
+  height: 100%;
+  background: var(--text);
+}
+
+.jamnow__sync {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jamnow__dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--fill-strong);
+}
+
+.jamnow__dot--on {
+  background: #30d158;
+}
+
+.jamnow__skips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.jamround {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 50%;
+  border: 0;
+  background: var(--fill-2);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    transform 100ms ease-out;
+}
+
+.jamround:hover:not(:disabled) {
+  background: var(--fill-3);
+}
+
+.jamround:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.jamround:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.jamnow__skiphint {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin-left: 4px;
+}
+
+/* ---- сетка под сценой ------------------------------------------------------ */
+
+.jamroom__grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.jamroom__side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Обрыв связи — поверх сетки, без сдвига раскладки. */
+.jamroom__flash {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  top: -12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-radius: 14px;
+  background: rgba(48, 32, 14, 0.94);
+  border: 1px solid rgba(255, 180, 84, 0.4);
+  color: #ffd29a;
+  font-size: 13px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+}
+
+.jamroom__spin {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 210, 154, 0.3);
+  border-top-color: #ffd29a;
+  animation: spin 0.8s linear infinite;
+}
+
+.jamcard {
+  background: var(--surface-2);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+
+.jamcard__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.jamcard__title--sm {
+  font-size: 15px;
+}
+
+/* ---- панель роли ----------------------------------------------------------- */
+
+.jampanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.jampanel__lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  text-wrap: pretty;
+}
+
+.jampanel__notice {
+  font-size: 12.5px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--fill-1);
+  color: var(--text-muted);
+}
+
+.jampanel__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.jambtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--r-pill);
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line);
+  transition:
+    background 150ms ease,
+    transform 100ms ease-out;
+}
+
+.jambtn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.jambtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.jambtn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent, #fff);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.jambtn--primary:hover:not(:disabled) {
+  background: var(--accent-hover, var(--accent));
+}
+
+.jambtn--outline:hover:not(:disabled) {
+  background: var(--fill-1);
+}
+
+.jambtn--ghost {
+  background: var(--fill-2);
+  border-color: transparent;
+}
+
+.jambtn--ghost:hover:not(:disabled) {
+  background: var(--fill-3);
+}
+
+.jambtn--sm {
+  padding: 7px 14px;
+  font-size: 12.5px;
+}
+
+.jambtn__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.jamlinks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jamlink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--fill-1);
+  border: 1px solid var(--hairline);
+}
+
+/* Ссылка с правами отличается видом: её раздают выборочно. */
+.jamlink--strong {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.jamlink__icon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fill-2);
+}
+
+.jamlink--strong .jamlink__icon {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: color-mix(in oklab, var(--accent) 70%, var(--text));
+}
+
+.jamlink__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.jamlink__label {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.jamlink__hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.jamperms {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.jamperm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--fill-1);
+}
+
+.jamperm__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.jamperm__label {
+  font-size: 13.5px;
+}
+
+.jamperm__hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.jamname {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.jamname span {
+  flex: 1;
+}
+
+.jamname .input {
+  width: 170px;
+  box-sizing: border-box;
+}
+
+/* ---- лента ----------------------------------------------------------------- */
+
+.jamfeed {
+  padding: 16px 18px;
+}
+
+.jamfeed__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.jamfeed__all {
+  font-size: 11.5px;
+  color: var(--text-faint, var(--text-muted));
+}
+
+.jamfeed__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.jamfeed__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 12.5px;
+}
+
+.jamfeed__text {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  opacity: 0.86;
+}
+
+.jamfeed__at {
+  font-size: 11px;
+  color: var(--text-faint, var(--text-muted));
+  font-variant-numeric: tabular-nums;
+}
+
+.jamfeed__empty {
+  padding: 6px 0 2px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* ---- очередь --------------------------------------------------------------- */
+
+.jamqueue {
+  padding: 16px 14px;
+}
+
+.jamqueue__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 12px;
+}
+
+.jamqueue__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.jamqueue__count {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.jamqueue__spacer {
+  flex: 1;
+}
+
+.jamqueue__hint {
+  font-size: 11.5px;
+  color: var(--text-faint, var(--text-muted));
+}
+
+/* «Предложить трек» — как поле поиска, но с пунктиром: это вход, а не список. */
+.jamsuggest {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 6px 12px;
+  height: 42px;
+  padding: 0 6px 0 14px;
+  border-radius: 14px;
+  background: var(--fill-1);
+  border: 1px dashed var(--outline);
+  color: var(--text-muted);
+}
+
+.jamsuggest:focus-within {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.jamsuggest__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.jamsuggest__input::placeholder {
+  color: var(--text-muted);
+}
+
+.jamsuggest__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--fill-2);
+  color: var(--text);
+  transition: background 150ms ease;
+}
+
+.jamsuggest__btn:hover {
+  background: var(--fill-3);
+}
+
+.jamlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jamrow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 54px;
+  padding: 0 10px;
+  border-radius: 13px;
+  outline: none;
+  background: var(--surface-2);
+  transition: background 150ms ease;
+}
+
+.jamrow:hover {
+  background: var(--surface-hover);
+}
+
+.jamrow:focus-visible {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* Строку тащат — у неё свой непрозрачный фон, иначе сквозь неё видно соседние. */
+.jamrow--held {
+  background: var(--surface-hover);
+}
+
+.jamrow__grip {
+  opacity: 0.4;
+  font-size: 11px;
+  letter-spacing: -1px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  padding: 10px 2px;
+}
+
+.jamrow:hover .jamrow__grip {
+  opacity: 0.85;
+}
+
+.jamrow--held .jamrow__grip {
+  cursor: grabbing;
+}
+
+.jamrow__num {
+  width: 18px;
+  flex: none;
+  text-align: right;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.jamrow__art {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 7px;
+}
+
+.jamrow__meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.jamrow__title {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.jamrow__artist {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.jamrow__by {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  max-width: 150px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  padding: 3px 9px 3px 3px;
+  border-radius: var(--r-pill);
+  background: var(--fill-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jamrow__remove {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.jamrow__remove:hover {
+  background: rgba(255, 122, 122, 0.15);
+  color: #ff7a7a;
+}
+
+.jamqueue__empty {
+  margin: 10px 6px;
+  height: 260px;
+  border: 2px dashed var(--line);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 0 40px;
+}
+
+.jamqueue__emptyicon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--fill-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.jamqueue__emptytitle {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.jamqueue__emptyhint {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+/* ---- узкое окно ------------------------------------------------------------ */
+
+@media (max-width: 1180px) {
+  .jamstage__note {
+    display: none;
+  }
+
+  .jamrow__by {
+    max-width: 96px;
+  }
+}
+
+/* ---- без движения ---------------------------------------------------------- */
+
+:root[data-motion='off'] .jamstage__pulse,
+:root[data-motion='off'] .jamroom__spin {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-motion='system'] .jamstage__pulse {
+    animation: none;
+  }
+}
+
+/* ---- светлая тема ---------------------------------------------------------- */
+
+:root[data-theme='light'] .jamstage {
+  background: #fff;
+  --ring: #fff;
+}
+
+:root[data-theme='light'] .jamstage__glow {
+  filter: blur(90px) saturate(170%);
+}
+
+:root[data-theme='light'] .jamstage__veil {
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.95) 0%, rgb(255 255 255 / 0.8) 45%, rgb(255 255 255 / 0.32) 100%);
+}
+
+/* Светло-зелёный «в эфире» на белом не читается — темнее, но тот же сигнал. */
+:root[data-theme='light'] .jamstage__live {
+  color: #1d9a46;
+}
+
+:root[data-theme='light'] .jamnow {
+  background: rgb(255 255 255 / 0.62);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme='light'] .jamnow__art {
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme='light'] .jamroom__flash {
+  background: rgb(255 246 234 / 0.97);
+  border-color: rgba(230, 140, 30, 0.45);
+  color: #8a4a00;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme='light'] .jamroom__spin {
+  border-color: rgba(138, 74, 0, 0.25);
+  border-top-color: #8a4a00;
+}

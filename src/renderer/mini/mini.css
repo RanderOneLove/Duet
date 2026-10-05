@@ -411,6 +411,17 @@
   justify-content: space-between;
 }
 
+/* Акцент на затемнённой обложке — светлее, как на шторке: тёмный акцент
+   (а с обложки он бывает каким угодно) на ней почти пропадал. */
+.v-cover .bar > i {
+  background: color-mix(in oklab, var(--accent) 62%, white);
+}
+
+.v-cover .likebtn--on,
+.v-cover .likebtn--on:hover:not(:disabled) {
+  color: color-mix(in oklab, var(--accent) 62%, white);
+}
+
 .v-cover__transport .playbtn {
   background: var(--fill-3);
   color: var(--text);
@@ -422,4 +433,661 @@
    cursor, but the buttons on top of it keep working as they did. */
 body.mini--locked .drag {
   -webkit-app-region: no-drag;
+}
+
+/* ===========================================================================
+   Шторка и язычок (макеты 3a, 3b).
+
+   Чёрная форма, сросшаяся с краем экрана. Чёрная в обеих темах нарочно: это
+   не плита интерфейса, а продолжение края экрана, и светлая шторка выглядела
+   бы наклейкой, а не вырезом.
+=========================================================================== */
+
+/* Невидимая рамка: её размер и меряет окно. Сама форма лежит в ней закреплённой.
+   Переход ей запрещён явно: окно меряет её размер, и любое плавное изменение
+   превратилось бы в цепочку промежуточных окон. */
+.edge {
+  position: relative;
+  display: block;
+  transition: none !important;
+}
+
+.edge__shape {
+  position: fixed;
+  --edge-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  transition:
+    width 550ms var(--edge-ease),
+    height 550ms var(--edge-ease);
+}
+
+/* Тени нет нарочно: обрезанная краем окна, она рисовала вокруг формы тёмный
+   прямоугольник (см. PAD в variants/edge.ts). */
+
+/* Сворачивание на четверть короче раскрытия (см. MORPH_MS в edge.ts). */
+.edge[data-dir='shrink'] .edge__shape,
+.edge[data-dir='shrink'] .edge__body,
+.edge[data-dir='shrink'] .edge__ear {
+  transition-duration: 410ms;
+}
+
+.edge__body {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+  transition: border-radius 550ms var(--edge-ease);
+}
+
+/* Ушки: вогнутые углы, которыми форма срастается с краем. Без них шторка
+   выглядит прилепленной плашкой, а не вырезом в крае экрана. */
+.edge__ear {
+  position: absolute;
+  width: var(--e);
+  height: var(--e);
+  transition: all 550ms var(--edge-ease);
+}
+
+/* ---- шторка ---- */
+
+.edge--notch .edge__shape {
+  top: 0;
+}
+
+.edge--notch .edge__body {
+  border-radius: 0 0 var(--r) var(--r);
+}
+
+.edge__ear--tl {
+  top: 0;
+  left: calc(var(--e) * -1);
+  background: radial-gradient(circle at 0 100%, transparent calc(var(--e) - 0.5px), #000 var(--e));
+}
+
+.edge__ear--tr {
+  top: 0;
+  right: calc(var(--e) * -1);
+  background: radial-gradient(circle at 100% 100%, transparent calc(var(--e) - 0.5px), #000 var(--e));
+}
+
+.notch__peek,
+.notch__open,
+.side__peek,
+.side__open {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+}
+
+.notch__peek {
+  left: 0;
+  width: 360px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px 0 9px;
+  opacity: 0;
+  transform: scale(0.92);
+  transition:
+    opacity 300ms ease,
+    transform 450ms var(--edge-ease);
+  pointer-events: none;
+}
+
+.edge[data-state='peek'] .notch__peek {
+  opacity: 1;
+  transform: none;
+}
+
+.notch__peekart {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  flex: none;
+}
+
+.notch__peektext {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.notch__peektext b {
+  font-weight: 600;
+}
+
+.notch__peekartist {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/*
+ * Раскрытое содержимое появляется чуть позже, чем начинает расти форма: иначе
+ * кнопки проступали бы сквозь ещё узкую полоску и обрезались её краем.
+ * Уходит — сразу, без задержки: прятать надо раньше, чем форма сожмётся.
+ */
+.notch__open {
+  left: 0;
+  width: 450px;
+  height: 146px;
+  padding: 12px 18px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  opacity: 0;
+  transform: translateY(-10px) scale(0.94);
+  transform-origin: top center;
+  transition:
+    opacity 280ms ease,
+    transform 500ms var(--edge-ease);
+  pointer-events: none;
+}
+
+.edge[data-state='open'] .notch__open {
+  opacity: 1;
+  transform: none;
+  transition-delay: 140ms;
+  pointer-events: auto;
+}
+
+.notch__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notch__artbtn,
+.side__artbtn {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  flex: none;
+  cursor: pointer;
+  border-radius: 14px;
+  transition: transform 150ms ease;
+}
+
+.notch__artbtn:active,
+.side__artbtn:active {
+  transform: scale(0.96);
+}
+
+.notch__art {
+  display: block;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/*
+ * Высота формы задана числом (NOTCH.open в edge.ts), а не вырастает из
+ * содержимого, — значит, и строки здесь должны быть точной высоты. С обычным
+ * межстрочным в 1.45 три строки выходили в 64 точки вместо 50 обложки, и ряд
+ * с паузой уезжал за нижний край формы. Сумма ниже — ровно высота обложки.
+ */
+.notch__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.notch__kicker {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 14px;
+  font-size: 10.5px;
+  line-height: 14px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 2px;
+}
+
+.notch__title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  line-height: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.notch__artist {
+  font-size: 12px;
+  line-height: 15px;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.notch__eq {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.notch__seekrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notch__time {
+  width: 28px;
+  flex: none;
+  font-size: 10.5px;
+  line-height: 14px;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.notch__time--end {
+  text-align: right;
+}
+
+/* Полосы на чёрном — белые: акцент на шторке остаётся за эквалайзером и
+   сердечком, иначе всё вместе пестрит. */
+.edge__seek {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.edge__seek > i {
+  background: #fff;
+  border-radius: 3px;
+}
+
+.notch__controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.notch__transport {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+/* В шторке всё на ступень мельче, чем в язычке: она стала меньше макета. */
+.notch__controls .edge__play {
+  width: 38px;
+  height: 38px;
+}
+
+.notch__controls .edge__round {
+  width: 30px;
+  height: 30px;
+}
+
+.notch__seekrow .edge__seek {
+  height: 4px;
+}
+
+.edge__skip {
+  display: flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.edge__skip:active {
+  transform: scale(0.9);
+}
+
+.edge__play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+  flex: none;
+  transition: transform 150ms ease;
+}
+
+.edge__play--sm {
+  width: 42px;
+  height: 42px;
+}
+
+.edge__play:active {
+  transform: scale(0.92);
+}
+
+.edge__skip:disabled,
+.edge__play:disabled,
+.edge__round:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.edge__round {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  flex: none;
+  transition: background 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.edge__round:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.edge__round:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.edge__round--spacer {
+  visibility: hidden;
+}
+
+.edge__round--liked {
+  color: var(--accent);
+}
+
+.notch__volume {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: 8px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.notch__volbar {
+  flex: none;
+  width: 72px;
+}
+
+/* ---- язычок ---- */
+
+.edge--side.edge--right .edge__body {
+  border-radius: var(--r) 0 0 var(--r);
+}
+
+.edge--side.edge--left .edge__body {
+  border-radius: 0 var(--r) var(--r) 0;
+}
+
+.edge__ear--top {
+  top: calc(var(--e) * -1);
+}
+
+.edge__ear--bottom {
+  bottom: calc(var(--e) * -1);
+}
+
+.edge--right .edge__ear {
+  right: 0;
+}
+
+.edge--left .edge__ear {
+  left: 0;
+}
+
+.edge--right .edge__ear--top {
+  background: radial-gradient(circle at 0 0, transparent calc(var(--e) - 0.5px), #000 var(--e));
+}
+
+.edge--right .edge__ear--bottom {
+  background: radial-gradient(circle at 0 100%, transparent calc(var(--e) - 0.5px), #000 var(--e));
+}
+
+.edge--left .edge__ear--top {
+  background: radial-gradient(circle at 100% 0, transparent calc(var(--e) - 0.5px), #000 var(--e));
+}
+
+.edge--left .edge__ear--bottom {
+  background: radial-gradient(circle at 100% 100%, transparent calc(var(--e) - 0.5px), #000 var(--e));
+}
+
+.edge--right .side__peek,
+.edge--right .side__open {
+  right: 0;
+}
+
+.edge--left .side__peek,
+.edge--left .side__open {
+  left: 0;
+}
+
+.side__peek {
+  width: 44px;
+  height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+}
+
+.edge[data-state='peek'] .side__peek {
+  opacity: 1;
+}
+
+.side__peekart {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.side__open {
+  width: 136px;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  transition:
+    opacity 280ms ease,
+    transform 500ms var(--edge-ease);
+  pointer-events: none;
+}
+
+/* Выезжает от края, а не просто проявляется: так видно, откуда он. */
+.edge--right .side__open {
+  transform: translateX(24px);
+}
+
+.edge--left .side__open {
+  transform: translateX(-24px);
+}
+
+.edge[data-state='open'] .side__open {
+  opacity: 1;
+  transform: none;
+  transition-delay: 140ms;
+  pointer-events: auto;
+}
+
+.side__artbtn {
+  display: block;
+  width: 106px;
+  height: 106px;
+  border-radius: 18px;
+}
+
+/* Кнопка ровно с обложку (.notch__art): иначе она выше картинки, значок
+   сервиса, приколотый к её углу, съезжает под обложку, а лишняя высота
+   выталкивает ряд с паузой за нижний край формы. */
+.notch__artbtn {
+  display: block;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+}
+
+/*
+ * Акцент на чёрном — светлее обычного. Тёмный акцент (а с обложки он бывает
+ * каким угодно) на шторке почти пропадал; в макете эквалайзер и сердечко на
+ * ней нарочно светлые.
+ */
+.edge .eq,
+.edge__round--liked {
+  color: color-mix(in oklab, var(--accent) 62%, white);
+}
+
+.side__art {
+  display: block;
+  width: 106px;
+  height: 106px;
+  border-radius: 18px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+.side__badge {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+
+.side__meta {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+}
+
+.side__title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.side__artist {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 2px;
+}
+
+.side__progress {
+  width: 100%;
+}
+
+.side__progress .edge__seek {
+  height: 4px;
+}
+
+.side__times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.side__transport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.side__marks {
+  display: flex;
+  gap: 8px;
+}
+
+.edge__round--fill {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.edge__round--fill.edge__round--liked {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: color-mix(in oklab, var(--accent) 62%, white);
+}
+
+/* Громкость столбиком: заливка снизу вверх, значок на ней. */
+.side__volume {
+  position: relative;
+  width: 44px;
+  height: 96px;
+  flex: none;
+}
+
+.side__volume .vbar {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+}
+
+.side__volume .vbar > i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #f4f4f6;
+  border-radius: 0;
+  transition: height 200ms ease;
+}
+
+.side__volicon {
+  position: absolute;
+  left: 14px;
+  bottom: 10px;
+  display: flex;
+  /* Тёмный на белой заливке и светлый на дорожке: на тихой громкости
+     значок лежит уже не на заливке, и тёмный на тёмном пропадал. */
+  color: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
+/* Без движения форма просто становится нужной, без перетекания. */
+:root[data-motion='off'] .edge__shape,
+:root[data-motion='off'] .edge__body,
+:root[data-motion='off'] .edge__ear,
+:root[data-motion='off'] .notch__peek,
+:root[data-motion='off'] .notch__open,
+:root[data-motion='off'] .side__peek,
+:root[data-motion='off'] .side__open {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-motion='system'] .edge__shape,
+  :root[data-motion='system'] .edge__body,
+  :root[data-motion='system'] .edge__ear,
+  :root[data-motion='system'] .notch__open,
+  :root[data-motion='system'] .side__open {
+    transition: none !important;
+  }
 }

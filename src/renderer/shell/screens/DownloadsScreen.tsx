@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ServiceId, Track } from '@shared/domain'
-import { formatBytes, type DownloadItem, type DownloadsState } from '@shared/downloads'
+import { downloadedTrack, formatBytes, type DownloadItem, type DownloadsState } from '@shared/downloads'
 import { formatTime } from '../../shared/format'
 import { ServiceBadge } from '../../shared/ServiceLogo'
 import { Cover } from '../components/Cover'
@@ -29,7 +29,7 @@ export function DownloadsScreen({ downloads, activeId, onPlay }: Props): JSX.Ele
     filter === 'downloading' ? downloading : filter === 'failed' ? failed : items
 
   // Playing a downloaded row should queue the whole offline library.
-  const playable = done.map(toTrack)
+  const playable = done.map(downloadedTrack)
 
   const byService = (service: ServiceId): number =>
     done.filter((item) => item.service === service).reduce((sum, item) => sum + item.bytes, 0)
@@ -198,22 +198,4 @@ function Row({
       </button>
     </div>
   )
-}
-
-/** The index stores enough of a track to play it back. */
-function toTrack(item: DownloadItem): Track {
-  return {
-    id: item.trackId,
-    service: item.service,
-    nativeId: item.nativeId,
-    title: item.title,
-    artists: item.artists,
-    artistRefs: [],
-    album: item.album,
-    albumId: null,
-    durationMs: item.durationMs,
-    coverUrl: item.coverUrl,
-    liked: false,
-    available: true
-  }
 }
