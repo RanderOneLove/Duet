@@ -3,19 +3,131 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Duet — слушать вместе</title>
-    <meta name="description" content="Приглашение слушать музыку вместе в Duet — плеере для VK Музыки и Яндекс.Музыки." />
-    <meta property="og:title" content="Duet — слушать вместе" />
-    <meta property="og:description" content="VK Музыка и Яндекс.Музыка в одном плеере для Windows." />
-    <style>
+    <script>
       /*
-       * Шрифты приложения, положенные рядом со страницей.
+       * Старые приглашения ведут сюда, в корень: ?join=CODE или #CODE.
        *
-       * Те же файлы и те же поднаборы, что и в самом Duet: страница — это его
-       * лицо снаружи, и встречать гостя чужой типографикой незачем. Из сети их
-       * не тянем по той же причине, по какой не тянет приложение: не приехавший
-       * шрифт — это уже другая вёрстка.
+       * Приглашение переехало в /join/, а ссылки, разосланные раньше, и адрес в
+       * настройках у тех, кто поставил Duet до переезда, остались прежними.
+       * Поэтому код в адресе — повод сразу уйти туда, пока страница не начала
+       * рисоваться. Якоря самой страницы на код похожи, их отличаем по списку.
        */
+      ;(function () {
+        var anchors = ['features', 'mini', 'lyrics', 'together', 'look', 'install', 'faq']
+        var hash = location.hash.replace(/^#/, '')
+        var isCode = /^[A-Za-z0-9_-]{1,64}$/.test(hash) && anchors.indexOf(hash) < 0
+        if (new URLSearchParams(location.search).has('join') || isCode) {
+          location.replace('join/' + location.search + location.hash)
+        }
+      })()
+    </script>
+    <title>Duet — VK Музыка и Яндекс Музыка в одном плеере для Windows</title>
+    <meta
+      name="description"
+      content="Бесплатный плеер для компьютера: VK Музыка и Яндекс.Музыка в одном окне. Общий поиск, избранное и плейлисты, «Моя волна», текст песен, мини-плеер поверх окон, слушать вместе с друзьями."
+    />
+    <link rel="canonical" href="https://randeronelove.github.io/Duet/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Duet" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:url" content="https://randeronelove.github.io/Duet/" />
+    <meta property="og:title" content="Duet — VK Музыка и Яндекс Музыка в одном плеере" />
+    <meta
+      property="og:description"
+      content="Один поиск, одна очередь, одно «Вам нравится». Мини-плеер поверх окон, текст песен и совместное прослушивание. Для Windows, бесплатно."
+    />
+    <meta property="og:image" content="https://randeronelove.github.io/Duet/site/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0b0b0d" />
+    <link rel="icon" href="site/icon-64.png" />
+    <link rel="apple-touch-icon" href="site/icon-256.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Duet",
+        "alternateName": "Duet — плеер VK Музыки и Яндекс Музыки",
+        "description": "Плеер для Windows, в котором VK Музыка и Яндекс.Музыка живут в одном окне: общий поиск, избранное, плейлисты, «Моя волна», текст песен, мини-плеер и совместное прослушивание.",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Windows 10, Windows 11",
+        "url": "https://randeronelove.github.io/Duet/",
+        "downloadUrl": "https://github.com/RanderOneLove/Duet/releases/latest",
+        "screenshot": "https://randeronelove.github.io/Duet/site/home.webp",
+        "image": "https://randeronelove.github.io/Duet/site/og.jpg",
+        "license": "https://opensource.org/licenses/MIT",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "RUB" }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Duet бесплатный?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Да. Duet бесплатный, у него открытый исходный код под лицензией MIT. Подписки самих сервисов оформляются у них, Duet здесь ни при чём."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Нужна ли подписка VK Музыки или Яндекс Плюс?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Duet играет из вашего аккаунта, поэтому правила те же, что в официальных приложениях: всё, что сервис разрешает вам слушать, работает и в Duet, а чего не разрешает — недоступно и здесь."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Можно подключить только один сервис?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Да. Duet работает и с одним VK, и с одной Яндекс Музыкой. Второй сервис добавляет общий поиск и избранное, а ещё запасной вариант: если трек не играет в одном сервисе, Duet найдёт его во втором."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Безопасно ли входить в аккаунт через Duet?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Вход идёт через настоящие страницы VK и Яндекса, открытые внутри приложения. Duet не видит ваш пароль и хранит только сессию. Исходный код открыт, его можно проверить."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Почему Windows предупреждает при установке?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "У установщика нет платной цифровой подписи, поэтому фильтр SmartScreen его не узнаёт. Нажмите «Подробнее», затем «Выполнить в любом случае»."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Есть версия для macOS, Linux или телефона?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Пока только для Windows 10 и 11, 64-битной."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Это официальное приложение VK или Яндекса?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Нет, это независимый проект. Duet обращается к сервисам теми же путями, что их официальные приложения, но это не публичное API: оно может поменяться в любой момент."
+            }
+          }
+        ]
+      }
+    </script>
+
+    <style>
       @font-face {
         font-family: 'Onest';
         font-weight: 700;
@@ -59,186 +171,138 @@
         unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2212, U+FEFF, U+FFFD;
       }
 
-      /* Значения — те же, что в приложении: тёмная тема Duet один в один. */
+      /* Тёмная тема Duet, как на странице приглашения и в самом приложении. */
       :root {
         color-scheme: dark;
         --bg: #0b0b0d;
+        --bg-2: #121216;
         --text: #f4f4f6;
-        --text-muted: rgba(255, 255, 255, 0.66);
-        --text-faint: rgba(255, 255, 255, 0.45);
+        --text-muted: rgba(255, 255, 255, 0.68);
+        --text-faint: rgba(255, 255, 255, 0.46);
         --accent: #0a84ff;
         --accent-hover: #339dff;
         --accent-glow: rgba(10, 132, 255, 0.4);
-        --line: rgba(255, 255, 255, 0.12);
+        --line: rgba(255, 255, 255, 0.1);
+        --fill-1: rgba(255, 255, 255, 0.04);
         --fill-2: rgba(255, 255, 255, 0.08);
         --fill-3: rgba(255, 255, 255, 0.14);
-        --glass: rgba(255, 255, 255, 0.06);
+        --r-md: 14px;
         --r-lg: 20px;
         --r-pill: 999px;
+        --wrap: 1120px;
+        --gutter: 24px;
       }
 
       * {
         box-sizing: border-box;
       }
 
+      html {
+        scroll-behavior: smooth;
+      }
+
       body {
         margin: 0;
-        min-height: 100svh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
         background: var(--bg);
         color: var(--text);
-        font: 400 15px/1.6 'Golos Text', -apple-system, 'Segoe UI', system-ui, sans-serif;
-        overflow: hidden;
+        font: 400 16px/1.6 'Golos Text', -apple-system, 'Segoe UI', system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
       }
 
-      /*
-       * Фон: три пятна, которые медленно расходятся и сходятся.
-       *
-       * Это тот же приём, что у плеера «во всё окно», где по экрану расплывается
-       * обложка. Здесь обложки нет — играет ведь не у нас, — поэтому пятна свои,
-       * из акцента и соседних с ним цветов. Движение намеренно долгое: страница
-       * живёт несколько секунд, и всё, что быстрее, успело бы надоесть.
-       */
-      .bg {
-        position: fixed;
-        inset: -20vmax;
-        z-index: 0;
-        pointer-events: none;
-        filter: blur(90px);
-      }
-
-      .bg i {
-        position: absolute;
+      img {
         display: block;
-        border-radius: 50%;
-        opacity: 0.55;
-        will-change: transform;
+        max-width: 100%;
+        height: auto;
       }
 
-      .bg i:nth-child(1) {
-        width: 46vmax;
-        height: 46vmax;
-        left: 6%;
-        top: 4%;
-        background: #0a84ff;
-        animation: drift-a 26s ease-in-out infinite;
+      a {
+        color: inherit;
       }
 
-      .bg i:nth-child(2) {
-        width: 38vmax;
-        height: 38vmax;
-        right: 4%;
-        top: 18%;
-        background: #bf5af2;
-        opacity: 0.4;
-        animation: drift-b 32s ease-in-out infinite;
-      }
-
-      .bg i:nth-child(3) {
-        width: 42vmax;
-        height: 42vmax;
-        left: 32%;
-        bottom: 0%;
-        background: #30d158;
-        opacity: 0.26;
-        animation: drift-c 38s ease-in-out infinite;
-      }
-
-      @keyframes drift-a {
-        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-        50% { transform: translate3d(12vmax, 8vmax, 0) scale(1.18); }
-      }
-      @keyframes drift-b {
-        0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); }
-        50% { transform: translate3d(-14vmax, 10vmax, 0) scale(0.9); }
-      }
-      @keyframes drift-c {
-        0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
-        50% { transform: translate3d(10vmax, -12vmax, 0) scale(1.2); }
-      }
-
-      /* Тёмная вуаль поверх пятен: текст обязан читаться, что бы под ним ни плыло. */
-      .veil {
-        position: fixed;
-        inset: 0;
-        z-index: 1;
-        pointer-events: none;
-        background: radial-gradient(120% 90% at 50% 45%, rgba(11, 11, 13, 0.32), rgba(11, 11, 13, 0.82));
-      }
-
-      .card {
-        position: relative;
-        z-index: 2;
+      .wrap {
         width: 100%;
-        max-width: 440px;
-        /* Отступ назван, потому что от него считает и разделительная черта. */
-        --pad: 32px;
-        padding: 36px var(--pad) 30px;
-        text-align: center;
-        border-radius: var(--r-lg);
-        background: var(--glass);
-        border: 1px solid var(--line);
-        backdrop-filter: blur(40px) saturate(140%);
-        -webkit-backdrop-filter: blur(40px) saturate(140%);
-        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
-        animation: rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+        max-width: calc(var(--wrap) + var(--gutter) * 2);
+        margin: 0 auto;
+        padding: 0 var(--gutter);
       }
 
-      @keyframes rise {
-        from { opacity: 0; transform: translateY(12px) scale(0.985); }
-        to { opacity: 1; transform: none; }
-      }
-
-      .mark {
-        width: 62px;
-        height: 43px;
-        margin: 0 auto 20px;
-        display: block;
-      }
-
-      h1 {
-        margin: 0 0 10px;
+      h1,
+      h2,
+      h3 {
         font-family: 'Onest', 'Golos Text', system-ui, sans-serif;
-        font-size: 26px;
         font-weight: 700;
-        line-height: 1.15;
+        letter-spacing: -0.02em;
+        margin: 0;
+      }
+
+      /* ---- шапка ---- */
+
+      .top {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(11, 11, 13, 0.72);
+        backdrop-filter: blur(20px) saturate(140%);
+        -webkit-backdrop-filter: blur(20px) saturate(140%);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .top .wrap {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        height: 60px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        font-family: 'Onest', system-ui, sans-serif;
+        font-weight: 700;
+        font-size: 19px;
         letter-spacing: -0.02em;
       }
 
-      p {
-        margin: 0 0 22px;
-        color: var(--text-muted);
+      .brand svg {
+        width: 30px;
+        height: 21px;
       }
 
-      /*
-       * Кнопки столбиком и одной ширины.
-       *
-       * В ряд они не помещаются: в карточке 376 пикселей на содержимое, а
-       * подписи вместе с весом файла просят больше. Перенос сам по себе не
-       * беда, но от него они вставали лесенкой разной длины; колонка одной
-       * ширины выглядит решением, а не тем, что осталось после переноса.
-       */
-      .row {
-        display: grid;
-        gap: 10px;
-        justify-content: center;
-        grid-template-columns: minmax(0, 260px);
+      .nav {
+        display: flex;
+        gap: 22px;
+        margin-right: auto;
+        font-size: 14.5px;
       }
+
+      .nav a {
+        color: var(--text-muted);
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+
+      .nav a:hover {
+        color: var(--text);
+      }
+
+      /* ---- кнопки ---- */
 
       .pill {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 9px;
-        padding: 12px 24px;
+        padding: 13px 26px;
         border-radius: var(--r-pill);
         background: var(--accent);
         color: #fff;
         font-weight: 600;
-        font-size: 14.5px;
+        font-size: 15px;
         text-decoration: none;
+        white-space: nowrap;
         box-shadow: 0 8px 24px var(--accent-glow);
         transition: background-color 0.18s ease, transform 0.09s ease;
       }
@@ -249,6 +313,12 @@
 
       .pill:active {
         transform: scale(0.97);
+      }
+
+      .pill em {
+        font-style: normal;
+        font-weight: 400;
+        opacity: 0.72;
       }
 
       .pill--ghost {
@@ -262,186 +332,855 @@
         background: var(--fill-3);
       }
 
-      .pill svg {
-        flex: none;
+      .pill--small {
+        padding: 8px 16px;
+        font-size: 14px;
+        box-shadow: none;
       }
 
-      .row .pill {
-        justify-content: center;
+      /* ---- первый экран ---- */
+
+      .hero {
+        position: relative;
+        padding: 88px 0 0;
+        text-align: center;
+        isolation: isolate;
       }
 
-      /* Вес файла рядом с подписью: понятно, что именно сейчас поедет. */
-      .pill em {
-        font-style: normal;
-        font-weight: 400;
-        opacity: 0.72;
+      /* Пятна за заголовком — тот же приём, что у приглашения, только тише. */
+      .hero::before {
+        content: '';
+        position: absolute;
+        inset: -120px 0 auto;
+        height: 760px;
+        z-index: -1;
+        pointer-events: none;
+        background:
+          radial-gradient(40% 50% at 28% 30%, rgba(10, 132, 255, 0.34), transparent 70%),
+          radial-gradient(36% 46% at 74% 26%, rgba(191, 90, 242, 0.24), transparent 70%),
+          radial-gradient(40% 40% at 52% 70%, rgba(48, 209, 88, 0.1), transparent 70%);
+        filter: blur(30px);
       }
 
-      .note {
-        margin: 24px 0 0;
-        font-size: 13px;
-        color: var(--text-faint);
-        line-height: 1.55;
-      }
-
-      .note b {
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        margin-bottom: 22px;
+        border-radius: var(--r-pill);
+        background: var(--fill-2);
+        border: 1px solid var(--line);
+        font-size: 13.5px;
         color: var(--text-muted);
+      }
+
+      .eyebrow i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #30d158;
+        box-shadow: 0 0 10px #30d158;
+      }
+
+      .hero h1 {
+        font-size: clamp(34px, 6vw, 64px);
+        line-height: 1.04;
+        max-width: 880px;
+        margin: 0 auto;
+        text-wrap: balance;
+      }
+
+      .hero h1 span {
+        background: linear-gradient(90deg, #4aa3ff, #b48cff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        white-space: nowrap;
+      }
+
+      .lead {
+        max-width: 620px;
+        margin: 22px auto 0;
+        font-size: 18px;
+        color: var(--text-muted);
+        text-wrap: pretty;
+      }
+
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 34px;
+      }
+
+      .fine {
+        margin-top: 16px;
+        font-size: 13.5px;
+        color: var(--text-faint);
+      }
+
+      .shot {
+        margin: 64px auto 0;
+        border-radius: var(--r-lg);
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: var(--bg-2);
+        box-shadow: 0 40px 120px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.4);
+      }
+
+      /* ---- разделы ---- */
+
+      section {
+        padding: 112px 0 0;
+      }
+
+      .kicker {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--accent-hover);
+        margin-bottom: 12px;
+      }
+
+      section h2 {
+        font-size: clamp(28px, 4vw, 42px);
+        line-height: 1.1;
+        text-wrap: balance;
+      }
+
+      .sub {
+        max-width: 640px;
+        margin: 16px 0 0;
+        color: var(--text-muted);
+        font-size: 17px;
+        text-wrap: pretty;
+      }
+
+      .center {
+        text-align: center;
+      }
+
+      .center .sub {
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      /* Сетка возможностей */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 44px;
+      }
+
+      .card {
+        padding: 26px 24px 24px;
+        border-radius: var(--r-lg);
+        background: var(--fill-1);
+        border: 1px solid var(--line);
+      }
+
+      .card svg {
+        width: 26px;
+        height: 26px;
+        color: var(--accent-hover);
+        margin-bottom: 16px;
+      }
+
+      .card h3 {
+        font-size: 18px;
+        line-height: 1.25;
+        margin-bottom: 8px;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 15px;
+      }
+
+      /* Раздел «текст + картинка» */
+      .split {
+        display: grid;
+        grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+        gap: 56px;
+        align-items: center;
+      }
+
+      .split--flip {
+        grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      }
+
+      .split--flip .split__text {
+        order: 2;
+      }
+
+      .split .shot {
+        margin: 0;
+      }
+
+      .ticks {
+        list-style: none;
+        padding: 0;
+        margin: 24px 0 0;
+        display: grid;
+        gap: 10px;
+        color: var(--text-muted);
+        font-size: 15.5px;
+      }
+
+      .ticks li {
+        position: relative;
+        padding-left: 26px;
+      }
+
+      .ticks li::before {
+        content: '';
+        position: absolute;
+        left: 2px;
+        top: 0.62em;
+        width: 12px;
+        height: 7px;
+        border-left: 2px solid var(--accent-hover);
+        border-bottom: 2px solid var(--accent-hover);
+        transform: translateY(-50%) rotate(-45deg);
+      }
+
+      /* Мини-плееры: шесть видов на «рабочем столе» */
+      .desk {
+        margin-top: 44px;
+        padding: 36px;
+        border-radius: var(--r-lg);
+        border: 1px solid var(--line);
+        background:
+          radial-gradient(60% 80% at 20% 10%, rgba(10, 132, 255, 0.16), transparent 70%),
+          radial-gradient(50% 70% at 90% 90%, rgba(191, 90, 242, 0.14), transparent 70%),
+          var(--bg-2);
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 28px 24px;
+        align-items: end;
+      }
+
+      .desk figure {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .desk figure img {
+        filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.5));
+      }
+
+      .desk figcaption {
+        font-size: 14px;
+        color: var(--text-muted);
+        text-align: center;
+      }
+
+      .desk figcaption b {
+        display: block;
+        color: var(--text);
         font-weight: 600;
       }
 
-      code {
+      .w-bar { grid-column: span 3; }
+      .w-pill { grid-column: span 3; }
+      .w-notch { grid-column: span 3; }
+      .w-card { grid-column: span 1; }
+      .w-cover { grid-column: span 1; }
+      .w-side { grid-column: span 1; }
+
+      .pair {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 44px;
+      }
+
+      .pair .shot {
+        margin: 0;
+      }
+
+      /* Установка */
+      .steps {
+        counter-reset: step;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 44px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .steps li {
+        counter-increment: step;
+        padding: 24px;
+        border-radius: var(--r-lg);
+        background: var(--fill-1);
+        border: 1px solid var(--line);
+        color: var(--text-muted);
+        font-size: 15px;
+      }
+
+      .steps li::before {
+        content: counter(step);
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        margin-bottom: 14px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-family: 'Onest', system-ui, sans-serif;
+        font-weight: 700;
+      }
+
+      .steps code {
         font-family: ui-monospace, Menlo, Consolas, monospace;
-        font-size: 12.5px;
+        font-size: 13px;
+        padding: 2px 6px;
+        border-radius: 6px;
         background: var(--fill-2);
         border: 1px solid var(--line);
-        padding: 3px 8px;
-        border-radius: 7px;
+      }
+
+      .steps b {
+        display: block;
+        color: var(--text);
+        font-size: 17px;
+        margin-bottom: 6px;
+      }
+
+      /* Вопросы */
+      .faq {
+        max-width: 780px;
+        margin: 40px auto 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .faq details {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .faq summary {
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 20px 4px;
+        font-weight: 600;
+        font-size: 17px;
+      }
+
+      .faq summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .faq summary::after {
+        content: '';
+        flex: none;
+        width: 9px;
+        height: 9px;
+        border-right: 2px solid var(--text-faint);
+        border-bottom: 2px solid var(--text-faint);
+        transform: rotate(45deg) translateY(-3px);
+        transition: transform 0.2s ease;
+      }
+
+      .faq details[open] summary::after {
+        transform: rotate(-135deg) translateY(-3px);
+      }
+
+      .faq details p {
+        margin: 0;
+        padding: 0 4px 22px;
         color: var(--text-muted);
       }
 
-      /* Черта во всю карточку: вылезает из отступа ровно настолько, каков он
-         сейчас, — жёсткие −32 торчали за край, когда в узком окне он меньше. */
-      .hr {
-        height: 1px;
-        margin: 24px calc(var(--pad) * -1) 0;
-        background: var(--line);
+      /* Последний призыв и подвал */
+      .final {
+        margin-top: 112px;
+        padding: 64px 32px;
+        border-radius: 28px;
+        text-align: center;
+        border: 1px solid var(--line);
+        background:
+          radial-gradient(60% 120% at 20% 0%, rgba(10, 132, 255, 0.28), transparent 70%),
+          radial-gradient(50% 120% at 85% 100%, rgba(191, 90, 242, 0.22), transparent 70%),
+          var(--bg-2);
       }
 
-      [hidden] {
-        display: none !important;
+      .final h2 {
+        font-size: clamp(28px, 4vw, 40px);
       }
 
-      @media (max-width: 420px) {
-        .card { --pad: 22px; padding: 28px var(--pad) 24px; }
-        h1 { font-size: 23px; }
-        .row { grid-template-columns: minmax(0, 1fr); }
+      .final .sub {
+        margin: 12px auto 0;
       }
 
-      /*
-       * Кто выключил анимации в системе, тот выключил их и здесь. Пятна
-       * остаются — они и без движения делают фон, — но стоят на месте.
-       */
+      footer {
+        margin-top: 64px;
+        padding: 32px 0 48px;
+        border-top: 1px solid var(--line);
+        color: var(--text-faint);
+        font-size: 13.5px;
+      }
+
+      footer .wrap {
+        display: grid;
+        gap: 14px;
+      }
+
+      footer nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+      }
+
+      footer nav a {
+        color: var(--text-muted);
+        text-decoration: none;
+      }
+
+      footer nav a:hover {
+        color: var(--text);
+      }
+
+      footer p {
+        margin: 0;
+        max-width: 760px;
+      }
+
+      /* ---- узкие экраны ---- */
+
+      @media (max-width: 960px) {
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .split,
+        .split--flip {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 32px;
+        }
+        .split--flip .split__text {
+          order: 0;
+        }
+        .desk {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .w-bar,
+        .w-pill,
+        .w-notch {
+          grid-column: span 3;
+        }
+        .steps {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      @media (max-width: 720px) {
+        .nav {
+          display: none;
+        }
+        .top .wrap {
+          justify-content: space-between;
+        }
+      }
+
+      @media (max-width: 600px) {
+        :root {
+          --gutter: 16px;
+        }
+        .hero {
+          padding-top: 56px;
+        }
+        .lead {
+          font-size: 16.5px;
+        }
+        .shot {
+          margin-top: 44px;
+          border-radius: var(--r-md);
+        }
+        section {
+          padding-top: 80px;
+        }
+        .grid,
+        .pair {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .desk {
+          padding: 24px 16px;
+          gap: 24px 12px;
+        }
+        .final {
+          margin-top: 80px;
+          padding: 44px 20px;
+        }
+        .cta .pill {
+          width: 100%;
+        }
+      }
+
       @media (prefers-reduced-motion: reduce) {
-        .bg i, .card { animation: none !important; }
+        html {
+          scroll-behavior: auto;
+        }
+        .pill {
+          transition: none;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="bg" aria-hidden="true"><i></i><i></i><i></i></div>
-    <div class="veil" aria-hidden="true"></div>
+    <header class="top">
+      <div class="wrap">
+        <a class="brand" href="./" aria-label="Duet — на главную">
+          <!-- Марка Duet: два круга и смесь на нахлёсте, как в приложении. -->
+          <svg viewBox="0 0 115 80" fill="none" aria-hidden="true">
+            <defs>
+              <clipPath id="mark-left"><circle cx="40" cy="40" r="40" /></clipPath>
+            </defs>
+            <circle cx="40" cy="40" r="40" fill="#0a84ff" />
+            <circle cx="75" cy="40" r="40" fill="#e9e9ed" />
+            <g clip-path="url(#mark-left)"><circle cx="75" cy="40" r="40" fill="#7fa9f5" /></g>
+          </svg>
+          Duet
+        </a>
+        <nav class="nav" aria-label="Разделы">
+          <a href="#features">Возможности</a>
+          <a href="#mini">Мини-плеер</a>
+          <a href="#together">Вместе</a>
+          <a href="#faq">Вопросы</a>
+        </nav>
+        <a class="pill pill--small" data-download href="https://github.com/RanderOneLove/Duet/releases/latest">Скачать</a>
+      </div>
+    </header>
 
-    <main class="card">
-      <!-- Марка Duet: те же два круга и та же смесь на нахлёсте, что в приложении. -->
-      <svg class="mark" viewBox="0 0 115 80" fill="none" aria-hidden="true">
-        <defs>
-          <clipPath id="left"><circle cx="40" cy="40" r="40" /></clipPath>
-        </defs>
-        <circle cx="40" cy="40" r="40" fill="#0a84ff" />
-        <circle cx="75" cy="40" r="40" fill="#e9e9ed" />
-        <g clip-path="url(#left)"><circle cx="75" cy="40" r="40" fill="#7fa9f5" /></g>
-      </svg>
+    <main>
+      <div class="hero">
+        <div class="wrap">
+          <div class="eyebrow"><i></i>Бесплатно · открытый код · Windows 10 и 11</div>
+          <h1><span>VK Музыка</span> и <span>Яндекс Музыка</span> в одном плеере для Windows</h1>
+          <p class="lead">
+            Duet — приложение для компьютера, в котором оба сервиса живут в одном окне. Один поиск,
+            одна очередь, одно «Вам нравится», и не нужно держать открытыми две вкладки.
+          </p>
+          <div class="cta">
+            <a class="pill" data-download data-label href="https://github.com/RanderOneLove/Duet/releases/latest">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" /></svg>
+              <span>Скачать для Windows</span>
+            </a>
+            <a class="pill pill--ghost" href="https://github.com/RanderOneLove/Duet">Исходный код на GitHub</a>
+          </div>
+          <p class="fine">Обновляется сам. Можно подключить один сервис или оба.</p>
 
-      <div id="join" hidden>
-        <h1>Вас зовут слушать вместе</h1>
-        <p>Duet должен открыться сам. Если этого не произошло — нажмите кнопку.</p>
-        <div class="row">
-          <a class="pill" id="open" href="#">Открыть Duet</a>
-          <a class="pill pill--ghost" id="download-join" href="#">Скачать Duet</a>
+          <div class="shot">
+            <img
+              src="site/home.webp"
+              width="1602"
+              height="1000"
+              alt="Главный экран Duet: «Моя волна» VK и Яндекс Музыки, плейлисты обоих сервисов и плеер внизу"
+              fetchpriority="high"
+            />
+          </div>
         </div>
-        <div class="hr"></div>
-        <p class="note" id="jam-note" hidden>
-          В общей сессии вы <b>сами добавляете треки в очередь и переключаете</b> —
-          у всех участников сразу.
-        </p>
-        <p class="note">
-          Код приглашения: <code id="code"></code><br />
-          Играть будет из вашего аккаунта — по ссылке идёт только то,
-          <b>какой трек и с какой секунды</b>.
-        </p>
       </div>
 
-      <div id="plain" hidden>
-        <h1>Duet</h1>
-        <p>VK Музыка и Яндекс.Музыка в одном плеере для Windows.</p>
-        <div class="row">
-          <a class="pill" id="download" href="#">Скачать Duet</a>
+      <section id="features">
+        <div class="wrap">
+          <div class="center">
+            <div class="kicker">Возможности</div>
+            <h2>Всё, что нужно от музыкального плеера, сразу для двух сервисов</h2>
+            <p class="sub">
+              Duet не заменяет VK и Яндекс, а собирает их вместе: музыка играет из ваших аккаунтов, а
+              слушаете вы её в одном месте.
+            </p>
+          </div>
+
+          <div class="grid">
+            <article class="card">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></svg>
+              <h3>Поиск сразу по обоим сервисам</h3>
+              <p>Одна строка ищет и в VK Музыке, и в Яндекс.Музыке. У каждого трека видно, откуда он.</p>
+            </article>
+            <article class="card">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" /></svg>
+              <h3>Общее избранное и плейлисты</h3>
+              <p>«Вам нравится» из обоих сервисов одним списком. Свои плейлисты, где рядом лежат треки из VK и из Яндекса.</p>
+            </article>
+            <article class="card">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0" /></svg>
+              <h3>«Моя волна» обоих сервисов</h3>
+              <p>По отдельности или вперемешку. А ещё бесконечная волна по любому треку.</p>
+            </article>
+            <article class="card">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3" /></svg>
+              <h3>Трек не играет — найдётся во втором</h3>
+              <p>Если песня недоступна в одном сервисе, Duet сам найдёт её в другом и включит оттуда.</p>
+            </article>
+            <article class="card">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 6h14M5 11h10M5 16h12M5 21h7" /></svg>
+              <h3>Текст песни с подсветкой строки</h3>
+              <p>Строки подсвечиваются в такт, щелчок перематывает к нужной. Работает и для треков VK.</p>
+            </article>
+            <article class="card">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" /></svg>
+              <h3>Скачивание для офлайна</h3>
+              <p>Треки можно сохранить и слушать без интернета, в том числе автоматически.</p>
+            </article>
+          </div>
         </div>
-        <div class="hr"></div>
-        <p class="note">Ссылка без кода приглашения — открывать нечего.</p>
-      </div>
+      </section>
+
+      <section id="mini">
+        <div class="wrap">
+          <div class="kicker">Мини-плеер</div>
+          <h2>Музыка поверх всех окон</h2>
+          <p class="sub">
+            Мини-плеер появляется, когда вы сворачиваете Duet. По наведению раскрывается, его можно
+            перетащить куда угодно, хоть на другой монитор. Во время игр и полноэкранного видео он
+            прячется сам.
+          </p>
+
+          <div class="desk">
+            <figure class="w-bar">
+              <img src="site/mini-bar.webp" width="480" height="100" alt="Мини-плеер «Полоса»" loading="lazy" decoding="async" />
+              <figcaption><b>Полоса</b></figcaption>
+            </figure>
+            <figure class="w-notch">
+              <img src="site/mini-notch.webp" width="609" height="184" alt="Мини-плеер «Шторка» у верхнего края экрана" loading="lazy" decoding="async" style="width: 420px" />
+              <figcaption><b>Шторка</b>тонкая полоска у верхнего края экрана</figcaption>
+            </figure>
+            <figure class="w-pill">
+              <img src="site/mini-pill.webp" width="289" height="60" alt="Мини-плеер «Пилюля»" loading="lazy" decoding="async" />
+              <figcaption><b>Пилюля</b></figcaption>
+            </figure>
+            <figure class="w-card">
+              <img src="site/mini-card.webp" width="340" height="490" alt="Мини-плеер «Карточка»" loading="lazy" decoding="async" style="width: 150px" />
+              <figcaption><b>Карточка</b></figcaption>
+            </figure>
+            <figure class="w-cover">
+              <img src="site/mini-cover.webp" width="330" height="330" alt="Мини-плеер «Обложка»" loading="lazy" decoding="async" style="width: 150px" />
+              <figcaption><b>Обложка</b></figcaption>
+            </figure>
+            <figure class="w-side">
+              <img src="site/mini-side.webp" width="170" height="634" alt="Мини-плеер «Язычок» у края экрана" loading="lazy" decoding="async" style="width: 60px" />
+              <figcaption><b>Язычок</b>сбоку экрана</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="lyrics">
+        <div class="wrap split">
+          <div class="split__text">
+            <div class="kicker">Плеер и текст</div>
+            <h2>Текст песни крупно, поверх размытой обложки</h2>
+            <p class="sub">
+              Плеер во всё окно показывает текст с подсветкой текущей строки. Для треков VK метки времени
+              берутся у Яндекса, поэтому подсветка работает и там.
+            </p>
+            <ul class="ticks">
+              <li>Щелчок по строке перематывает песню к ней</li>
+              <li>«Похожее» и «Волна отсюда» в один клик</li>
+              <li>Таймер сна, выбор устройства вывода, горячие клавиши</li>
+            </ul>
+          </div>
+          <div class="shot">
+            <img src="site/player-ambient.webp" width="1602" height="1000" alt="Плеер Duet во всё окно с текстом песни" loading="lazy" decoding="async" />
+          </div>
+        </div>
+      </section>
+
+      <section id="together">
+        <div class="wrap split split--flip">
+          <div class="split__text">
+            <div class="kicker">Слушать вместе</div>
+            <h2>Одна песня с той же секунды у вас и у друзей</h2>
+            <p class="sub">
+              Отправьте ссылку, и у друга заиграет тот же трек. Звук не передаётся: каждый слушает из
+              своего аккаунта, даже если у вас Яндекс, а у него только VK.
+            </p>
+            <ul class="ticks">
+              <li><b>Duet Jam</b> — общая комната, где все добавляют треки в очередь</li>
+              <li>Ведущий решает, кому можно переключать и переставлять</li>
+              <li>Позвать можно и через статус в Discord</li>
+            </ul>
+          </div>
+          <div class="shot">
+            <img src="site/jam.webp" width="1602" height="1000" alt="Комната Duet Jam: общая очередь и участники" loading="lazy" decoding="async" />
+          </div>
+        </div>
+      </section>
+
+      <section id="look">
+        <div class="wrap">
+          <div class="center">
+            <div class="kicker">Оформление</div>
+            <h2>Светлая, тёмная или как в Windows</h2>
+            <p class="sub">
+              Цвет акцента можно выбрать самому или взять с обложки того, что играет. Несколько видов
+              главной и плеера, анимации настраиваются и выключаются.
+            </p>
+          </div>
+          <div class="pair">
+            <div class="shot">
+              <img src="site/home-light.webp" width="1602" height="1000" alt="Duet в светлой теме" loading="lazy" decoding="async" />
+            </div>
+            <div class="shot">
+              <img src="site/home-accent.webp" width="1602" height="1000" alt="Duet со своим цветом акцента" loading="lazy" decoding="async" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="install">
+        <div class="wrap">
+          <div class="center">
+            <div class="kicker">Установка</div>
+            <h2>Три шага до музыки</h2>
+          </div>
+          <ol class="steps">
+            <li>
+              <b>Скачайте установщик</b>
+              Файл <code>Duet-…-setup.exe</code> из последнего релиза, около 90 МБ.
+            </li>
+            <li>
+              <b>Запустите его</b>
+              У сборки нет платной подписи, поэтому Windows может переспросить. Нажмите «Подробнее» →
+              «Выполнить в любом случае».
+            </li>
+            <li>
+              <b>Войдите в VK и/или Яндекс</b>
+              Через настоящие страницы сервисов внутри приложения: Duet не видит пароль и хранит только
+              сессию.
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="faq">
+        <div class="wrap">
+          <div class="center">
+            <div class="kicker">Вопросы</div>
+            <h2>Частые вопросы</h2>
+          </div>
+          <div class="faq">
+            <details>
+              <summary>Duet бесплатный?</summary>
+              <p>
+                Да. Duet бесплатный, у него открытый исходный код под лицензией MIT. Подписки самих
+                сервисов оформляются у них, Duet здесь ни при чём.
+              </p>
+            </details>
+            <details>
+              <summary>Нужна ли подписка VK Музыки или Яндекс Плюс?</summary>
+              <p>
+                Duet играет из вашего аккаунта, поэтому правила те же, что в официальных приложениях:
+                всё, что сервис разрешает вам слушать, работает и в Duet, а чего не разрешает —
+                недоступно и здесь.
+              </p>
+            </details>
+            <details>
+              <summary>Можно подключить только один сервис?</summary>
+              <p>
+                Да. Duet работает и с одним VK, и с одной Яндекс Музыкой. Второй сервис добавляет общий
+                поиск и избранное, а ещё запасной вариант: если трек не играет в одном сервисе, Duet
+                найдёт его во втором.
+              </p>
+            </details>
+            <details>
+              <summary>Безопасно ли входить в аккаунт через Duet?</summary>
+              <p>
+                Вход идёт через настоящие страницы VK и Яндекса, открытые внутри приложения. Duet не
+                видит ваш пароль и хранит только сессию. Исходный код открыт, его можно проверить.
+              </p>
+            </details>
+            <details>
+              <summary>Почему Windows предупреждает при установке?</summary>
+              <p>
+                У установщика нет платной цифровой подписи, поэтому фильтр SmartScreen его не узнаёт.
+                Нажмите «Подробнее», затем «Выполнить в любом случае».
+              </p>
+            </details>
+            <details>
+              <summary>Есть версия для macOS, Linux или телефона?</summary>
+              <p>Пока только для Windows 10 и 11, 64-битной.</p>
+            </details>
+            <details>
+              <summary>Это официальное приложение VK или Яндекса?</summary>
+              <p>
+                Нет, это независимый проект. Duet обращается к сервисам теми же путями, что их
+                официальные приложения, но это не публичное API: оно может поменяться в любой момент.
+              </p>
+            </details>
+          </div>
+
+          <div class="final">
+            <h2>Попробуйте Duet</h2>
+            <p class="sub">Бесплатно, без регистрации, вход вашими аккаунтами VK и Яндекса.</p>
+            <div class="cta">
+              <a class="pill" data-download data-label href="https://github.com/RanderOneLove/Duet/releases/latest">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" /></svg>
+                <span>Скачать для Windows</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
 
+    <footer>
+      <div class="wrap">
+        <nav aria-label="Ссылки">
+          <a href="https://github.com/RanderOneLove/Duet">GitHub</a>
+          <a href="https://github.com/RanderOneLove/Duet/releases">Все версии</a>
+          <a href="https://github.com/RanderOneLove/Duet/issues">Сообщить о проблеме</a>
+        </nav>
+        <p>
+          Duet — независимый проект, не связанный с VK и Яндексом. «VK Музыка» и «Яндекс Музыка» —
+          товарные знаки их владельцев. Скачанные треки — только для личного прослушивания.
+        </p>
+      </div>
+    </footer>
+
     <script>
-      // The page is served from GitHub Pages, so the repository is right here
-      // in the address: no need to hard-code the owner or the project name.
-      const [owner, repo] = location.hostname.endsWith('github.io')
-        ? [location.hostname.split('.')[0], location.pathname.split('/').filter(Boolean)[0] || 'Duet']
-        : ['RanderOneLove', 'Duet']
-
-      const buttons = ['download', 'download-join'].map((id) => document.getElementById(id))
-      const releases = `https://github.com/${owner}/${repo}/releases/latest`
-      for (const button of buttons) button.href = releases
-
       /*
-       * Кнопка ведёт прямо на установщик, а не на страницу релизов.
+       * Кнопки «Скачать» ведут прямо на установщик последней версии.
        *
-       * Прямую ссылку нельзя записать заранее: в имени файла стоит версия, и с
-       * каждым выпуском оно меняется. Поэтому имя спрашивается у GitHub — а
-       * пока ответа нет (или его не будет вовсе: сеть, лимит запросов), кнопка
-       * уже работает и ведёт на страницу релизов. Хуже, чем было, не станет.
+       * Имя файла меняется с каждым выпуском, поэтому его спрашиваем у GitHub;
+       * пока ответа нет или его не будет, кнопки уже ведут на страницу релизов.
        */
       const mb = (bytes) => `${Math.round(bytes / 1048576)} МБ`
 
-      fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`, {
+      fetch('https://api.github.com/repos/RanderOneLove/Duet/releases/latest', {
         headers: { Accept: 'application/vnd.github+json' }
       })
         .then((response) => (response.ok ? response.json() : null))
         .then((release) => {
           const setup = release?.assets?.find((asset) => /-setup\.exe$/i.test(asset.name))
           if (!setup) return
-          /*
-           * Атрибут `download` здесь не нужен: для чужого домена браузер его
-           * не слушает. Файл всё равно скачивается, а не открывается, потому
-           * что GitHub отдаёт его с `Content-Disposition: attachment`.
-           */
-          for (const button of buttons) {
-            button.href = setup.browser_download_url
-            button.innerHTML = `Скачать ${release.tag_name.replace(/^v/, '')} <em>· ${mb(setup.size)}</em>`
+          const version = release.tag_name.replace(/^v/, '')
+          for (const link of document.querySelectorAll('[data-download]')) {
+            link.href = setup.browser_download_url
+            const label = link.querySelector('span')
+            if (link.hasAttribute('data-label') && label) {
+              label.innerHTML = `Скачать ${version} <em>· ${mb(setup.size)}</em>`
+            }
           }
         })
         .catch(() => {
-          // Ссылка на страницу релизов уже стоит — добавить к этому нечего.
+          // Ссылка на страницу релизов уже стоит.
         })
-
-      // A code arrives as ?join=CODE or as #CODE, whichever the host used.
-      const params = new URLSearchParams(location.search)
-      const raw = params.get('join') || location.hash.replace(/^#/, '')
-      const code = /^[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : ''
-      /*
-       * Пропуск в общую сессию, если он в ссылке.
-       *
-       * С ним зовут не послушать, а участвовать: добавлять треки в общую
-       * очередь и переключать. Поэтому и страница говорит другое — иначе гость
-       * не узнает, что ему можно больше обычного.
-       */
-      const jamRaw = params.get('jam') || ''
-      const jam = /^[A-Za-z0-9_-]{1,64}$/.test(jamRaw) ? jamRaw : ''
-
-      if (!code) {
-        document.getElementById('plain').hidden = false
-      } else {
-        document.getElementById('join').hidden = false
-        document.getElementById('code').textContent = code
-        if (jam) {
-          document.querySelector('#join h1').textContent = 'Вас зовут в общую сессию'
-          document.getElementById('jam-note').hidden = false
-        }
-        const link = jam ? `duet://join/${code}?jam=${encodeURIComponent(jam)}` : `duet://join/${code}`
-        document.getElementById('open').href = link
-        // Try it straight away; a browser with no handler simply does nothing,
-        // which is why the buttons above stay on screen either way.
-        location.href = link
-      }
     </script>
   </body>
 </html>
