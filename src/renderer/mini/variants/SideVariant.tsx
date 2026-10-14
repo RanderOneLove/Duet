@@ -8,7 +8,7 @@ import { SeekBar } from '../../shell/components/SeekBar'
 import { VolumeSlider } from '../../shell/components/VolumeSlider'
 import { Cover } from '../../shell/components/Cover'
 import { artist, title, type VariantProps } from './shared'
-import { PAD, SIDE_MIN_FRAME, sideShape, useEdgeState, useHeldState, useQuiet, useReportEdge, isShrinking } from './edge'
+import { PAD, SIDE_MIN_FRAME, sideShape, useEdgeState, useHeldState, useQuiet, useReportEdge, isShrinking, shapeVars } from './edge'
 
 /**
  * Язычок сбоку (макет 3b).
@@ -57,7 +57,7 @@ export function SideVariant({
     <div className={`edge edge--side ${right ? 'edge--right' : 'edge--left'}`} style={frameStyle} data-state={state} data-dir={isShrinking(state, held) ? 'shrink' : 'grow'}>
       <div
         className="edge__shape"
-        style={{ ...anchor, width: shape.w, height: shape.h, ['--r' as string]: `${shape.r}px`, ['--e' as string]: `${shape.e}px` }}
+        style={{ ...anchor, width: shape.w, height: shape.h, ...shapeVars(shape, shape.w) }}
         onDoubleClick={onToggleExpand}
       >
         <span className="edge__ear edge__ear--top" />

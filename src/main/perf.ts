@@ -5385,6 +5385,8 @@ async function runEdgeProbe(): Promise<void> {
       следы.push(`${(i + 1) * 100}мс ${await stateOf()} окно ${b.width}×${b.height} рамка ${dom} курсор ${c.x},${c.y}`)
     }
     report.шторкаУшёлКурсор = { состояние: await stateOf(), окно: place(), следы }
+    // Первый снимок покоя часто ловит всплывание первого трека; здесь — покой точно.
+    await shot('notch-idle-after')
 
     void command({ type: 'next' })
     await wait(900)
@@ -5398,6 +5400,7 @@ async function runEdgeProbe(): Promise<void> {
     setSettings({ miniVariant: 'side' })
     await wait(1500)
     report.язычокПокой = { состояние: await stateOf(), окно: place(), форма: await shape() }
+    await shot('side-idle')
     hover(true)
     await wait(1100)
     report.язычокНаведение = { состояние: await stateOf(), окно: place(), форма: await shape() }
@@ -5416,6 +5419,7 @@ async function runEdgeProbe(): Promise<void> {
     setSettings({ sideEdge: 'left' })
     await wait(1500)
     report.язычокСлева = { окно: place(), отЛевогоКрая: mini.getBounds().x - area.x }
+    await shot('side-left-idle')
 
     // ---- нельзя перетащить ----
     report.перетаскивание = { движимо: mini.isMovable() }
@@ -5976,26 +5980,33 @@ async function runFullscreenProbe(): Promise<void> {
     // ---- A: полноэкранное «поверх всех», настройка выключена ----
     openForm(true)
     await wait(3500)
-    report.A_поверхВсехБезНастройки = { закрыто: await covered(), фокусУНас: Windows.getFocusedWindow() !== null }
+    report.A_поверхВсехБезНастройки = {
+      закрыто: await covered(),
+      плитаВидна: mini.isVisible(),
+      фокусУНас: Windows.getFocusedWindow() !== null
+    }
 
     // ---- B: включили настройку ----
     setSettings({ miniOverFullscreen: true })
     await wait(2200)
     report.B_поверхВсехСНастройкой = {
       закрыто: await covered(),
+      плитаВидна: mini.isVisible(),
       // Фокус должен остаться у полноэкранного приложения.
       фокусУНас: Windows.getFocusedWindow() !== null
     }
     closeForm()
     await wait(1200)
 
-    // ---- C: обычное полноэкранное окно, настройка выключена ----
+    // ---- C: обычное полноэкранное окно, настройка выключена — плита уходит ----
     setSettings({ miniOverFullscreen: false })
     openForm(false)
     await wait(3500)
-    report.C_обычноеБезНастройки = { закрыто: await covered() }
+    report.C_обычноеБезНастройки = { закрыто: await covered(), плитаВидна: mini.isVisible() }
     closeForm()
-    await wait(800)
+    await wait(1500)
+    // Полноэкранное закрыли — плита возвращается сама.
+    report.D_послеЗакрытия = { закрыто: await covered(), плитаВидна: mini.isVisible() }
 
     hideMiniPlayer()
     report.ok = true

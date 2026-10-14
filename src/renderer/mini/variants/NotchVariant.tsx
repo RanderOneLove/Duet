@@ -7,7 +7,7 @@ import { Heart, HeartOff, Next, Pause, Play, Prev, Volume } from '../../shared/I
 import { SeekBar } from '../../shell/components/SeekBar'
 import { Cover } from '../../shell/components/Cover'
 import { artist, title, type VariantProps } from './shared'
-import { NOTCH, PAD, contextLabel, useEdgeState, useHeldState, useQuiet, useReportEdge, isShrinking } from './edge'
+import { NOTCH, PAD, contextLabel, useEdgeState, useHeldState, useQuiet, useReportEdge, isShrinking, shapeVars } from './edge'
 
 /**
  * Шторка сверху (макет 3a).
@@ -61,7 +61,7 @@ export function NotchVariant({
     <div className="edge edge--notch" style={frameStyle} data-state={state} data-dir={isShrinking(state, held) ? 'shrink' : 'grow'}>
       <div
         className="edge__shape"
-        style={{ ...anchor, width: shape.w, height: shape.h, ['--r' as string]: `${shape.r}px`, ['--e' as string]: `${shape.e}px` }}
+        style={{ ...anchor, width: shape.w, height: shape.h, ...shapeVars(shape, shape.h) }}
         onDoubleClick={onToggleExpand}
       >
         <span className="edge__ear edge__ear--tl" />

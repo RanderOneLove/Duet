@@ -480,12 +480,30 @@ body.mini--locked .drag {
 }
 
 /* Ушки: вогнутые углы, которыми форма срастается с краем. Без них шторка
-   выглядит прилепленной плашкой, а не вырезом в крае экрана. */
+   выглядит прилепленной плашкой, а не вырезом в крае экрана.
+
+   Ушко — прозрачный эллипс с центром в его углу, а чёрное вокруг — тень с
+   разлёта. Градиентом выходило хуже: у Chromium край градиента сглажен
+   иначе, чем скругление тела, и на стыке ушка с углом проступала лесенка.
+   Скругление же сглаживается одинаково у обоих.
+
+   Тень обрезает clip-path, а не overflow: им ушко заходит на тело на точку
+   (у каждого ушка своя сторона, ниже). При дробном масштабе экрана край
+   ушка и край тела делят один пиксель, каждый закрашивает его наполовину, и
+   на стыке светилась тонкая полоса. Размеры — в процентах от ушка, чтобы
+   эллипс шёл вслед за ним, пока тот плавно меняет размер. */
 .edge__ear {
   position: absolute;
-  width: var(--e);
-  height: var(--e);
   transition: all 550ms var(--edge-ease);
+}
+
+.edge__ear::before {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  border-radius: 50%;
+  box-shadow: 0 0 0 48px #000;
 }
 
 /* ---- шторка ---- */
@@ -495,19 +513,33 @@ body.mini--locked .drag {
 }
 
 .edge--notch .edge__body {
-  border-radius: 0 0 var(--r) var(--r);
+  border-radius: 0 0 var(--r) var(--r) / 0 0 var(--rd) var(--rd);
+}
+
+.edge--notch .edge__ear {
+  top: 0;
+  width: var(--e);
+  height: var(--ed);
 }
 
 .edge__ear--tl {
-  top: 0;
   left: calc(var(--e) * -1);
-  background: radial-gradient(circle at 0 100%, transparent calc(var(--e) - 0.5px), #000 var(--e));
+  clip-path: inset(0 -1px 0 0);
+}
+
+.edge__ear--tl::before {
+  left: -100%;
+  top: 0;
 }
 
 .edge__ear--tr {
-  top: 0;
   right: calc(var(--e) * -1);
-  background: radial-gradient(circle at 100% 100%, transparent calc(var(--e) - 0.5px), #000 var(--e));
+  clip-path: inset(0 0 0 -1px);
+}
+
+.edge__ear--tr::before {
+  left: 0;
+  top: 0;
 }
 
 .notch__peek,
@@ -818,19 +850,26 @@ body.mini--locked .drag {
 /* ---- язычок ---- */
 
 .edge--side.edge--right .edge__body {
-  border-radius: var(--r) 0 0 var(--r);
+  border-radius: var(--rd) 0 0 var(--rd) / var(--r) 0 0 var(--r);
 }
 
 .edge--side.edge--left .edge__body {
-  border-radius: 0 var(--r) var(--r) 0;
+  border-radius: 0 var(--rd) var(--rd) 0 / 0 var(--r) var(--r) 0;
+}
+
+.edge--side .edge__ear {
+  width: var(--ed);
+  height: var(--e);
 }
 
 .edge__ear--top {
   top: calc(var(--e) * -1);
+  clip-path: inset(0 0 -1px 0);
 }
 
 .edge__ear--bottom {
   bottom: calc(var(--e) * -1);
+  clip-path: inset(-1px 0 0 0);
 }
 
 .edge--right .edge__ear {
@@ -841,20 +880,21 @@ body.mini--locked .drag {
   left: 0;
 }
 
-.edge--right .edge__ear--top {
-  background: radial-gradient(circle at 0 0, transparent calc(var(--e) - 0.5px), #000 var(--e));
+/* Центр эллипса — в углу ушка, дальнем от края экрана и ближнем к телу. */
+.edge--right .edge__ear::before {
+  left: -100%;
 }
 
-.edge--right .edge__ear--bottom {
-  background: radial-gradient(circle at 0 100%, transparent calc(var(--e) - 0.5px), #000 var(--e));
+.edge--left .edge__ear::before {
+  left: 0;
 }
 
-.edge--left .edge__ear--top {
-  background: radial-gradient(circle at 100% 0, transparent calc(var(--e) - 0.5px), #000 var(--e));
+.edge__ear--top::before {
+  top: -100%;
 }
 
-.edge--left .edge__ear--bottom {
-  background: radial-gradient(circle at 100% 100%, transparent calc(var(--e) - 0.5px), #000 var(--e));
+.edge__ear--bottom::before {
+  top: 0;
 }
 
 .edge--right .side__peek,

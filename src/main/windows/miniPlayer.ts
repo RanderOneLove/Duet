@@ -4,6 +4,7 @@ import { IPC } from '@shared/ipc'
 import { MINI_SIZES, isEdgeVariant, type EdgeInfo, type MiniAnchor, type Settings } from '@shared/types'
 import { createMiniWire, getPlayer, onPlayerChanged } from '../player/engine'
 import { getSettings, onSettingsChanged, setSettings } from '../state/settings'
+import { hwndOf, isMonitorTakenByFullscreen, resetFullscreenWatch } from './fullscreen'
 
 /**
  * The always-on-top mini player shown while the app sits in the tray.
@@ -18,6 +19,14 @@ let size = { width: 0, height: 0 }
 /** Set while we reposition the window ourselves, so 'moved' ignores it. */
 let repositioning = false
 let listenersBound = false
+/**
+ * Плиту попросили показать. Окно при этом может быть скрыто — пока экран
+ * занят полноэкранным приложением (см. syncFullscreen), — но для трея,
+ * горячей клавиши и остального приложения мини-плеер включён.
+ */
+let wanted = false
+/** Окно убрано, потому что монитор занят полноэкранным приложением. */
+let yielded = false
 
 export function createMiniPlayer(): BrowserWindow {
   if (win && !win.isDestroyed()) return win
@@ -94,6 +103,7 @@ export function createMiniPlayer(): BrowserWindow {
     onSettingsChanged((next) => {
       pushConfig()
       syncRaise(next)
+      syncFullscreen(next)
       win?.setMovable(canDrag(next))
       // A variant change alters the content size; re-place on the new anchor.
       applyBounds(size.width, size.height, next)
@@ -165,18 +175,22 @@ function stopHoverWatch(): void {
 const HOVER_POLL_MS = 120
 
 /**
- * Поверх полноэкранных приложений.
+ * Поверх полноэкранных приложений — или в сторону от них.
  *
  * Уровень 'screen-saver' в Windows значит просто «поверх всех», а таких окон
  * бывает несколько: они делят один слой, и сверху то, что подняли последним.
  * Игра или видеоплеер во весь экран часто сами встают «поверх всех» и при
- * каждом щелчке по ним поднимаются над мини-плеером. Узнать, что на переднем
- * плане полноэкранное окно, Electron не умеет, поэтому при включённой
+ * каждом щелчке по ним поднимаются над мини-плеером. Поэтому при включённой
  * настройке плита просто поднимается обратно раз в секунду. Фокус она при
  * этом не забирает: moveTop в Windows двигает окно без активации.
  *
  * Игру в эксклюзивном полноэкранном режиме не перекрыть ничем — она владеет
  * экраном целиком, и об этом сказано в подсказке настройки.
+ *
+ * Выключенная настройка значит обратное: пока монитор плиты занят чужим
+ * полноэкранным окном, плита уходит совсем (syncFullscreen). Окно «поверх
+ * всех» над игрой — не только помеха глазу: Windows из-за него перестаёт
+ * отдавать игре экран напрямую, и та теряет в плавности и задержке.
  */
 const RAISE_MS = 1000
 let raiseTimer: NodeJS.Timeout | null = null
@@ -195,12 +209,57 @@ function syncRaise(settings: Settings): void {
   }
 }
 
+/** Полсекунды: дольше — плита заметно висит над только что открытой игрой. */
+const FULLSCREEN_POLL_MS = 500
+let fullscreenTimer: NodeJS.Timeout | null = null
+
+function syncFullscreen(settings: Settings): void {
+  const want = wanted && !settings.miniOverFullscreen && process.platform === 'win32'
+  if (want && !fullscreenTimer) {
+    fullscreenTimer = setInterval(() => setYielded(fullscreenTaken()), FULLSCREEN_POLL_MS)
+  } else if (!want && fullscreenTimer) {
+    clearInterval(fullscreenTimer)
+    fullscreenTimer = null
+    resetFullscreenWatch()
+    setYielded(false)
+  }
+}
+
+function fullscreenTaken(): boolean {
+  if (!win || win.isDestroyed()) return false
+  return isMonitorTakenByFullscreen(hwndOf(win.getNativeWindowHandle()))
+}
+
+function setYielded(next: boolean): void {
+  if (next === yielded) return
+  yielded = next
+  if (!win || win.isDestroyed() || !wanted) return
+  if (yielded) {
+    win.hide()
+    // Курсор, оставшийся над плитой, не должен вернуть её раскрытой.
+    if (hovered) {
+      hovered = false
+      win.webContents.send(IPC.miniHover, false)
+    }
+  } else {
+    applyBounds(size.width, size.height, getSettings())
+    win.showInactive()
+    win.setAlwaysOnTop(true, 'screen-saver')
+  }
+}
+
 export function showMiniPlayer(): void {
+  wanted = true
   const target = createMiniPlayer()
   applyBounds(size.width, size.height, getSettings())
-  // showInactive keeps focus where the user is actually working.
-  target.showInactive()
-  target.setAlwaysOnTop(true, 'screen-saver')
+  syncFullscreen(getSettings())
+  // Спросить сразу, а не на первом тике: иначе плита мелькнёт поверх игры.
+  if (fullscreenTimer) setYielded(fullscreenTaken())
+  if (!yielded) {
+    // showInactive keeps focus where the user is actually working.
+    target.showInactive()
+    target.setAlwaysOnTop(true, 'screen-saver')
+  }
   startHoverWatch()
   syncRaise(getSettings())
   pushConfig()
@@ -208,13 +267,16 @@ export function showMiniPlayer(): void {
 }
 
 export function hideMiniPlayer(): void {
+  wanted = false
   stopHoverWatch()
   if (win && !win.isDestroyed()) win.hide()
   syncRaise(getSettings())
+  syncFullscreen(getSettings())
 }
 
+/** Включён ли мини-плеер — даже если сейчас он уступил место полноэкранному. */
 export function isMiniPlayerVisible(): boolean {
-  return Boolean(win && !win.isDestroyed() && win.isVisible())
+  return wanted && Boolean(win && !win.isDestroyed())
 }
 
 export function toggleMiniPlayer(): void {
@@ -223,10 +285,12 @@ export function toggleMiniPlayer(): void {
 }
 
 export function destroyMiniPlayer(): void {
+  wanted = false
   stopHoverWatch()
   if (win && !win.isDestroyed()) win.destroy()
   win = null
   syncRaise(getSettings())
+  syncFullscreen(getSettings())
 }
 
 /** Resize to the renderer's measured content, keeping the anchored edges put. */
