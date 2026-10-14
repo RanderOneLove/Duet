@@ -13,6 +13,8 @@ import type {
 } from '@shared/domain'
 import type { PlayerCommand, PlayerState, PlayerUpdate } from '@shared/player'
 import type { DownloadsState } from '@shared/downloads'
+import type { HistoryInfo } from '@shared/history'
+import type { Recap, RecapCardFormat, RecapOffer, RecapPeriod } from '@shared/recap'
 import type { WaveTuning } from '@shared/wave'
 import type { UpdateState } from '@shared/updates'
 
@@ -59,6 +61,21 @@ const api = {
   search: (query: string): Promise<SearchResult> => ipcRenderer.invoke(IPC.libSearch, query),
   /** Перечитать фонотеку обоих сервисов и дождаться конца. */
   refreshLibrary: (): Promise<void> => ipcRenderer.invoke(IPC.libRefresh),
+  historyInfo: (): Promise<HistoryInfo> => ipcRenderer.invoke(IPC.historyInfo),
+  clearHistory: (): Promise<void> => ipcRenderer.invoke(IPC.historyClear),
+
+  // итоги
+  recap: (period: RecapPeriod): Promise<Recap | null> => ipcRenderer.invoke(IPC.recapGet, period),
+  recapOffer: (): Promise<RecapOffer | null> => ipcRenderer.invoke(IPC.recapOffer),
+  recapSeen: (key: string): void => ipcRenderer.send(IPC.recapSeen, key),
+  /** Плейлист «Топ года»; отвечает его id, или null, если итогов нет. */
+  recapPlaylist: (period: RecapPeriod): Promise<string | null> => ipcRenderer.invoke(IPC.recapPlaylist, period),
+  recapSave: (period: RecapPeriod, format: RecapCardFormat): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.recapSave, period, format),
+  recapCopy: (period: RecapPeriod, format: RecapCardFormat): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.recapCopy, period, format),
+  recapCardReady: (): void => ipcRenderer.send(IPC.recapCardReady),
+  onOpenRecap: (handler: (period: RecapPeriod) => void) => subscribe(IPC.shellOpenRecap, handler),
   waveTuning: (choice: WaveChoice): Promise<WaveTuning | null> =>
     ipcRenderer.invoke(IPC.libWaveTuning, choice),
   setWaveTuning: (choice: WaveChoice, values: Record<string, string>): Promise<boolean> =>

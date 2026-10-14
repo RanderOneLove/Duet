@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Connection, HomeSection, Playlist, ServiceId, Track, WaveChoice } from '@shared/domain'
 import { ServiceBadge } from '../../shared/ServiceLogo'
 import { StateBlock } from '../components/StateBlock'
@@ -60,6 +61,8 @@ interface Props {
   downloadedIds: Set<string>
   onDownload: (track: Track) => void
   onSimilar: (track: Track) => void
+  /** Плитка итогов — под волной, когда их есть что показать. */
+  banner?: ReactNode
 }
 
 /** Wireframe 2a: the radio hero, one merged playlist row, then liked tracks. */
@@ -86,7 +89,8 @@ export function HomeScreen({
   onToggleLike,
   downloadedIds,
   onDownload,
-  onSimilar
+  onSimilar,
+  banner
 }: Props): JSX.Element {
   const available = connections.filter((connection) => connection.connected)
   const playlists = sections.find((section) => section.kind === 'playlists')?.playlists ?? []
@@ -185,7 +189,8 @@ export function HomeScreen({
       onToggleLike,
       downloadedIds,
       onDownload,
-      onSimilar
+      onSimilar,
+      banner
     }
     const order = blocks.map((item) => item.id)
     if (sections.length === 0 && available.length === 0) {
@@ -217,6 +222,7 @@ export function HomeScreen({
           onToggle={onToggleWave}
         />
       )}
+      {banner}
 
       {loading && sections.length === 0 ? (
         <SectionSkeletons />

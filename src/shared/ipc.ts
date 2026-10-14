@@ -64,6 +64,28 @@ export const IPC = {
   libSetLiked: 'lib:setLiked',
   /** shell → main: перечитать фонотеку по просьбе человека. */
   libRefresh: 'lib:refresh',
+  /** shell → main: сколько прослушиваний в журнале и с какого времени. */
+  historyInfo: 'history:info',
+  /** shell → main: стереть журнал прослушиваний. */
+  historyClear: 'history:clear',
+
+  // ---- итоги года и месяца ----
+  /** shell → main: итоги за период, или null, если данных мало. */
+  recapGet: 'recap:get',
+  /** shell → main: какие итоги предложить сейчас на Главной. */
+  recapOffer: 'recap:offer',
+  /** shell → main: итоги посмотрели или скрыли — плитка уходит. */
+  recapSeen: 'recap:seen',
+  /** shell → main: собрать плейлист «Топ года» из итогов. */
+  recapPlaylist: 'recap:playlist',
+  /** shell → main: сохранить карточку итогов картинкой. */
+  recapSave: 'recap:save',
+  /** shell → main: положить карточку итогов в буфер обмена. */
+  recapCopy: 'recap:copy',
+  /** card → main: карточка дорисовалась, можно снимать. */
+  recapCardReady: 'recap:cardReady',
+  /** main → shell: открыть итоги за период (из замеров). */
+  shellOpenRecap: 'shell:openRecap',
   /** shell → main: чем можно подкрутить волну и запись выбора. */
   libWaveTuning: 'lib:waveTuning',
   libSetWaveTuning: 'lib:setWaveTuning',

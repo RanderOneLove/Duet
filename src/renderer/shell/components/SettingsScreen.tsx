@@ -24,6 +24,7 @@ import {
 } from '@shared/types'
 import { SERVICE_META, type Connection, type ServiceId } from '@shared/domain'
 import type { PlayerState, RepeatMode } from '@shared/player'
+import type { HistoryInfo } from '@shared/history'
 import { MiniPreview } from './MiniPreview'
 import { Segmented } from './Segmented'
 import { ColorPicker } from './ColorPicker'
@@ -435,6 +436,81 @@ function AccountsPane({
   )
 }
 
+/**
+ * Журнал прослушиваний: включить, увидеть, что он идёт, и стереть.
+ *
+ * Счётчик здесь не для красоты: журнал нигде больше не виден до самых итогов,
+ * и без него не понять, пишется ли он вообще.
+ */
+function HistorySection({
+  settings,
+  onChange
+}: Pick<Props, 'settings' | 'onChange'>): JSX.Element {
+  const [info, setInfo] = useState<HistoryInfo | null>(null)
+  const [confirming, setConfirming] = useState(false)
+
+  useEffect(() => {
+    void window.shell.historyInfo().then(setInfo)
+  }, [])
+
+  // Подтверждение само гаснет: случайно оставленное, оно стёрло бы журнал
+  // следующим нажатием, сделанным уже по другому поводу.
+  useEffect(() => {
+    if (!confirming) return
+    const timer = window.setTimeout(() => setConfirming(false), 4000)
+    return () => window.clearTimeout(timer)
+  }, [confirming])
+
+  const clear = async (): Promise<void> => {
+    if (!confirming) {
+      setConfirming(true)
+      return
+    }
+    setConfirming(false)
+    await window.shell.clearHistory()
+    setInfo(await window.shell.historyInfo())
+  }
+
+  const summary =
+    !info || info.plays === 0
+      ? 'Пока пусто — прослушивания появятся здесь, когда что-нибудь доиграет'
+      : `${info.plays} ${plural(info.plays, 'прослушивание', 'прослушивания', 'прослушиваний')} с ${new Date(
+          info.since ?? Date.now()
+        ).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}`
+
+  return (
+    <>
+      <Group label="ИСТОРИЯ" />
+      <Card>
+        <Row
+          label="Вести историю прослушиваний"
+          hint="Из неё к концу года соберутся итоги: что, сколько и из какого сервиса. Хранится только на этом компьютере"
+        >
+          <Toggle value={settings.keepHistory} onChange={(v) => onChange({ keepHistory: v })} />
+        </Row>
+        <Row label="Записано" hint={summary} last>
+          <button
+            className="pill pill--outline pill--sm"
+            disabled={!info || info.plays === 0}
+            onClick={() => void clear()}
+          >
+            {confirming ? 'Точно стереть?' : 'Очистить'}
+          </button>
+        </Row>
+      </Card>
+    </>
+  )
+}
+
+function plural(count: number, one: string, few: string, many: string): string {
+  const tens = count % 100
+  const units = count % 10
+  if (tens >= 11 && tens <= 14) return many
+  if (units === 1) return one
+  if (units >= 2 && units <= 4) return few
+  return many
+}
+
 function PlaybackPane({
   player,
   settings,
@@ -513,6 +589,8 @@ function PlaybackPane({
           <Toggle value={settings.preferDownloaded} onChange={(v) => onChange({ preferDownloaded: v })} />
         </Row>
       </Card>
+
+      <HistorySection settings={settings} onChange={onChange} />
 
       <Group label="DISCORD" />
       <Card>

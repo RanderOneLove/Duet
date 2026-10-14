@@ -13,6 +13,7 @@ import type {
 } from '@shared/domain'
 import type { PlayerCommand, PlayerState, PlayerUpdate } from '@shared/player'
 import type { DownloadsState } from '@shared/downloads'
+import type { HistoryInfo } from '@shared/history'
 import type { AudioEvent } from '../preload/audio'
 import { getSettings, onSettingsChanged, setSettings } from './state/settings'
 import { getHotkeyStatus, registerHotkeys, unregisterHotkeys } from './hotkeys'
@@ -96,6 +97,10 @@ import {
 import { createAudioHost, destroyAudioHost } from './windows/audioHost'
 import { setupTaskbar } from './taskbar'
 import { flushLoudness } from './player/loudness'
+import { clearHistory, flushHistory, historyInfo, noteLyricsViewed, startHistory } from './history'
+import { buildRecap, recapOffer, recapPlaylist } from './recap'
+import { registerRecapCard } from './recapCard'
+import type { Recap, RecapOffer, RecapPeriod } from '@shared/recap'
 import {
   destroyMiniPlayer,
   hideMiniPlayer,
@@ -154,6 +159,7 @@ function start(): void {
   createTray()
   registerIpc()
   initPlayer(settings.volume, settings.muted)
+  startHistory()
   initDiscordRPC()
   setupUpdates()
   watchLibrary(window)
@@ -290,7 +296,23 @@ function registerIpc(): void {
     removeFromPlaylist(id, trackId)
   )
   ipcMain.handle(IPC.libSimilar, (_event, track: Track): Promise<Track[]> => similarTracks(track))
-  ipcMain.handle(IPC.libLyrics, (_event, track: Track): Promise<Lyrics | null> => lyrics(track))
+  ipcMain.handle(IPC.libLyrics, (_event, track: Track): Promise<Lyrics | null> => {
+    // Текст просят, только когда его открыли, — это и отмечает журнал.
+    noteLyricsViewed(track.id)
+    return lyrics(track)
+  })
+  ipcMain.handle(IPC.historyInfo, (): HistoryInfo => historyInfo())
+  ipcMain.handle(IPC.historyClear, (): void => clearHistory())
+
+  // ---- итоги ----
+  ipcMain.handle(IPC.recapGet, (_event, period: RecapPeriod): Recap | null => buildRecap(period))
+  ipcMain.handle(IPC.recapOffer, (): RecapOffer | null => recapOffer())
+  ipcMain.on(IPC.recapSeen, (_event, key: string) => {
+    const seen = getSettings().recapSeen
+    if (!seen.includes(key)) setSettings({ recapSeen: [...seen, key] })
+  })
+  ipcMain.handle(IPC.recapPlaylist, (_event, period: RecapPeriod): Promise<string | null> => recapPlaylist(period))
+  registerRecapCard()
   ipcMain.handle(IPC.libSearch, (_event, query: string): Promise<SearchResult> => search(query))
   ipcMain.handle(IPC.libWave, (_event, choice: WaveChoice): Promise<Track[]> => wave(choice))
   ipcMain.handle(
@@ -424,6 +446,7 @@ app.on('before-quit', () => {
   // Обычная запись сессии асинхронная и может не успеть до закрытия.
   saveSessionNow()
   flushLoudness()
+  flushHistory()
   unregisterHotkeys()
   stopUpdates()
   stopWatchingLibrary()

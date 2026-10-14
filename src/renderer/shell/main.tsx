@@ -9,7 +9,12 @@ import './parts4.css'
 import './parts5.css'
 import './home2.css'
 import './jamroom.css'
+import './recap.css'
 import '../shared/motion.css'
 import { App } from './App'
+import { RecapCardPage } from './components/RecapCard'
 
-createRoot(document.getElementById('root') as HTMLElement).render(<App />)
+// Невидимое окно карточки итогов грузит ту же оболочку, но рисует одну карточку.
+const card = new URLSearchParams(location.search).has('card')
+
+createRoot(document.getElementById('root') as HTMLElement).render(card ? <RecapCardPage /> : <App />)

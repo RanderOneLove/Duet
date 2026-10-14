@@ -26,6 +26,9 @@ import { PlaylistScreen } from './screens/PlaylistScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
 import { DownloadsScreen } from './screens/DownloadsScreen'
 import { JamScreen } from './screens/JamScreen'
+import { RecapScreen } from './screens/RecapScreen'
+import { RecapTile } from './components/RecapTile'
+import type { RecapOffer, RecapPeriod } from '@shared/recap'
 import { useAsync } from './useLibrary'
 import type { ServiceFilter } from './useServiceFilter'
 import { useUpdate } from './useUpdate'
@@ -73,6 +76,10 @@ export function App(): JSX.Element {
   const [serviceFilter, setServiceFilter] = useState<ServiceFilter>('all')
   // Connect is shown until a service is linked, or the user skips past it.
   const [skippedConnect, setSkippedConnect] = useState(false)
+  /** Открытые итоги — история на всё окно, как плеер. */
+  const [recapPeriod, setRecapPeriod] = useState<RecapPeriod | null>(null)
+  /** Что предложить на Главной: декабрь — год, первая неделя месяца — прошедший месяц. */
+  const [recapOffer, setRecapOffer] = useState<RecapOffer | null>(null)
 
   useEffect(() => {
     void window.shell.getPlayer().then(setPlayer)
@@ -91,7 +98,8 @@ export function App(): JSX.Element {
       window.shell.onConnections(setConnections),
       window.shell.onDownloads(setDownloads),
       // Просьба из мини-плеера: развернуть плеер во весь экран.
-      window.shell.onOpenPlayer(() => setFullPlayer(true))
+      window.shell.onOpenPlayer(() => setFullPlayer(true)),
+      window.shell.onOpenRecap(setRecapPeriod)
     ]
     return () => off.forEach((unsubscribe) => unsubscribe())
   }, [])
@@ -121,6 +129,17 @@ export function App(): JSX.Element {
   }, [settings.accentFromCover, coverUrl])
 
   useAppearance(settings, coverAccent)
+
+  /*
+   * Предложение итогов перечитывается, когда их посмотрели или скрыли, и раз в
+   * час: приложение живёт в трее неделями, и 1-е число наступает без перезапуска.
+   */
+  useEffect(() => {
+    const read = (): void => void window.shell.recapOffer().then(setRecapOffer)
+    read()
+    const timer = window.setInterval(read, 60 * 60 * 1000)
+    return () => window.clearInterval(timer)
+  }, [settings.recapSeen])
 
   /*
    * Сколько длится прощание с плеером. Ноль, когда движение выключено, — тогда
@@ -534,6 +553,15 @@ export function App(): JSX.Element {
             downloadedIds={downloadedIds}
             onDownload={toggleDownload}
             onSimilar={showSimilar}
+            banner={
+              recapOffer && !recapOffer.seen ? (
+                <RecapTile
+                  offer={recapOffer}
+                  onOpen={() => setRecapPeriod(recapOffer.period)}
+                  onHide={() => window.shell.recapSeen(recapOffer.key)}
+                />
+              ) : null
+            }
           />
         )
       case 'search':
@@ -635,7 +663,8 @@ export function App(): JSX.Element {
     playTracks,
     toggleLike,
     patchSettings,
-    serviceFilter
+    serviceFilter,
+    recapOffer
   ])
 
   const [dismissedError, setDismissedError] = useState<string | null>(null)
@@ -658,7 +687,21 @@ export function App(): JSX.Element {
     <JamGuestContext.Provider value={player.jamGuest || (player.jamOpen && !player.following)}>
     <div className="app">
       <div className="app__body">
-        <Rail route={route} jam={jamLive} onNavigate={navigate} />
+        <Rail
+          route={route}
+          jam={jamLive}
+          recap={
+            recapOffer?.period.kind === 'year'
+              ? {
+                  label: String(recapOffer.period.year).slice(-2),
+                  title: `Итоги ${recapOffer.period.year}`,
+                  fresh: !recapOffer.seen,
+                  onOpen: () => setRecapPeriod(recapOffer.period)
+                }
+              : null
+          }
+          onNavigate={navigate}
+        />
         <main className="app__main">
           <TopBar
             query={query}
@@ -712,6 +755,14 @@ export function App(): JSX.Element {
           onDownload={toggleDownload}
           onOpenArtist={openArtistOf}
           onSimilar={showSimilar}
+        />
+      )}
+      {recapPeriod && (
+        <RecapScreen
+          period={recapPeriod}
+          quiet={quietMotion}
+          onClose={() => setRecapPeriod(null)}
+          onOpenLibrary={() => navigate('library')}
         />
       )}
     </div>

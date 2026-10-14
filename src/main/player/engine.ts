@@ -42,6 +42,7 @@ import { userInfo } from 'node:os'
 import { randomBytes } from 'node:crypto'
 import { getSettings, onSettingsChanged, setSettings } from '../state/settings'
 import { loudnessOf, rememberLoudness, typicalLufs } from './loudness'
+import { noteRescued } from './rescues'
 import type { Settings } from '@shared/types'
 
 /**
@@ -1593,6 +1594,7 @@ async function loadCurrent(autoplay: boolean, startAtMs = 0, crossfade = false):
   if (!track.available || !isServiceConnected(track.service)) {
     const playable = await playableTrack(track)
     if (playable.id !== track.id) {
+      if (playable.service !== track.service) noteRescued(playable.id, track.service)
       const queue = [...state.queue]
       queue[state.index] = playable
       patch({ queue })

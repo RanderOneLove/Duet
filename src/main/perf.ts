@@ -2,6 +2,8 @@ import { app, ipcMain } from 'electron'
 import { writeFileSync } from 'node:fs'
 import { monitorEventLoopDelay, performance } from 'node:perf_hooks'
 import type { Track } from '@shared/domain'
+import type { PlayRecord } from '@shared/history'
+import type { RecapPeriod } from '@shared/recap'
 import { IPC } from '@shared/ipc'
 import type { AudioEvent } from '../preload/audio'
 import { command, onPlayerChanged } from './player/engine'
@@ -91,6 +93,7 @@ export async function runPerf(): Promise<void> {
   if (PROBE === 'about') return runAboutProbe()
   if (PROBE === 'seg') return runSegProbe()
   if (PROBE === 'updbtn') return runUpdateButtonProbe()
+  if (PROBE === 'recap') return runRecapProbe()
   if (PROBE) return runProbe()
   return runScenario()
 }
@@ -6066,6 +6069,189 @@ async function runMiniCoverProbe(): Promise<void> {
   } finally {
     setSettings({ theme: 'light' })
   }
+  writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
+  app.exit(0)
+}
+
+/**
+ * Итоги года и месяца — глазами.
+ *
+ * Журнала у копии профиля нет, поэтому он собирается здесь: из настоящих
+ * треков «Вам нравится» обоих сервисов, с настоящими обложками, за вторую
+ * половину 2025-го и почти весь 2026-й. Дата подменяется на 10 декабря 2026 —
+ * тогда появляются плитка и значок, — и снимаются Главная, каждый слайд
+ * годовых итогов, месячные за сентябрь и обе карточки для соцсетей.
+ */
+async function runRecapProbe(): Promise<void> {
+  const { mkdirSync, rmSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const { appendHistory } = await import('./history')
+  const { renderCard } = await import('./recapCard')
+  const out = process.env['DUET_SHOTS'] ?? '.'
+  mkdirSync(out, { recursive: true })
+  const report: Record<string, unknown> = { probe: 'recap', shots: [] as string[] }
+  const shots = report.shots as string[]
+
+  try {
+    await waitFor(() => marks['libraryWarm'] !== undefined, 120_000)
+    const window = getMainWindow()
+    if (!window) throw new Error('нет окна оболочки')
+    window.webContents.setBackgroundThrottling(false)
+    hideMiniPlayer()
+
+    // ---- пробный журнал ----
+    const liked = (await likedTracks()).filter((track) => track.available && track.coverUrl)
+    const pick = (service: 'vk' | 'yandex', count: number): Track[] =>
+      liked.filter((track) => track.service === service).slice(0, count)
+    const vk = pick('vk', 70)
+    const ya = pick('yandex', 55)
+    if (vk.length + ya.length < 30) throw new Error(`мало треков в «Нравится»: ${vk.length + ya.length}`)
+
+    let seed = 20261210
+    const random = (): number => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff
+      return seed / 0x7fffffff
+    }
+    const pool: Track[] = []
+    for (let i = 0; i < Math.max(vk.length, ya.length); i += 1) {
+      if (vk[i]) pool.push(vk[i]!)
+      if (ya[i] && random() < 0.8) pool.push(ya[i]!)
+    }
+    // Часть исполнителей появится только в 2026-м — это и есть «открытия».
+    const artistOf = (track: Track): string => (track.artists[0] ?? '').toLowerCase()
+    const artists = [...new Set(pool.map(artistOf))]
+    const fresh = new Set(artists.filter((_, at) => at % 3 === 1))
+    const weights = pool.map((_, at) => 1 / Math.pow(at + 1, 0.85))
+    const totalWeight = weights.reduce((sum, value) => sum + value, 0)
+    const choose = (allowFresh: boolean): Track => {
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        let roll = random() * totalWeight
+        for (let i = 0; i < pool.length; i += 1) {
+          roll -= weights[i]!
+          if (roll <= 0) {
+            const track = pool[i]!
+            if (allowFresh || !fresh.has(artistOf(track))) return track
+            break
+          }
+        }
+      }
+      return pool[0]!
+    }
+    const night = pool[6] ?? pool[0]!
+    const hourOf = (weekend: boolean): number => {
+      const table = weekend
+        ? [3, 2, 1, 1, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 7, 7, 6, 6, 7, 7, 7, 6, 5, 4]
+        : [5, 3, 1, 1, 0, 0, 0, 2, 3, 2, 1, 1, 2, 2, 2, 2, 2, 3, 4, 5, 6, 7, 9, 9]
+      let roll = random() * table.reduce((sum, value) => sum + value, 0)
+      for (let hour = 0; hour < 24; hour += 1) {
+        roll -= table[hour]!
+        if (roll <= 0) return hour
+      }
+      return 22
+    }
+
+    const records: PlayRecord[] = []
+    const start = new Date(2025, 6, 1)
+    const end = new Date(2026, 11, 10)
+    for (const day = new Date(start); day < end; day.setDate(day.getDate() + 1)) {
+      const thisYear = day.getFullYear() === 2026
+      const weekend = day.getDay() === 0 || day.getDay() === 6
+      const count = Math.round((thisYear ? 13 : 8) * (0.4 + random() * 1.2))
+      for (let n = 0; n < count; n += 1) {
+        const hour = hourOf(weekend)
+        const track = hour < 5 && random() < 0.35 ? night : choose(thisYear)
+        const time = new Date(day)
+        time.setHours(hour, Math.floor(random() * 60), Math.floor(random() * 60))
+        const full = random() < 0.7
+        const listened = Math.round(track.durationMs * (full ? 1 : 0.5 + random() * 0.4))
+        const roll = random()
+        const jam = roll < 0.07
+        const record: PlayRecord = {
+          t: time.getTime(),
+          id: track.id,
+          s: track.service,
+          n: track.title,
+          a: track.artists,
+          al: track.album,
+          c: track.coverUrl,
+          d: track.durationMs,
+          l: listened,
+          src: jam ? 'jamHost' : roll < 0.4 ? 'wave' : 'queue'
+        }
+        if (full) record.f = 1
+        if (jam) record.w = random() < 0.6 ? ['Аня', 'Дима'] : ['Аня']
+        if (random() < 0.015) record.r = track.service === 'vk' ? 'yandex' : 'vk'
+        if (random() < 0.12) record.ly = 1
+        records.push(record)
+      }
+    }
+    rmSync(join(app.getPath('userData'), 'history'), { recursive: true, force: true })
+    appendHistory(records)
+    report.records = records.length
+
+    // ---- 10 декабря 2026: плитка и значок ----
+    process.env['DUET_RECAP_NOW'] = '2026-12-10T12:00:00'
+    setSettings({ theme: 'dark', homeLayout: 'stage', motion: 'calm', recapSeen: [] })
+    window.showInactive()
+    window.setSize(1280, 800)
+    await wait(2500)
+
+    const run = async <T>(code: string): Promise<T> => (await window.webContents.executeJavaScript(code)) as T
+    const shoot = async (name: string): Promise<void> => {
+      const image = await window.webContents.capturePage()
+      const file = join(out, `${name}.png`)
+      writeFileSync(file, image.toPNG())
+      shots.push(file)
+    }
+    const press = (key: string): Promise<unknown> =>
+      run(`window.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)} }))`)
+    const click = (title: string): Promise<unknown> =>
+      run(`document.querySelector('.recap__round[title=${JSON.stringify(title)}]')?.click()`)
+
+    const cardsOnly = process.env['DUET_RECAP_CARDS_ONLY'] === '1'
+    if (!cardsOnly) {
+    await run(`document.querySelector('.app__content')?.scrollTo({ top: 0 })`)
+    await wait(800)
+    await shoot('recap-0-home')
+
+    const story = async (prefix: string, period: RecapPeriod): Promise<void> => {
+      window.webContents.send(IPC.shellOpenRecap, period)
+      await wait(2500)
+      await click('Пауза')
+      const total = await run<number>(`document.querySelectorAll('.recap__bar').length`)
+      report[`${prefix}Slides`] = total
+      for (let at = 0; at < total; at += 1) {
+        await wait(1600)
+        await shoot(`${prefix}-${String(at + 1).padStart(2, '0')}`)
+        await press('ArrowRight')
+      }
+      await click('Закрыть итоги')
+      await wait(800)
+    }
+    await story('recap-year', { kind: 'year', year: 2026 })
+    await story('recap-month', { kind: 'month', year: 2026, month: 9 })
+
+    // Маленькое окно — тот же топ треков в 940×600.
+    window.setSize(940, 600)
+    window.webContents.send(IPC.shellOpenRecap, { kind: 'year', year: 2026 })
+    await wait(2000)
+    await click('Пауза')
+    for (let at = 0; at < 4; at += 1) await press('ArrowRight')
+    await wait(1800)
+    await shoot('recap-small-tracks')
+    await click('Закрыть итоги')
+    }
+
+    for (const format of ['story', 'post'] as const) {
+      const image = await renderCard({ kind: 'year', year: 2026 }, format)
+      const file = join(out, `recap-card-${format}.png`)
+      writeFileSync(file, image.toPNG())
+      shots.push(file)
+    }
+  } catch (error) {
+    report.error = error instanceof Error ? (error.stack ?? error.message) : String(error)
+  }
+
   writeFileSync(REPORT as string, JSON.stringify(report, null, 2))
   app.exit(0)
 }

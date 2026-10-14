@@ -239,6 +239,10 @@ export interface Settings {
   normalizeVolume: boolean
   /** Длина кроссфейда между треками, в секундах; 0 — без него. */
   crossfadeSec: number
+  /** Вести журнал прослушиваний — из него собираются итоги года. */
+  keepHistory: boolean
+  /** Итоги, которые уже посмотрели или скрыли: «2026», «2026-10». */
+  recapSeen: string[]
   /** The last few searches, newest first. */
   recentSearches: string[]
   /**
@@ -400,6 +404,8 @@ export const DEFAULT_SETTINGS: Settings = {
   outputDeviceId: '',
   normalizeVolume: false,
   crossfadeSec: 0,
+  keepHistory: true,
+  recapSeen: [],
   recentSearches: [],
   vkDisliked: [],
   sleepSuspendsPc: false,

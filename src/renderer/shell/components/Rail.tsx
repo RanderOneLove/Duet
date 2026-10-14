@@ -14,6 +14,8 @@ interface Props {
   route: Route
   /** Идёт ли общая сессия: пункт Jam появляется только вместе с ней. */
   jam: boolean
+  /** Годовые итоги: год двумя цифрами и точка, пока их не смотрели. */
+  recap?: { label: string; title: string; fresh: boolean; onOpen: () => void } | null
   onNavigate: (route: Route) => void
 }
 
@@ -26,7 +28,7 @@ interface Props {
  * а не столбиком обрезанных названий. Смысл значка не теряется: у каждого есть
  * подсказка, а активный подсвечен плитой.
  */
-export function Rail({ route, jam, onNavigate }: Props): JSX.Element {
+export function Rail({ route, jam, recap, onNavigate }: Props): JSX.Element {
   return (
     <nav className="rail drag">
       <div className="rail__brand" title="Duet">
@@ -57,6 +59,17 @@ export function Rail({ route, jam, onNavigate }: Props): JSX.Element {
           onClick={() => onNavigate('jam')}
         >
           <Radio size={17} />
+        </button>
+      )}
+
+      {recap && (
+        <button
+          className={`railitem railitem--recap nodrag ${recap.fresh ? 'has-dot' : ''}`}
+          title={recap.title}
+          aria-label={recap.title}
+          onClick={recap.onOpen}
+        >
+          {recap.label}
         </button>
       )}
 

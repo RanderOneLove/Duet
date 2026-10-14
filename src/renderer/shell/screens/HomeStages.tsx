@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Playlist, ServiceId, Track, WaveChoice } from '@shared/domain'
 import { artistLine } from '@shared/domain'
 import type { HomeBlockId } from '@shared/types'
@@ -49,6 +49,8 @@ export interface HomeModel {
   downloadedIds: Set<string>
   onDownload: (track: Track) => void
   onSimilar: (track: Track) => void
+  /** Плитка итогов — каждый вид ставит её под волной. */
+  banner?: ReactNode
 }
 
 /** Что сейчас с волной — одно на все три вида. */
@@ -335,6 +337,7 @@ export function StageHome({ model, order }: { model: HomeModel; order: HomeBlock
           </div>
         </section>
       )}
+      {model.banner}
 
       <RestBlocks model={model} order={order} />
     </div>
@@ -430,6 +433,7 @@ export function DashHome({ model }: { model: HomeModel }): JSX.Element {
 
   return (
     <div className="home home--dash">
+      {model.banner}
       <div className="dash">
         {showWave && (
           <section className={`on-hero dashwave ${cover ? '' : 'dashwave--nocover'}`}>
@@ -729,6 +733,7 @@ export function DuetHome({ model, order }: { model: HomeModel; order: HomeBlockI
           </div>
         </section>
       )}
+      {model.banner}
 
       {(showLiked || showPlaylists) && (
         <div className={`duetgrid ${showLiked && showPlaylists ? '' : 'duetgrid--single'}`}>
