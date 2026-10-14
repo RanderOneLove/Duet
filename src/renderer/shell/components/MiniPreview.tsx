@@ -89,7 +89,13 @@ export function MiniPreview({
         className="minipreview__scale"
         ref={inner}
         style={{
-          transform: size.scale ? `scale(${size.scale})` : undefined,
+          /*
+           * Трансформация нужна с первого кадра, даже пока масштаб не измерен:
+           * шторка и язычок закреплены (position: fixed), и только она держит
+           * их внутри плашки. Без неё до замера они всплывали у края главного
+           * окна. Нулевой масштаб заодно прячет превью, пока оно не измерено.
+           */
+          transform: `scale(${size.scale})`,
           // Уменьшенная по высоте плита уже плашки — ставим её посередине.
           marginLeft:
             size.scale && inner.current
