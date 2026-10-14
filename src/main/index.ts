@@ -94,6 +94,8 @@ import {
   showMainWindow
 } from './windows/mainWindow'
 import { createAudioHost, destroyAudioHost } from './windows/audioHost'
+import { setupTaskbar } from './taskbar'
+import { flushLoudness } from './player/loudness'
 import {
   destroyMiniPlayer,
   hideMiniPlayer,
@@ -147,6 +149,7 @@ function start(): void {
 
   const window = createMainWindow({ startHidden })
   mark('windowCreated')
+  setupTaskbar(window)
   createAudioHost()
   createTray()
   registerIpc()
@@ -249,6 +252,9 @@ function registerIpc(): void {
   ipcMain.handle(IPC.playerGetMini, (): PlayerUpdate => getPlayerForMini())
   ipcMain.on(IPC.playerCommand, (_event, input: PlayerCommand) => void command(input))
   ipcMain.on(IPC.audioEvent, (_event, event: AudioEvent) => handleAudioEvent(event))
+  // Кнопки системы — плашка громкости Windows, гарнитура, экран блокировки —
+  // приходят из хоста звука и значат то же, что кнопки плеера.
+  ipcMain.on(IPC.audioAction, (_event, input: PlayerCommand) => void command(input))
 
   // ---- sources ----
   ipcMain.handle(IPC.sourceConnections, (): Connection[] => getConnections())
@@ -417,6 +423,7 @@ app.on('before-quit', () => {
   markQuitting()
   // Обычная запись сессии асинхронная и может не успеть до закрытия.
   saveSessionNow()
+  flushLoudness()
   unregisterHotkeys()
   stopUpdates()
   stopWatchingLibrary()

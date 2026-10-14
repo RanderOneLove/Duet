@@ -232,6 +232,13 @@ export interface Settings {
   waveCursors: Record<string, string>
   /** Playback output; '' follows whatever Windows is using. */
   outputDeviceId: string
+  /**
+   * Выравнивать громкость треков. VK и Яндекс сводят записи по-разному, и в
+   * общей очереди один трек заметно громче другого.
+   */
+  normalizeVolume: boolean
+  /** Длина кроссфейда между треками, в секундах; 0 — без него. */
+  crossfadeSec: number
   /** The last few searches, newest first. */
   recentSearches: string[]
   /**
@@ -391,6 +398,8 @@ export const DEFAULT_SETTINGS: Settings = {
   waveService: 'yandex',
   waveCursors: {},
   outputDeviceId: '',
+  normalizeVolume: false,
+  crossfadeSec: 0,
   recentSearches: [],
   vkDisliked: [],
   sleepSuspendsPc: false,
@@ -403,7 +412,7 @@ export const DEFAULT_SETTINGS: Settings = {
   jamGuestsSkip: true,
   jamGuestsEdit: true,
   relayUrl: 'https://rander.pro/duet',
-  joinPageUrl: 'https://randeronelove.github.io/Duet/',
+  joinPageUrl: 'https://randeronelove.github.io/Duet/join/',
   togetherCode: '',
   jamPass: '',
   togetherKey: '',

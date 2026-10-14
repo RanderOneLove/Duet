@@ -467,7 +467,7 @@ function PlaybackPane({
             onChange={() => window.shell.command({ type: 'toggleShuffle' })}
           />
         </Row>
-        <Row label="Повтор" last>
+        <Row label="Повтор">
           <Segmented
             value={player.repeat}
             onChange={(mode: RepeatMode) => window.shell.command({ type: 'setRepeat', mode })}
@@ -476,6 +476,30 @@ function PlaybackPane({
               { id: 'all', label: 'Очередь' },
               { id: 'one', label: 'Трек' }
             ]}
+          />
+        </Row>
+        <Row
+          label="Выравнивать громкость"
+          hint="Треки VK и Яндекса сведены по-разному. Duet измеряет каждый и подгоняет к одному уровню — со следующего трека"
+        >
+          <Toggle value={settings.normalizeVolume} onChange={(v) => onChange({ normalizeVolume: v })} />
+        </Row>
+        <Row
+          label="Кроссфейд"
+          hint={
+            settings.crossfadeSec === 0
+              ? 'Выключен — треки идут встык'
+              : `Следующий трек нарастает за ${settings.crossfadeSec} с до конца текущего`
+          }
+          last
+        >
+          <input
+            type="range"
+            min={0}
+            max={12}
+            step={1}
+            value={settings.crossfadeSec}
+            onChange={(event) => onChange({ crossfadeSec: Number(event.target.value) })}
           />
         </Row>
       </Card>

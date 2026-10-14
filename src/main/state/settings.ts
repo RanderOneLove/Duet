@@ -30,6 +30,11 @@ export function getSettings(): Settings {
   if (stored.miniShowWhen === undefined && stored.miniOnMinimize === false) {
     settings.miniShowWhen = 'never'
   }
+  // Приглашение переехало с корня сайта в /join/: корень теперь страница о
+  // Duet. Старый адрес и так перенаправляет, но без лишнего прыжка быстрее.
+  if (settings.joinPageUrl === 'https://randeronelove.github.io/Duet/') {
+    settings.joinPageUrl = DEFAULT_SETTINGS.joinPageUrl
+  }
   /*
    * Список блоков Главной мог быть записан прежней версией — без «Скачанного»
    * или, наоборот, с пунктом, которого больше нет. Тогда экран показывал бы

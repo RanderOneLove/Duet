@@ -15,7 +15,8 @@ export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
     {
       scheme: MEDIA_SCHEME,
-      privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true }
+      // corsEnabled: выравнивание громкости читает и скачанные треки (см. audioHost).
+      privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true, corsEnabled: true }
     }
   ])
 }
@@ -29,7 +30,10 @@ export function serveMediaScheme(): void {
     // Only ever serve out of our own downloads folder.
     if (!file.startsWith(resolve(downloadsFolder()))) return new Response('', { status: 403 })
 
-    return net.fetch(pathToFileURL(file).toString(), { headers: request.headers })
+    const response = await net.fetch(pathToFileURL(file).toString(), { headers: request.headers })
+    const headers = new Headers(response.headers)
+    headers.set('Access-Control-Allow-Origin', '*')
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
   })
 }
 

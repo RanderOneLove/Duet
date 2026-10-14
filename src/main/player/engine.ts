@@ -41,6 +41,8 @@ import { mediaUrl } from '../downloads/protocol'
 import { userInfo } from 'node:os'
 import { randomBytes } from 'node:crypto'
 import { getSettings, onSettingsChanged, setSettings } from '../state/settings'
+import { loudnessOf, rememberLoudness, typicalLufs } from './loudness'
+import type { Settings } from '@shared/types'
 
 /**
  * Owns the queue and the transport. The audio host only knows about one url at
@@ -147,6 +149,14 @@ export function onPlayerChanged(listener: Listener): () => void {
 
 export function initPlayer(volume: number, muted: boolean): void {
   patch({ volume, muted, outputDeviceId: getSettings().outputDeviceId, jamPerms: ownPerms() })
+  applyAudioProcessing(getSettings())
+  let processing = processingKey(getSettings())
+  onSettingsChanged((next) => {
+    const key = processingKey(next)
+    if (key === processing) return
+    processing = key
+    applyAudioProcessing(next)
+  })
   /*
    * Права участников — настройка ведущего, но публикуются они из состояния:
    * так переключатель, тронутый посреди сессии, уходит участникам той же
@@ -160,6 +170,19 @@ export function initPlayer(volume: number, muted: boolean): void {
       patch({ jamPerms: perms })
     }
   })
+}
+
+/** Выравнивание и кроссфейд живут в хосте звука — он и меряет, и сводит. */
+function applyAudioProcessing(settings: Settings): void {
+  controlAudio({
+    type: 'setProcessing',
+    normalize: settings.normalizeVolume,
+    crossfadeMs: Math.round(Math.max(0, Math.min(12, settings.crossfadeSec)) * 1000)
+  })
+}
+
+function processingKey(settings: Settings): string {
+  return `${settings.normalizeVolume}:${settings.crossfadeSec}`
 }
 
 function ownPerms(): JamPerms {
@@ -1282,6 +1305,12 @@ export function handleAudioEvent(event: AudioEvent): void {
     case 'ended':
       void handleEnded()
       return
+    case 'nearEnd':
+      void crossfadeIntoNext()
+      return
+    case 'loudness':
+      if (event.key && event.loudness) rememberLoudness(event.key, event.loudness)
+      return
     case 'stalled':
       // Still "playing" as far as the queue goes, but nothing is coming out.
       patch({ loading: true, positionMs: event.positionMs ?? state.positionMs })
@@ -1311,6 +1340,33 @@ async function handleEnded(): Promise<void> {
   }
   reportWaveTrack('trackFinished')
   await advance(1, false)
+}
+
+/**
+ * Кроссфейд: хост сообщил, что до конца трека осталось столько, сколько
+ * длится переход. Следующий трек запускается сейчас, а прежний доигрывает,
+ * затихая.
+ *
+ * Только когда переход очевиден: есть следующий трек и он уже в очереди. При
+ * «повторять трек», в конце очереди, пока волна не подвезла продолжение, и в
+ * чужой сессии ничего не делаем — трек доиграет, и всё решит обычный 'ended'.
+ */
+async function crossfadeIntoNext(): Promise<void> {
+  if (!hasStartedPlayingThisTrack || !state.playing) return
+  if (state.repeat === 'one' || state.following) return
+  const next =
+    state.index + 1 < state.queue.length
+      ? state.index + 1
+      : state.repeat === 'all' && !state.waveService && state.queue.length > 1
+        ? 0
+        : -1
+  if (next < 0) return
+
+  hasStartedPlayingThisTrack = false
+  reportWaveTrack('trackFinished')
+  patch({ index: next })
+  await loadCurrent(true, 0, true)
+  void topUpWave()
 }
 
 /**
@@ -1488,13 +1544,13 @@ async function prefetchNext(): Promise<void> {
   // Скачанный файл ссылки не требует, но подогреть его стоит наравне с сетевым.
   const local = getSettings().preferDownloaded ? downloadedFile(next.id) : null
   if (local) {
-    controlAudio({ type: 'preload', url: mediaUrl(local) })
+    controlAudio({ type: 'preload', url: mediaUrl(local), key: next.id, loudness: loudnessOf(next.id) })
     return
   }
 
   const known = cachedStream(next.id)
   if (known) {
-    controlAudio({ type: 'preload', url: known })
+    controlAudio({ type: 'preload', url: known, key: next.id, loudness: loudnessOf(next.id) })
     return
   }
 
@@ -1508,7 +1564,7 @@ async function prefetchNext(): Promise<void> {
     }
     // Очередь могла уйти вперёд, пока мы ходили за ссылкой.
     if (state.queue[state.index + 1]?.id === next.id) {
-      controlAudio({ type: 'preload', url })
+      controlAudio({ type: 'preload', url, key: next.id, loudness: loudnessOf(next.id) })
     }
   } catch {
     // Не вышло — узнаем об этом в свой черёд, обычной загрузкой.
@@ -1517,8 +1573,11 @@ async function prefetchNext(): Promise<void> {
   }
 }
 
-/** Resolve the current track's stream and hand it to the audio host. */
-async function loadCurrent(autoplay: boolean, startAtMs = 0): Promise<void> {
+/**
+ * Resolve the current track's stream and hand it to the audio host.
+ * `crossfade` — сменить трек плавно, не обрывая прежний (см. crossfadeIntoNext).
+ */
+async function loadCurrent(autoplay: boolean, startAtMs = 0, crossfade = false): Promise<void> {
   let track = state.queue[state.index]
   if (!track) return
 
@@ -1564,7 +1623,23 @@ async function loadCurrent(autoplay: boolean, startAtMs = 0): Promise<void> {
     if (token !== loadToken) return
     controlAudio({ type: 'setSink', deviceId: getSettings().outputDeviceId })
     if (state.waveService) void waveFeedback(track.service, 'trackStarted', track)
-    loadAudio({ url, positionMs: startAtMs, volume: state.volume, muted: state.muted, autoplay })
+    loadAudio({
+      url,
+      positionMs: startAtMs,
+      volume: state.volume,
+      muted: state.muted,
+      autoplay,
+      key: track.id,
+      meta: {
+        title: track.title,
+        artist: track.artists.join(', '),
+        album: track.album ?? '',
+        artwork: track.coverUrl
+      },
+      loudness: loudnessOf(track.id),
+      typicalLufs: typicalLufs(),
+      crossfade
+    })
     // Загруженный, но не зазвучавший трек — это тишина без ошибки.
     if (autoplay) armStartWatchdog(token)
     // Пока играет этот, взять ссылку на следующий.

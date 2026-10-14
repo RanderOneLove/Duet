@@ -26,6 +26,8 @@ export const IPC = {
   audioControl: 'audio:control',
   /** host → main: playback progress, end of track, decode failures. */
   audioEvent: 'audio:event',
+  /** host → main: a system media control (Windows overlay, headset) was pressed. */
+  audioAction: 'audio:action',
 
   // ---- sources ----
   /** shell → main: open the service's own sign-in window. */

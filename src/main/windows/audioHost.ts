@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, session } from 'electron'
 import { join } from 'node:path'
 import { IPC } from '@shared/ipc'
 import type { AudioControl, AudioLoad } from '../../preload/audio'
@@ -32,6 +32,8 @@ export function createAudioHost(): BrowserWindow {
     }
   })
 
+  allowReadingAudio(win.webContents.id)
+
   const devServer = process.env['ELECTRON_RENDERER_URL']
   if (devServer) void win.loadURL(`${devServer}/audio/index.html`)
   else void win.loadFile(join(__dirname, '../renderer/audio/index.html'))
@@ -48,6 +50,39 @@ export function createAudioHost(): BrowserWindow {
   })
 
   return win
+}
+
+/**
+ * Разрешить хосту читать звук, который он играет.
+ *
+ * Выравнивание громкости меряет звук в Web Audio, а Chromium отдаёт туда
+ * чужой звук только с разрешения сервера — заголовком CORS. Серверы VK и
+ * Яндекса его не обещают, поэтому он дописывается здесь, и только к ответам
+ * для окна звука: остальные окна живут по обычным правилам.
+ *
+ * Слушатель у сессии один на всё приложение — второй вызов заменит этот.
+ */
+let readingAllowedFor = -1
+
+function allowReadingAudio(webContentsId: number): void {
+  const first = readingAllowedFor === -1
+  readingAllowedFor = webContentsId
+  if (!first) return
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    if (details.webContentsId !== readingAllowedFor || !details.responseHeaders) {
+      callback({})
+      return
+    }
+    const headers: Record<string, string[]> = {}
+    for (const [name, value] of Object.entries(details.responseHeaders)) {
+      // Свой ответ сервера мог разрешать другой адрес — он заменяется целиком.
+      const lower = name.toLowerCase()
+      if (lower === 'access-control-allow-origin' || lower === 'access-control-allow-credentials') continue
+      headers[name] = value
+    }
+    headers['Access-Control-Allow-Origin'] = ['*']
+    callback({ responseHeaders: headers })
+  })
 }
 
 export function loadAudio(payload: AudioLoad): void {
